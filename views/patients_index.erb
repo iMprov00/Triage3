@@ -1,0 +1,244 @@
+<!-- views/patients_index.erb -->
+<div class="row mb-4">
+  <div class="col">
+    <h1>Список пациентов</h1>
+    <a href="/patients/new" class="btn btn-primary">
+      <i class="bi bi-plus-circle"></i> Новый пациент
+    </a>
+    <a href="/monitor" class="btn btn-success" target="_blank">
+      <i class="bi bi-tv"></i> Монитор (для ТВ)
+    </a>
+  </div>
+</div>
+
+<!-- Форма поиска и фильтров -->
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0"><i class="bi bi-funnel"></i> Поиск и фильтры</h5>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/patients" class="row g-3">
+      <!-- Поиск по всем полям -->
+      <div class="col-md-4">
+        <label class="form-label">Поиск по всем полям</label>
+        <div class="input-group">
+          <input type="text" name="search" class="form-control" 
+                 placeholder="ФИО, ID, исполнитель..." 
+                 value="<%= params[:search] %>">
+          <button class="btn btn-outline-secondary" type="submit">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Фильтр по дате поступления -->
+      <div class="col-md-4">
+        <label class="form-label">Дата поступления</label>
+        <div class="row g-2">
+          <div class="col">
+            <input type="date" name="admission_date_from" class="form-control" 
+                   placeholder="От" value="<%= params[:admission_date_from] %>">
+          </div>
+          <div class="col">
+            <input type="date" name="admission_date_to" class="form-control" 
+                   placeholder="До" value="<%= params[:admission_date_to] %>">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Фильтр по виду обращения -->
+      <div class="col-md-2">
+        <label class="form-label">Вид обращения</label>
+        <select name="appeal_type" class="form-select">
+          <option value="all">Все виды</option>
+          <% Patient::APPEAL_TYPES.each do |type| %>
+            <option value="<%= type %>" <%= 'selected' if params[:appeal_type] == type %>>
+              <%= type %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      
+      <!-- Фильтр по сроку беременности -->
+      <div class="col-md-2">
+        <label class="form-label">Срок беременности</label>
+        <select name="pregnancy_condition" class="form-select">
+          <option value="">Все</option>
+          <option value="unknown" <%= 'selected' if params[:pregnancy_condition] == 'unknown' %>>
+            Неизвестно
+          </option>
+          <option value="less_12" <%= 'selected' if params[:pregnancy_condition] == 'less_12' %>>
+            Менее 12 недель
+          </option>
+          <option value="12_28" <%= 'selected' if params[:pregnancy_condition] == '12_28' %>>
+            12-28 недель
+          </option>
+          <option value="more_28" <%= 'selected' if params[:pregnancy_condition] == 'more_28' %>>
+            Более 28 недель
+          </option>
+        </select>
+      </div>
+      
+      <!-- Фильтр по исполнителю -->
+      <div class="col-md-4">
+        <label class="form-label">Исполнитель</label>
+        <select name="performer_filter" class="form-select">
+          <option value="">Все исполнители</option>
+          <% @performers.each do |performer| %>
+            <option value="<%= performer %>" <%= 'selected' if params[:performer_filter] == performer %>>
+              <%= performer %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      
+      <!-- Кнопки фильтров -->
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-filter"></i> Применить фильтры
+        </button>
+        <a href="/patients" class="btn btn-secondary">
+          <i class="bi bi-x-circle"></i> Сбросить
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Список пациентов -->
+<div class="row">
+  <% if @patients.empty? %>
+    <div class="col-12">
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Пациенты не найдены
+      </div>
+    </div>
+  <% else %>
+    <% @patients.each do |patient| %>
+      <div class="col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <!-- Заголовок с ID и ФИО -->
+            <h5 class="card-title">
+              <span class="badge bg-secondary">ID: <%= patient.id %></span>
+              <%= patient.full_name %>
+            </h5>
+            
+            <!-- Основная информация -->
+            <div class="card-text mb-3">
+              <div class="row small text-muted">
+                <div class="col-12">
+                  <strong><i class="bi bi-calendar"></i> Поступил:</strong> 
+                  <%= patient.admission_date %> <%= patient.admission_time %>
+                </div>
+                <div class="col-12">
+                  <strong><i class="bi bi-person-badge"></i> Исполнитель:</strong> 
+                  <%= patient.performer_name %>
+                </div>
+                <div class="col-12">
+                  <strong><i class="bi bi-clipboard"></i> Вид обращения:</strong> 
+                  <span class="badge bg-info"><%= patient.appeal_type %></span>
+                </div>
+                <div class="col-12">
+                  <strong><i class="bi bi-calendar-heart"></i> Срок беременности:</strong> 
+                  <%= patient.pregnancy_display %>
+                </div>
+                <div class="col-12">
+                  <strong><i class="bi bi-balloon"></i> Дата рождения:</strong> 
+                  <%= patient.birth_date %>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Таймер триажа -->
+            <% if patient.triage %>
+              <div class="timer-box <%= patient.triage.expired? ? 'timer-expired' : 'timer-running' %>">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span>Таймер триажа:</span>
+                  <span id="timer-<%= patient.id %>" class="fw-bold">
+                    <%= patient.triage.time_remaining %> сек
+                  </span>
+                </div>
+                
+                <% if patient.triage.expired? %>
+                  <div class="alert alert-danger mt-2 mb-0 py-1">
+                    <i class="bi bi-exclamation-triangle"></i> Время вышло!
+                  </div>
+                <% end %>
+              </div>
+              
+              <div class="mt-2">
+                <% if patient.triage.timer_active %>
+                  <a href="/patients/<%= patient.id %>/triage" class="btn btn-warning btn-sm">
+                    <i class="bi bi-clipboard-pulse"></i> Заполнить триаж
+                  </a>
+                <% else %>
+                  <span class="badge bg-success">Триаж завершен</span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+
+<!-- Пагинация (опционально) -->
+<% if @patients.respond_to?(:total_pages) && @patients.total_pages > 1 %>
+  <nav aria-label="Навигация по страницам" class="mt-4">
+    <ul class="pagination justify-content-center">
+      <% if @patients.prev_page %>
+        <li class="page-item">
+          <a class="page-link" href="?page=<%= @patients.prev_page %>">Назад</a>
+        </li>
+      <% end %>
+      
+      <% (1..@patients.total_pages).each do |page| %>
+        <li class="page-item <%= 'active' if page == @patients.current_page %>">
+          <a class="page-link" href="?page=<%= page %>"><%= page %></a>
+        </li>
+      <% end %>
+      
+      <% if @patients.next_page %>
+        <li class="page-item">
+          <a class="page-link" href="?page=<%= @patients.next_page %>">Вперед</a>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+<% end %>
+
+<script>
+// Обновление таймеров на странице
+function updateAllTimers() {
+  $('[id^="timer-"]').each(function() {
+    const patientId = this.id.split('-')[1];
+    $.getJSON(`/api/patient_timer/${patientId}`, function(data) {
+      $(`#timer-${patientId}`).text(data.time_remaining + ' сек');
+      const box = $(`#timer-${patientId}`).closest('.timer-box');
+      if (data.expired) {
+        box.removeClass('timer-running').addClass('timer-expired');
+      } else {
+        box.removeClass('timer-expired').addClass('timer-running');
+      }
+    });
+  });
+}
+
+// Обновляем каждые 5 секунд
+setInterval(updateAllTimers, 5000);
+
+// Автозаполнение дат в фильтрах
+$(document).ready(function() {
+  // Устанавливаем максимальную дату "до" как сегодня
+  const today = new Date().toISOString().split('T')[0];
+  $('input[name="admission_date_to"]').attr('max', today);
+  
+  // Автозаполнение фильтров из URL
+  const urlParams = new URLSearchParams(window.location.search);
+  urlParams.forEach((value, key) => {
+    $(`[name="${key}"]`).val(value);
+  });
+});
+</script>

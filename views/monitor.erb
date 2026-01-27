@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Монитор пациентов</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <style>
+    body { padding: 20px; background: #000; color: #fff; font-size: 1.5rem; }
+    .patient-card { 
+      background: linear-gradient(145deg, #1a1a1a, #222); 
+      border: 3px solid #444; 
+      border-radius: 20px; 
+      margin: 20px; 
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transition: transform 0.3s;
+    }
+    .patient-card:hover { transform: scale(1.02); }
+    .timer-critical { 
+      background: linear-gradient(45deg, #dc3545, #c82333);
+      animation: pulse 1s infinite; 
+    }
+    .timer-warning { 
+      background: linear-gradient(45deg, #ffc107, #e0a800);
+      color: #000; 
+    }
+    .timer-normal { 
+      background: linear-gradient(45deg, #198754, #117a4b);
+    }
+    .timer-expired {
+      background: linear-gradient(45deg, #6c757d, #5a6268);
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    h1 { 
+      color: #0dcaf0; 
+      text-align: center; 
+      margin-bottom: 40px;
+      text-shadow: 0 0 10px rgba(13, 202, 240, 0.5);
+      font-weight: bold;
+    }
+    .header {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="header">
+      <h1 class="display-1 mb-3">
+        <i class="bi bi-heart-pulse"></i> МОНИТОР ПАЦИЕНТОВ
+      </h1>
+      <div class="text-center text-info fs-4">
+        <i class="bi bi-clock"></i>
+        <span id="current-time"><%= Time.now.strftime("%d.%m.%Y %H:%M:%S") %></span>
+        • Активных пациентов: <span id="patient-count">0</span>
+      </div>
+    </div>
+    
+    <div id="patients-container" class="row">
+      <div class="col-12 text-center">
+        <div class="alert alert-dark">
+          <h3><i class="bi bi-hourglass-split"></i> Загрузка данных...</h3>
+        </div>
+      </div>
+    </div>
+    
+    <div class="text-center mt-5 text-muted">
+      <small>Обновляется каждые 2 секунды • Система триажа v1.0</small>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script>
+  // Функция обновления монитора через AJAX
+  function updateMonitor() {
+    $.ajax({
+      url: '/api/active_patients',
+      type: 'GET',
+      dataType: 'json',
+      success: function(patients) {
+        const container = $('#patients-container');
+        const countElement = $('#patient-count');
+        
+        countElement.text(patients.length);
+        
+        if (patients.length === 0) {
+          container.html(`
+            <div class="col-12 text-center">
+              <div class="alert alert-dark" style="background: rgba(33,37,41,0.9);">
+                <h2><i class="bi bi-info-circle"></i> НЕТ АКТИВНЫХ ПАЦИЕНТОВ</h2>
+                <p class="mb-0 fs-5">В данный момент нет пациентов, проходящих триаж</p>
+              </div>
+            </div>
+          `);
+          return;
+        }
+        
+        let html = '';
+        patients.forEach(patient => {
+          let timerClass = 'timer-normal';
+          let timeText = patient.time_remaining;
+          
+          if (patient.time_remaining <= 0) {
+            timerClass = 'timer-expired';
+            timeText = 'ВРЕМЯ ВЫШЛО';
+          } else if (patient.time_remaining <= 10) {
+            timerClass = 'timer-critical';
+          } else if (patient.time_remaining <= 30) {
+            timerClass = 'timer-warning';
+          }
+          
+          const eyeIcon = patient.eye_opening === 'глаза закрыты' ? 
+            '<i class="bi bi-eye-slash text-warning"></i>' : 
+            '<i class="bi bi-eye text-success"></i>';
+          
+          const speechIcon = patient.verbal_response === 'четко' ? 
+            '<i class="bi bi-chat-dots text-success"></i>' : 
+            '<i class="bi bi-chat-left-dots text-warning"></i>';
+          
+          html += `
+            <div class="col-xl-3 col-lg-4 col-md-6">
+              <div class="patient-card">
+                <div class="row align-items-center">
+                  <div class="col-8">
+                    <h2 class="mb-3 text-primary">${patient.full_name}</h2>
+                    <div class="mb-2 fs-5">
+                      <span class="badge bg-dark">ID: ${patient.id}</span>
+                    </div>
+                    <div class="mb-2 fs-6">
+                      ${eyeIcon} Глаза: ${patient.eye_opening || 'Не заполнено'}
+                    </div>
+                    <div class="mb-2 fs-6">
+                      ${speechIcon} Речь: ${patient.verbal_response || 'Не заполнено'}
+                    </div>
+                    <div class="mb-2 fs-6">
+                      <i class="bi bi-person-badge"></i> Сознание: ${patient.consciousness_level || 'Не оценено'}
+                    </div>
+                  </div>
+                  <div class="col-4 text-center">
+                    <div class="${timerClass} display-3 fw-bold p-4 rounded-circle">
+                      ${timeText}
+                    </div>
+                    <small class="text-light">секунд</small>
+                  </div>
+                </div>
+                <div class="mt-3 pt-3 border-top border-secondary">
+                  <div class="progress" style="height: 10px;">
+                    <div class="progress-bar ${timerClass.replace('timer-', 'bg-')}" 
+                         role="progressbar" 
+                         style="width: ${Math.max(0, (patient.time_remaining / 120) * 100)}%">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        
+        container.html(html);
+      },
+      error: function(xhr, status, error) {
+        console.error('Ошибка загрузки данных:', error);
+        $('#patients-container').html(`
+          <div class="col-12 text-center">
+            <div class="alert alert-danger">
+              <h3><i class="bi bi-exclamation-triangle"></i> Ошибка загрузки данных</h3>
+              <p>Пожалуйста, обновите страницу</p>
+            </div>
+          </div>
+        `);
+      }
+    });
+  }
+  
+  // Обновляем монитор каждые 2 секунды
+  setInterval(updateMonitor, 2000);
+  
+  // Первый запуск
+  updateMonitor();
+  
+  // Обновляем время каждую секунду
+  setInterval(() => {
+    const now = new Date();
+    const timeString = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU');
+    $('#current-time').text(timeString);
+  }, 1000);
+  </script>
+</body>
+</html>
