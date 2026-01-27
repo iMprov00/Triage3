@@ -144,7 +144,7 @@ get '/patients/:id/triage' do
     redirect "/patients"
   end
   
-  erb :triage
+  erb :triage_step1
 end
 
 # Обновление триажа
@@ -261,4 +261,167 @@ get '/monitor_events', provides: 'text/event-stream' do
       EventMachine.cancel_timer(timer) if timer
     }
   end
+end
+
+
+# Страница триажа (этап 1)
+get '/patients/:id/triage' do
+  @patient = Patient.find(params[:id])
+  @triage = @patient.triage
+  
+  if @triage.nil?
+    flash[:error] = "Триаж не найден"
+    redirect "/patients"
+  end
+  
+  # Если триаж уже завершен
+  if @triage.completed_at
+    flash[:info] = "Триаж уже завершен. Приоритет: #{@triage.priority_name}"
+    redirect "/patients"
+  end
+  
+  erb :triage_step1
+end
+
+# Сохранение этапа 1
+post '/patients/:id/triage/step1' do
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  step_data = {
+    'eye_opening' => params[:eye_opening],
+    'verbal_response' => params[:verbal_response],
+    'motor_response' => params[:motor_response],
+    'breathing' => params[:breathing] == 'true',
+    'heartbeat' => params[:heartbeat] == 'true',
+    'seizures' => params[:seizures] == 'true',
+    'active_bleeding' => params[:active_bleeding] == 'true'
+  }
+  
+  triage.update_step_data(1, step_data)
+  
+  # Проверяем приоритет и переходим на следующий этап
+  result = triage.advance_step
+  
+  if result == 'priority_assigned'
+    flash[:notice] = "Приоритет определен: #{triage.priority_name}"
+    redirect "/patients/#{patient.id}/triage/actions"
+  else
+    flash[:notice] = "Переходим ко второму этапу"
+    redirect "/patients/#{patient.id}/triage/step2"
+  end
+end
+
+# Страница этапа 2
+get '/patients/:id/triage/step2' do
+  @patient = Patient.find(params[:id])
+  @triage = @patient.triage
+  
+  if @triage.nil? || @triage.step != 2
+    flash[:error] = "Доступ запрещен или триаж не найден"
+    redirect "/patients"
+  end
+  
+  erb :triage_step2
+end
+
+# Сохранение этапа 2
+post '/patients/:id/triage/step2' do
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  step_data = {
+    'position' => params[:position],
+    'urgency_criteria' => params[:urgency_criteria] || [],
+    'infection_signs' => params[:infection_signs] || []
+  }
+  
+  triage.update_step_data(2, step_data)
+  
+  # Проверяем приоритет и переходим на следующий этап
+  result = triage.advance_step
+  
+  if result == 'priority_assigned'
+    flash[:notice] = "Приоритет определен: #{triage.priority_name}"
+    redirect "/patients/#{patient.id}/triage/actions"
+  else
+    flash[:notice] = "Переходим к третьему этапу"
+    redirect "/patients/#{patient.id}/triage/step3"
+  end
+end
+
+# Страница этапа 3
+get '/patients/:id/triage/step3' do
+  @patient = Patient.find(params[:id])
+  @triage = @patient.triage
+  
+  if @triage.nil? || @triage.step != 3
+    flash[:error] = "Доступ запрещен или триаж не найден"
+    redirect "/patients"
+  end
+  
+  erb :triage_step3
+end
+
+# Сохранение этапа 3
+post '/patients/:id/triage/step3' do
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  step_data = {
+    'respiratory_rate' => params[:respiratory_rate],
+    'saturation' => params[:saturation],
+    'systolic_bp' => params[:systolic_bp],
+    'diastolic_bp' => params[:diastolic_bp],
+    'heart_rate' => params[:heart_rate],
+    'temperature' => params[:temperature]
+  }
+  
+  triage.update_step_data(3, step_data)
+  
+  # Проверяем приоритет
+  triage.advance_step
+  
+  flash[:notice] = "Триаж завершен. Приоритет: #{triage.priority_name}"
+  redirect "/patients/#{patient.id}/triage/actions"
+end
+
+# Заглушка для действий по приоритету
+get '/patients/:id/triage/actions' do
+  @patient = Patient.find(params[:id])
+  @triage = @patient.triage
+  
+  if @triage.nil? || @triage.priority == 'pending'
+    flash[:error] = "Приоритет не определен"
+    redirect "/patients/#{@patient.id}/triage"
+  end
+  
+  erb :triage_actions
+end
+
+# API для получения данных мониторинга
+get '/api/active_patients' do
+  content_type :json
+  
+  patients = Patient.joins(:triage)
+                   .where(triages: { timer_active: true })
+                   .includes(:triage)
+                   .all
+  
+  patients.map do |patient|
+    triage = patient.triage
+    {
+      id: patient.id,
+      full_name: patient.full_name,
+      performer_name: patient.performer_name,
+      step: triage.step,
+      step_name: triage.step_name,
+      priority: triage.priority,
+      time_remaining: triage.time_remaining,
+      eye_opening_score: triage.eye_score,
+      verbal_score: triage.verbal_score,
+      motor_score: triage.motor_score,
+      consciousness_score: triage.total_consciousness_score
+    }
+  end.to_json
 end

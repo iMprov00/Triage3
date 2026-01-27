@@ -1,0 +1,155 @@
+<!-- views/triage_actions.erb -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <% # Определяем классы для заголовка карточки %>
+      <% card_header_class = case @triage.priority %>
+      <%   when 'red' then 'bg-danger text-white' %>
+      <%   when 'yellow' then 'bg-warning text-dark' %>
+      <%   when 'purple' then 'bg-purple text-white' %>
+      <%   when 'green' then 'bg-success text-white' %>
+      <%   else 'bg-secondary text-white' %>
+      <% end %>
+      
+      <div class="card-header <%= card_header_class %>">
+        <h2 class="mb-0">
+          <i class="bi bi-clipboard-check"></i>
+          Действия по приоритету: <%= @triage.priority_name %>
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card mb-3">
+              <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Информация о пациенте</h5>
+              </div>
+              <div class="card-body">
+                <p><strong>ФИО:</strong> <%= @patient.full_name %></p>
+                <p><strong>Исполнитель:</strong> <%= @patient.performer_name %></p>
+                <p><strong>Приоритет:</strong>
+                
+                <% # Определяем классы для бейджа приоритета %>
+                <% badge_class = case @triage.priority %>
+                <%   when 'red' then 'bg-danger' %>
+                <%   when 'yellow' then 'bg-warning' %>
+                <%   when 'purple' then 'bg-purple' %>
+                <%   when 'green' then 'bg-success' %>
+                <%   else 'bg-secondary' %>
+                <% end %>
+                
+                  <span class="badge <%= badge_class %>">
+                    <%= @triage.priority_name %>
+                  </span>
+                </p>
+                <p><strong>Время завершения:</strong> <%= @triage.completed_at.strftime("%d.%m.%Y %H:%M:%S") %></p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-8">
+            <% # Определяем классы для алерта %>
+            <% alert_class = case @triage.priority %>
+            <%   when 'red' then 'alert-danger' %>
+            <%   when 'yellow' then 'alert-warning' %>
+            <%   when 'purple' then 'alert-purple' %>
+            <%   when 'green' then 'alert-success' %>
+            <%   else 'alert-secondary' %>
+            <% end %>
+            
+            <div class="alert <%= alert_class %>">
+              <h4 class="alert-heading">
+                <% case @triage.priority %>
+                <% when 'red' %>
+                  <i class="bi bi-exclamation-triangle-fill"></i> СРОЧНЫЕ МЕРЫ!
+                <% when 'yellow' %>
+                  <i class="bi bi-exclamation-circle-fill"></i> ТРЕБУЕТ ВНИМАНИЯ
+                <% when 'purple' %>
+                  <i class="bi bi-info-circle-fill"></i> ОСОБЫЙ РЕЖИМ
+                <% when 'green' %>
+                  <i class="bi bi-check-circle-fill"></i> ПЛАНОВЫЙ ПОРЯДОК
+                <% end %>
+              </h4>
+              
+              <% case @triage.priority %>
+              <% when 'red' %>
+                <p>Пациент с критическим состоянием. Необходимо немедленное вмешательство!</p>
+                <ul>
+                  <li>Немедленно вызвать реанимационную бригаду</li>
+                  <li>Подготовить реанимационное оборудование</li>
+                  <li>Обеспечить доступ к венам</li>
+                  <li>Мониторинг жизненных функций каждые 5 минут</li>
+                  <li>Приоритетная транспортировка в отделение реанимации</li>
+                </ul>
+              <% when 'yellow' %>
+                <p>Пациент требует срочного осмотра в течение 30 минут.</p>
+                <ul>
+                  <li>Немедленный осмотр врачом</li>
+                  <li>Проведение необходимых обследований</li>
+                  <li>Мониторинг состояния каждые 15 минут</li>
+                  <li>Подготовка к возможной госпитализации</li>
+                </ul>
+              <% when 'purple' %>
+                <p>Пациент с признаками инфекционного заболевания.</p>
+                <ul>
+                  <li>Изоляция в боксе</li>
+                  <li>Использование средств индивидуальной защиты</li>
+                  <li>Консультация инфекциониста</li>
+                  <li>Взятие анализов на инфекции</li>
+                  <li>Ограничение контактов с другими пациентами</li>
+                </ul>
+              <% when 'green' %>
+                <p>Пациент в стабильном состоянии. Плановый порядок обслуживания.</p>
+                <ul>
+                  <li>Оформление в приемном отделении</li>
+                  <li>Плановый осмотр врачом</li>
+                  <li>Стандартные анализы и обследования</li>
+                  <li>Направление в соответствующее отделение</li>
+                </ul>
+              <% end %>
+            </div>
+            
+            <div class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Результаты триажа</h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <strong>Этап 1 (сознание):</strong><br>
+                    <%= @triage.total_consciousness_score %>/15 баллов
+                  </div>
+                  <div class="col-md-4">
+                    <strong>Этап 2 (двигательные):</strong><br>
+                    <% if @triage.step_data(2)['position'] %>
+                      <%= @triage.step_data(2)['position'] %>
+                    <% else %>
+                      Не заполнено
+                    <% end %>
+                  </div>
+                  <div class="col-md-4">
+                    <strong>Этап 3 (витальные):</strong><br>
+                    <% if @triage.step_data(3)['respiratory_rate'] %>
+                      Заполнено
+                    <% else %>
+                      Не заполнено
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-4 text-center">
+          <a href="/patients" class="btn btn-primary btn-lg">
+            <i class="bi bi-list"></i> Вернуться к списку пациентов
+          </a>
+          <a href="/patients/<%= @patient.id %>/triage" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-eye"></i> Просмотр данных триажа
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

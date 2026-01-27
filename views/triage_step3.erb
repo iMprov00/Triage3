@@ -1,0 +1,277 @@
+<!-- views/triage_step3.erb -->
+<div class="row">
+  <div class="col-md-8">
+    <h1>Этап 3: Объективная оценка степени тяжести - <%= @patient.full_name %></h1>
+    <div class="alert alert-success">
+      <i class="bi bi-info-circle"></i> Время на этап: 10 минут
+    </div>
+    
+    <!-- Информация о пациенте -->
+    <div class="card mb-4">
+      <div class="card-body bg-light">
+        <div class="row small">
+          <div class="col-md-3">
+            <strong>Исполнитель:</strong><br>
+            <%= @patient.performer_name %>
+          </div>
+          <div class="col-md-3">
+            <strong>Этап 1:</strong><br>
+            <span class="badge <%= @triage.total_consciousness_score <= 8 ? 'bg-danger' : 'bg-success' %>">
+              <%= @triage.total_consciousness_score %>/15 баллов
+            </span>
+          </div>
+          <div class="col-md-3">
+            <strong>Этап 2:</strong><br>
+            <% if @triage.step_data(2)['position'] %>
+              <%= @triage.step_data(2)['position'].split(',')[0] %>
+            <% else %>
+              Не заполнено
+            <% end %>
+          </div>
+          <div class="col-md-3">
+            <strong>Текущий статус:</strong><br>
+            <span class="badge bg-warning">Оценка витальных функций</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div id="triage-timer" class="timer-box alert alert-success">
+      <h4 class="text-center mb-0">
+        <i class="bi bi-clock"></i>
+        <span id="timer-display"><%= @triage.time_remaining %></span> сек
+      </h4>
+      <div class="small text-center mt-1">Этап 3/3</div>
+    </div>
+  </div>
+</div>
+
+<div id="time-expired-warning" class="alert alert-danger d-none">
+  <h4><i class="bi bi-exclamation-triangle"></i> Время вышло!</h4>
+  <p class="mb-0">Автоматическое сохранение...</p>
+</div>
+
+<form id="triage-form" action="/patients/<%= @patient.id %>/triage/step3" method="post" class="mt-4">
+  
+  <!-- Оценка витальных функций -->
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0"><i class="bi bi-activity"></i> Оценка витальных функций</h5>
+      <small class="text-light">Введите показатели пациента. Цвет изменится автоматически при выходе за норму</small>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <!-- ЧДД -->
+        <div class="col-md-4">
+          <label class="form-label">ЧДД (дыхание в минуту)</label>
+          <input type="number" name="respiratory_rate" class="form-control vital-input" 
+                 id="respiratory_rate" min="0" max="100" step="1" required
+                 placeholder="12-20">
+          <div class="vital-status mt-2" id="respiratory_status">
+            <span class="badge bg-success">Норма: 16-24</span>
+          </div>
+        </div>
+        
+        <!-- Сатурация -->
+        <div class="col-md-4">
+          <label class="form-label">Сатурация SpO2 (%)</label>
+          <input type="number" name="saturation" class="form-control vital-input" 
+                 id="saturation" min="0" max="100" step="1" required
+                 placeholder="95-100">
+          <div class="vital-status mt-2" id="saturation_status">
+            <span class="badge bg-success">Норма: ≥93%</span>
+          </div>
+        </div>
+        
+        <!-- Систолическое АД -->
+        <div class="col-md-4">
+          <label class="form-label">Систолическое АД (мм рт.ст.)</label>
+          <input type="number" name="systolic_bp" class="form-control vital-input" 
+                 id="systolic_bp" min="0" max="300" step="1" required
+                 placeholder="110-139">
+          <div class="vital-status mt-2" id="systolic_status">
+            <span class="badge bg-success">Норма: <140</span>
+          </div>
+        </div>
+        
+        <!-- Диастолическое АД -->
+        <div class="col-md-4">
+          <label class="form-label">Диастолическое АД (мм рт.ст.)</label>
+          <input type="number" name="diastolic_bp" class="form-control vital-input" 
+                 id="diastolic_bp" min="0" max="200" step="1" required
+                 placeholder="70-89">
+          <div class="vital-status mt-2" id="diastolic_status">
+            <span class="badge bg-success">Норма: <90</span>
+          </div>
+        </div>
+        
+        <!-- ЧСС -->
+        <div class="col-md-4">
+          <label class="form-label">ЧСС (ударов в минуту)</label>
+          <input type="number" name="heart_rate" class="form-control vital-input" 
+                 id="heart_rate" min="0" max="250" step="1" required
+                 placeholder="60-100">
+          <div class="vital-status mt-2" id="heart_rate_status">
+            <span class="badge bg-success">Норма: 50-110</span>
+          </div>
+        </div>
+        
+        <!-- Температура -->
+        <div class="col-md-4">
+          <label class="form-label">Температура (°C)</label>
+          <input type="number" name="temperature" class="form-control vital-input" 
+                 id="temperature" min="35" max="42" step="0.1" required
+                 placeholder="36.6">
+          <div class="vital-status mt-2" id="temperature_status">
+            <span class="badge bg-success">Норма: <37.5</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Легенда -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="alert alert-secondary">
+            <div class="row text-center">
+              <div class="col-md-4">
+                <span class="badge bg-success">Зеленый</span> - норма
+              </div>
+              <div class="col-md-4">
+                <span class="badge bg-warning">Желтый</span> - отклонение (приоритет 2)
+              </div>
+              <div class="col-md-4">
+                <span class="badge" style="background-color: #6f42c1;">Фиолетовый</span> - температура ≥37.5 (приоритет 3)
+              </div>
+            </div>
+            <div class="mt-2 text-center small">
+              <i class="bi bi-info-circle"></i> Если хотя бы один показатель желтый → приоритет <span class="badge bg-warning">ЖЕЛТЫЙ</span>
+              <br>Если все зеленые, но температура фиолетовая → приоритет <span class="badge" style="background-color: #6f42c1;">ФИОЛЕТОВЫЙ</span>
+              <br>Если все зеленые → приоритет <span class="badge bg-success">ЗЕЛЕНЫЙ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+    <a href="/patients/<%= @patient.id %>/triage/step2" class="btn btn-secondary btn-lg">
+      <i class="bi bi-arrow-left"></i> Назад к этапу 2
+    </a>
+    <button type="submit" class="btn btn-primary btn-lg">
+      <i class="bi bi-check-circle"></i> Завершить триаж
+    </button>
+  </div>
+</form>
+
+<script>
+// Подключение к SSE потоку
+const eventSource = new EventSource('/triage_events/<%= @patient.id %>');
+
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  const timerDisplay = $('#timer-display');
+  const timerBox = $('#triage-timer');
+  const warning = $('#time-expired-warning');
+  const form = $('#triage-form');
+  
+  // Обновление таймера
+  timerDisplay.text(data.time_remaining);
+  
+  if (data.expired) {
+    timerBox.removeClass('alert-success').addClass('alert-danger');
+    warning.removeClass('d-none');
+    
+    // Автоматическая отправка формы если время вышло
+    if ($('.vital-input').filter(function() { return $(this).val() !== ''; }).length > 0) {
+      form.submit();
+    }
+  }
+};
+
+// Функция проверки и обновления статуса витальных функций
+function checkVitalStatus() {
+  // Получаем значения
+  const respiratoryRate = parseInt($('#respiratory_rate').val()) || 0;
+  const saturation = parseInt($('#saturation').val()) || 0;
+  const systolicBp = parseInt($('#systolic_bp').val()) || 0;
+  const diastolicBp = parseInt($('#diastolic_bp').val()) || 0;
+  const heartRate = parseInt($('#heart_rate').val()) || 0;
+  const temperature = parseFloat($('#temperature').val()) || 0;
+  
+  // Проверяем ЧДД
+  const respiratoryStatus = $('#respiratory_status');
+  if (respiratoryRate > 24 || respiratoryRate < 16) {
+    respiratoryStatus.html('<span class="badge bg-warning">Отклонение: <16 или >24</span>');
+    $('#respiratory_rate').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    respiratoryStatus.html('<span class="badge bg-success">Норма: 16-24</span>');
+    $('#respiratory_rate').addClass('is-valid').removeClass('is-invalid');
+  }
+  
+  // Проверяем сатурацию
+  const saturationStatus = $('#saturation_status');
+  if (saturation < 93) {
+    saturationStatus.html('<span class="badge bg-warning">Отклонение: <93%</span>');
+    $('#saturation').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    saturationStatus.html('<span class="badge bg-success">Норма: ≥93%</span>');
+    $('#saturation').addClass('is-valid').removeClass('is-invalid');
+  }
+  
+  // Проверяем систолическое АД
+  const systolicStatus = $('#systolic_status');
+  if (systolicBp >= 140) {
+    systolicStatus.html('<span class="badge bg-warning">Отклонение: ≥140</span>');
+    $('#systolic_bp').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    systolicStatus.html('<span class="badge bg-success">Норма: <140</span>');
+    $('#systolic_bp').addClass('is-valid').removeClass('is-invalid');
+  }
+  
+  // Проверяем диастолическое АД
+  const diastolicStatus = $('#diastolic_status');
+  if (diastolicBp >= 90) {
+    diastolicStatus.html('<span class="badge bg-warning">Отклонение: ≥90</span>');
+    $('#diastolic_bp').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    diastolicStatus.html('<span class="badge bg-success">Норма: <90</span>');
+    $('#diastolic_bp').addClass('is-valid').removeClass('is-invalid');
+  }
+  
+  // Проверяем ЧСС
+  const heartRateStatus = $('#heart_rate_status');
+  if (heartRate > 110 || heartRate < 50) {
+    heartRateStatus.html('<span class="badge bg-warning">Отклонение: <50 или >110</span>');
+    $('#heart_rate').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    heartRateStatus.html('<span class="badge bg-success">Норма: 50-110</span>');
+    $('#heart_rate').addClass('is-valid').removeClass('is-invalid');
+  }
+  
+  // Проверяем температуру
+  const temperatureStatus = $('#temperature_status');
+  if (temperature >= 37.5) {
+    temperatureStatus.html('<span class="badge" style="background-color: #6f42c1;">Лихорадка: ≥37.5°C</span>');
+    $('#temperature').addClass('is-invalid').removeClass('is-valid');
+  } else {
+    temperatureStatus.html('<span class="badge bg-success">Норма: <37.5°C</span>');
+    $('#temperature').addClass('is-valid').removeClass('is-invalid');
+  }
+}
+
+// Слушаем изменения во всех полях витальных функций
+$('.vital-input').on('input', checkVitalStatus);
+
+// Инициализация при загрузке
+$(document).ready(function() {
+  checkVitalStatus();
+});
+
+// При закрытии страницы отключаем SSE
+window.addEventListener('beforeunload', function() {
+  eventSource.close();
+});
+</script>

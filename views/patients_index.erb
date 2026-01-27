@@ -1,13 +1,18 @@
 <!-- views/patients_index.erb -->
 <div class="row mb-4">
   <div class="col">
-    <h1>Список пациентов</h1>
-    <a href="/patients/new" class="btn btn-primary">
-      <i class="bi bi-plus-circle"></i> Новый пациент
-    </a>
-    <a href="/monitor" class="btn btn-success" target="_blank">
-      <i class="bi bi-tv"></i> Монитор (для ТВ)
-    </a>
+    <h1><i class="bi bi-people"></i> Список пациентов</h1>
+    <div class="btn-group" role="group">
+      <a href="/patients/new" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Новый пациент
+      </a>
+      <a href="/monitor" class="btn btn-success" target="_blank">
+        <i class="bi bi-tv"></i> Монитор (для ТВ)
+      </a>
+      <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#statsModal">
+        <i class="bi bi-graph-up"></i> Статистика
+      </button>
+    </div>
   </div>
 </div>
 
@@ -92,6 +97,33 @@
         </select>
       </div>
       
+      <!-- Фильтр по приоритету -->
+      <div class="col-md-3">
+        <label class="form-label">Приоритет триажа</label>
+        <select name="priority_filter" class="form-select">
+          <option value="">Все приоритеты</option>
+          <% Triage::PRIORITIES.each do |key, data| %>
+            <option value="<%= key %>" <%= 'selected' if params[:priority_filter] == key %>>
+              <%= data[:name] %>
+            </option>
+          <% end %>
+          <option value="pending" <%= 'selected' if params[:priority_filter] == 'pending' %>>В процессе</option>
+        </select>
+      </div>
+      
+      <!-- Фильтр по этапу -->
+      <div class="col-md-3">
+        <label class="form-label">Этап триажа</label>
+        <select name="step_filter" class="form-select">
+          <option value="">Все этапы</option>
+          <% Triage::STEPS.each do |num, data| %>
+            <option value="<%= num %>" <%= 'selected' if params[:step_filter] == num.to_s %>>
+              <%= data[:name] %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+      
       <!-- Кнопки фильтров -->
       <div class="col-12">
         <button type="submit" class="btn btn-primary">
@@ -105,6 +137,81 @@
   </div>
 </div>
 
+<!-- Статистика -->
+<!-- Статистика -->
+<% 
+  total_patients = @patients.count
+  active_triages = @patients.joins(:triage).where(triages: { timer_active: true }).count
+  completed_triages = @patients.joins(:triage).where.not(triages: { completed_at: nil }).count
+  
+  priority_stats = {}
+  Triage::PRIORITIES.each_key { |p| priority_stats[p] = 0 }
+  @patients.each do |p|
+    if p.triage && p.triage.priority
+      priority = p.triage.priority
+      priority_stats[priority] = (priority_stats[priority] || 0) + 1
+    end
+  end
+%>
+
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card text-white bg-primary">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title">Всего пациентов</h6>
+            <h3 class="mb-0"><%= total_patients %></h3>
+          </div>
+          <i class="bi bi-people fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card text-white bg-warning">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title">Активных триажей</h6>
+            <h3 class="mb-0"><%= active_triages %></h3>
+          </div>
+          <i class="bi bi-clock fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card text-white bg-success">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title">Завершенных триажей</h6>
+            <h3 class="mb-0"><%= completed_triages %></h3>
+          </div>
+          <i class="bi bi-check-circle fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-3">
+    <div class="card text-white bg-info">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title">Красных приоритетов</h6>
+            <h3 class="mb-0"><%= priority_stats['red'] %></h3>
+          </div>
+          <i class="bi bi-exclamation-triangle fs-1"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Список пациентов -->
 <div class="row">
   <% if @patients.empty? %>
@@ -115,7 +222,7 @@
     </div>
   <% else %>
     <% @patients.each do |patient| %>
-      <div class="col-md-6 mb-3">
+      <div class="col-md-6 col-lg-4 mb-3">
         <div class="card h-100">
           <div class="card-body">
             <!-- Заголовок с ID и ФИО -->
@@ -143,40 +250,150 @@
                   <strong><i class="bi bi-calendar-heart"></i> Срок беременности:</strong> 
                   <%= patient.pregnancy_display %>
                 </div>
-                <div class="col-12">
-                  <strong><i class="bi bi-balloon"></i> Дата рождения:</strong> 
-                  <%= patient.birth_date %>
-                </div>
               </div>
             </div>
             
-            <!-- Таймер триажа -->
+            <!-- Информация о триаже -->
             <% if patient.triage %>
-              <div class="timer-box <%= patient.triage.expired? ? 'timer-expired' : 'timer-running' %>">
-                <div class="d-flex justify-content-between align-items-center">
-                  <span>Таймер триажа:</span>
-                  <span id="timer-<%= patient.id %>" class="fw-bold">
-                    <%= patient.triage.time_remaining %> сек
-                  </span>
+              <div class="mb-3">
+                <!-- Этап и приоритет -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div>
+                    <!-- Исправленный блок с этапом -->
+                    <%
+                      step_class = case patient.triage.step
+                        when 1 then 'bg-primary'
+                        when 2 then 'bg-warning'
+                        when 3 then 'bg-success'
+                        else 'bg-secondary'
+                      end
+                    %>
+                    <span class="badge <%= step_class %>">
+                      Этап <%= patient.triage.step %>: <%= patient.triage.step_name %>
+                    </span>
+                    
+                    <% if patient.triage.priority != 'pending' %>
+                      <%
+                        priority_badge_class = case patient.triage.priority
+                          when 'red' then 'bg-danger'
+                          when 'yellow' then 'bg-warning'
+                          when 'purple' then 'bg-purple'
+                          when 'green' then 'bg-success'
+                          else 'bg-secondary'
+                        end
+                      %>
+                      <span class="badge <%= priority_badge_class %>">
+                        <%= patient.triage.priority_name %>
+                      </span>
+                    <% end %>
+                  </div>
+                  
+                  <% if patient.triage.completed_at %>
+                    <span class="badge bg-success">
+                      <i class="bi bi-check-circle"></i> Завершен
+                    </span>
+                  <% end %>
                 </div>
                 
-                <% if patient.triage.expired? %>
-                  <div class="alert alert-danger mt-2 mb-0 py-1">
-                    <i class="bi bi-exclamation-triangle"></i> Время вышло!
+                <!-- Таймер -->
+                <div class="timer-box <%= patient.triage.expired? ? 'timer-expired' : 'timer-running' %>">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span>Таймер этапа:</span>
+                    <span id="timer-<%= patient.id %>" class="fw-bold">
+                      <%= patient.triage.time_remaining %> сек
+                    </span>
+                  </div>
+                  
+                  <div class="progress mt-2" style="height: 5px;">
+                    <% 
+                      max_time = case patient.triage.step
+                        when 1 then 120
+                        when 2 then 300
+                        when 3 then 600
+                        else 120
+                      end
+                      percent = (patient.triage.time_remaining.to_f / max_time * 100).to_i
+                      progress_class = if percent <= 25
+                        'bg-danger'
+                      elsif percent <= 50
+                        'bg-warning'
+                      else
+                        'bg-success'
+                      end
+                    %>
+                    <div class="progress-bar <%= progress_class %>" style="width: <%= percent %>%">
+                    </div>
+                  </div>
+                  
+                  <% if patient.triage.expired? && patient.triage.timer_active %>
+                    <div class="alert alert-danger mt-2 mb-0 py-1">
+                      <i class="bi bi-exclamation-triangle"></i> Время вышло!
+                    </div>
+                  <% end %>
+                </div>
+                
+                <!-- Баллы сознания -->
+                <% if patient.triage.step > 1 %>
+                  <div class="alert alert-light mt-2 py-2">
+                    <div class="small">
+                      <strong>Баллы сознания:</strong> 
+                      <span class="<%= patient.triage.total_consciousness_score <= 8 ? 'text-danger fw-bold' : 'text-success' %>">
+                        <%= patient.triage.total_consciousness_score %>/15
+                      </span>
+                    </div>
                   </div>
                 <% end %>
               </div>
               
+              <!-- Кнопки действий -->
               <div class="mt-2">
-                <% if patient.triage.timer_active %>
-                  <a href="/patients/<%= patient.id %>/triage" class="btn btn-warning btn-sm">
-                    <i class="bi bi-clipboard-pulse"></i> Заполнить триаж
+                <% if patient.triage.timer_active && !patient.triage.completed_at %>
+                  <% 
+                    link = case patient.triage.step
+                      when 1 then "/patients/#{patient.id}/triage"
+                      when 2 then "/patients/#{patient.id}/triage/step2"
+                      when 3 then "/patients/#{patient.id}/triage/step3"
+                      else "/patients/#{patient.id}/triage"
+                    end
+                    
+                    btn_class = case patient.triage.step
+                      when 1 then 'btn-primary'
+                      when 2 then 'btn-warning'
+                      when 3 then 'btn-success'
+                      else 'btn-secondary'
+                    end
+                    
+                    btn_text = case patient.triage.step
+                      when 1 then 'Этап 1: Сознание'
+                      when 2 then 'Этап 2: Двигательные'
+                      when 3 then 'Этап 3: Витальные'
+                      else 'Продолжить'
+                    end
+                  %>
+                  
+                  <a href="<%= link %>" class="btn <%= btn_class %> btn-sm w-100 mb-2">
+                    <i class="bi bi-clipboard-pulse"></i> <%= btn_text %>
                   </a>
-                <% else %>
-                  <span class="badge bg-success">Триаж завершен</span>
+                <% elsif patient.triage.completed_at %>
+                  <a href="/patients/<%= patient.id %>/triage/actions" class="btn btn-info btn-sm w-100 mb-2">
+                    <i class="bi bi-eye"></i> Действия (<%= patient.triage.priority_name %>)
+                  </a>
+                  <a href="/patients/<%= patient.id %>/triage" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-file-text"></i> Просмотр данных
+                  </a>
                 <% end %>
               </div>
+            <% else %>
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-circle"></i> Триаж не создан
+                <a href="/patients/<%= patient.id %>/triage" class="btn btn-sm btn-outline-dark mt-2">
+                  Начать триаж
+                </a>
+              </div>
             <% end %>
+          </div>
+          <div class="card-footer text-muted small">
+            <i class="bi bi-clock-history"></i> Создан: <%= patient.created_at.strftime("%d.%m.%Y %H:%M") %>
           </div>
         </div>
       </div>
@@ -184,39 +401,74 @@
   <% end %>
 </div>
 
-<!-- Пагинация (опционально) -->
-<% if @patients.respond_to?(:total_pages) && @patients.total_pages > 1 %>
-  <nav aria-label="Навигация по страницам" class="mt-4">
-    <ul class="pagination justify-content-center">
-      <% if @patients.prev_page %>
-        <li class="page-item">
-          <a class="page-link" href="?page=<%= @patients.prev_page %>">Назад</a>
-        </li>
-      <% end %>
-      
-      <% (1..@patients.total_pages).each do |page| %>
-        <li class="page-item <%= 'active' if page == @patients.current_page %>">
-          <a class="page-link" href="?page=<%= page %>"><%= page %></a>
-        </li>
-      <% end %>
-      
-      <% if @patients.next_page %>
-        <li class="page-item">
-          <a class="page-link" href="?page=<%= @patients.next_page %>">Вперед</a>
-        </li>
-      <% end %>
-    </ul>
-  </nav>
-<% end %>
+<!-- Модальное окно статистики -->
+<!-- Модальное окно статистики -->
+<div class="modal fade" id="statsModal" tabindex="-1" aria-labelledby="statsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="statsModalLabel"><i class="bi bi-graph-up"></i> Статистика триажа</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6>Распределение по приоритетам:</h6>
+            <ul class="list-group">
+              <% Triage::PRIORITIES.each do |key, data| %>
+                <%
+                  badge_color = case key
+                    when 'red' then 'bg-danger'
+                    when 'yellow' then 'bg-warning'
+                    when 'purple' then 'bg-purple'
+                    when 'green' then 'bg-success'
+                    else 'bg-secondary'
+                  end
+                %>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span class="badge <%= badge_color %> me-2" style="width: 20px;">&nbsp;</span>
+                  <%= data[:name] %>
+                  <span class="badge bg-primary rounded-pill"><%= priority_stats[key] %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6>Статус триажей:</h6>
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Активные триажи
+                <span class="badge bg-warning rounded-pill"><%= active_triages %></span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Завершенные триажи
+                <span class="badge bg-success rounded-pill"><%= completed_triages %></span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Без триажа
+                <span class="badge bg-secondary rounded-pill"><%= total_patients - @patients.joins(:triage).count %></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ... остальной код шаблона до JavaScript ... -->
 
 <script>
 // Обновление таймеров на странице
 function updateAllTimers() {
   $('[id^="timer-"]').each(function() {
     const patientId = this.id.split('-')[1];
-    $.getJSON(`/api/patient_timer/${patientId}`, function(data) {
-      $(`#timer-${patientId}`).text(data.time_remaining + ' сек');
-      const box = $(`#timer-${patientId}`).closest('.timer-box');
+    $.getJSON('/api/patient_timer/' + patientId, function(data) {
+      $('#timer-' + patientId).text(data.time_remaining + ' сек');
+      const box = $('#timer-' + patientId).closest('.timer-box');
       if (data.expired) {
         box.removeClass('timer-running').addClass('timer-expired');
       } else {
@@ -226,8 +478,8 @@ function updateAllTimers() {
   });
 }
 
-// Обновляем каждые 5 секунд
-setInterval(updateAllTimers, 5000);
+// Обновляем каждые 10 секунд
+setInterval(updateAllTimers, 10000);
 
 // Автозаполнение дат в фильтрах
 $(document).ready(function() {
@@ -238,7 +490,10 @@ $(document).ready(function() {
   // Автозаполнение фильтров из URL
   const urlParams = new URLSearchParams(window.location.search);
   urlParams.forEach((value, key) => {
-    $(`[name="${key}"]`).val(value);
+    $('[name="' + key + '"]').val(value);
   });
+  
+  // Первый запуск обновления таймеров
+  updateAllTimers();
 });
 </script>

@@ -2,3 +2,5 @@
 Gemfile.lock
 hospital.db
 db/schema.rb
+hospital.db-shm
+hospital.db-wal

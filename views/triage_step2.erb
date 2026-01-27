@@ -1,0 +1,214 @@
+<!-- views/triage_step2.erb -->
+<div class="row">
+  <div class="col-md-8">
+    <h1>Этап 2: Двигательные функции и опрос - <%= @patient.full_name %></h1>
+    <div class="alert alert-warning">
+      <i class="bi bi-info-circle"></i> Время на этап: 5 минут
+    </div>
+    
+    <!-- Информация о пациенте -->
+    <div class="card mb-4">
+      <div class="card-body bg-light">
+        <div class="row small">
+          <div class="col-md-4">
+            <strong>Исполнитель:</strong><br>
+            <%= @patient.performer_name %>
+          </div>
+          <div class="col-md-4">
+            <strong>Срок беременности:</strong><br>
+            <%= @patient.pregnancy_display %>
+          </div>
+          <div class="col-md-4">
+            <strong>Баллы сознания:</strong><br>
+            <span class="badge <%= @triage.total_consciousness_score <= 8 ? 'bg-danger' : 'bg-success' %>">
+              <%= @triage.total_consciousness_score %>/15
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div id="triage-timer" class="timer-box alert alert-warning">
+      <h4 class="text-center mb-0">
+        <i class="bi bi-clock"></i>
+        <span id="timer-display"><%= @triage.time_remaining %></span> сек
+      </h4>
+      <div class="small text-center mt-1">Этап 2/3</div>
+    </div>
+  </div>
+</div>
+
+<div id="time-expired-warning" class="alert alert-danger d-none">
+  <h4><i class="bi bi-exclamation-triangle"></i> Время вышло!</h4>
+  <p class="mb-0">Автоматическое сохранение...</p>
+</div>
+
+<form id="triage-form" action="/patients/<%= @patient.id %>/triage/step2" method="post" class="mt-4">
+  
+  <!-- Положение и двигательные функции -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+      <h5 class="mb-0"><i class="bi bi-person-walking"></i> Положение и двигательные функции</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-12">
+          <% Triage::POSITIONS.each do |position| %>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="radio" name="position" 
+                     id="position_<%= position.parameterize %>" 
+                     value="<%= position %>" required>
+              <label class="form-check-label" for="position_<%= position.parameterize %>">
+                <%= position %>
+                <% if position == 'активное положение, свободное перемещение' %>
+                  <span class="badge bg-success ms-2">Без ограничений</span>
+                <% else %>
+                  <span class="badge bg-warning ms-2">Ограничения</span>
+                <% end %>
+              </label>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Выявление критериев неотложности -->
+  <div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+      <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Выявление критериев неотложности</h5>
+      <small class="text-light">Отметьте симптомы, если они присутствуют в течение указанного времени</small>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <% Triage::URGENCY_CRITERIA.each_with_index do |criterion, index| %>
+          <div class="col-md-6">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" 
+                     name="urgency_criteria[]" 
+                     id="urgency_<%= index %>" 
+                     value="true">
+              <label class="form-check-label" for="urgency_<%= index %>">
+                <%= criterion %>
+              </label>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i> 
+        <strong>Внимание:</strong> Если выбран любой пункт кроме "активное положение" ИЛИ отмечен хотя бы один критерий неотложности - приоритет становится <span class="badge bg-warning">ЖЕЛТЫМ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Выявление признаков инфекционных заболеваний -->
+  <div class="card mb-4">
+    <div class="card-header bg-purple text-white">
+      <h5 class="mb-0"><i class="bi bi-virus"></i> Выявление признаков инфекционных заболеваний</h5>
+      <small class="text-light">Отметьте симптомы, если они присутствуют в течение указанного времени</small>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <% Triage::INFECTION_SIGNS.each_with_index do |sign, index| %>
+          <div class="col-md-6">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" 
+                     name="infection_signs[]" 
+                     id="infection_<%= index %>" 
+                     value="true">
+              <label class="form-check-label" for="infection_<%= index %>">
+                <%= sign %>
+              </label>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div class="alert alert-purple mt-3" style="background-color: #6f42c1; color: white;">
+        <i class="bi bi-info-circle"></i> 
+        <strong>Внимание:</strong> Если выбрано "активное положение", нет критериев неотложности, но есть признаки инфекции - приоритет становится <span class="badge" style="background-color: #6f42c1">ФИОЛЕТОВЫМ</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+    <a href="/patients/<%= @patient.id %>/triage" class="btn btn-secondary btn-lg">
+      <i class="bi bi-arrow-left"></i> Назад к этапу 1
+    </a>
+    <button type="submit" class="btn btn-success btn-lg">
+      <i class="bi bi-arrow-right"></i> Далее (Этап 3)
+    </button>
+  </div>
+</form>
+
+<script>
+// Подключение к SSE потоку
+const eventSource = new EventSource('/triage_events/<%= @patient.id %>');
+
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  const timerDisplay = $('#timer-display');
+  const timerBox = $('#triage-timer');
+  const warning = $('#time-expired-warning');
+  const form = $('#triage-form');
+  
+  // Обновление таймера
+  timerDisplay.text(data.time_remaining);
+  
+  if (data.expired) {
+    timerBox.removeClass('alert-warning').addClass('alert-danger');
+    warning.removeClass('d-none');
+    
+    // Автоматическая отправка формы если время вышло
+    if ($('input[name="position"]:checked').length > 0) {
+      form.submit();
+    }
+  }
+};
+
+// Проверка условий для желтого приоритета
+function checkYellowConditions() {
+  const activePosition = $('input[name="position"]:checked').val() === 'активное положение, свободное перемещение';
+  const urgencyChecked = $('input[name="urgency_criteria[]"]:checked').length > 0;
+  
+  const yellowAlert = $('.alert-info');
+  if (!activePosition || urgencyChecked) {
+    yellowAlert.removeClass('alert-info').addClass('alert-warning');
+  } else {
+    yellowAlert.removeClass('alert-warning').addClass('alert-info');
+  }
+}
+
+// Проверка условий для фиолетового приоритета
+function checkPurpleConditions() {
+  const activePosition = $('input[name="position"]:checked').val() === 'активное положение, свободное перемещение';
+  const urgencyChecked = $('input[name="urgency_criteria[]"]:checked').length > 0;
+  const infectionChecked = $('input[name="infection_signs[]"]:checked').length > 0;
+  
+  const purpleAlert = $('.alert-purple');
+  if (activePosition && !urgencyChecked && infectionChecked) {
+    purpleAlert.css({
+      'background-color': '#8a2be2',
+      'border-color': '#8a2be2'
+    });
+  } else {
+    purpleAlert.css({
+      'background-color': '#6f42c1',
+      'border-color': '#6f42c1'
+    });
+  }
+}
+
+// Слушаем изменения в форме
+$('input[name="position"], input[name="urgency_criteria[]"], input[name="infection_signs[]"]').change(function() {
+  checkYellowConditions();
+  checkPurpleConditions();
+});
+
+// При закрытии страницы отключаем SSE
+window.addEventListener('beforeunload', function() {
+  eventSource.close();
+});
+</script>
