@@ -30,7 +30,6 @@
       </div>
       
       <!-- Фильтр по дате поступления -->
-      <!-- Фильтр по дате поступления -->
       <div class="col-md-4">
         <label class="form-label">Дата поступления</label>
         <input type="date" name="admission_date" class="form-control" 
@@ -151,6 +150,7 @@
   <i class="bi bi-wifi-off"></i> Сервер не отвечает. Данные могут быть устаревшими.
   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
 </div>
+
 <%# Сетка карточек пациентов: обновляется по polling в реальном времени %>
 <div id="patients-list-container" class="row patient-list">
   <% if @patients.empty? %>
@@ -258,7 +258,7 @@
                 </div>
               </div>
               
-              <!-- Кнопки действий -->
+              <!-- Основные кнопки действий -->
               <div class="mt-2">
                 <% if patient.triage.timer_active && !patient.triage.completed_at %>
                   <% 
@@ -296,15 +296,104 @@
                   </a>
                 <% end %>
               </div>
+              
+              <!-- Кнопки управления (редактирование, удаление) -->
+              <div class="action-bar mt-3 pt-2 border-top">
+                <!-- Кнопка редактирования пациента -->
+                <a href="/patients/<%= patient.id %>/edit" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-pencil"></i> Редактировать
+                </a>
+                
+                <!-- Кнопки редактирования этапов (если есть триаж) -->
+                <% if patient.triage %>
+                  <% if patient.triage.step1_data.present? && patient.triage.step1_data.any? { |k,v| v.present? } %>
+                    <a href="/patients/<%= patient.id %>/triage/edit_step/1" 
+                       class="btn btn-sm btn-outline-info" title="Редактировать этап 1">
+                      <i class="bi bi-1-circle"></i>
+                    </a>
+                  <% end %>
+                  
+                  <% if patient.triage.step2_data.present? && patient.triage.step2_data.any? { |k,v| v.present? } %>
+                    <a href="/patients/<%= patient.id %>/triage/edit_step/2" 
+                       class="btn btn-sm btn-outline-info" title="Редактировать этап 2">
+                      <i class="bi bi-2-circle"></i>
+                    </a>
+                  <% end %>
+                  
+                  <% if patient.triage.step3_data.present? && patient.triage.step3_data.any? { |k,v| v.present? } %>
+                    <a href="/patients/<%= patient.id %>/triage/edit_step/3" 
+                       class="btn btn-sm btn-outline-info" title="Редактировать этап 3">
+                      <i class="bi bi-3-circle"></i>
+                    </a>
+                  <% end %>
+                <% end %>
+                
+                <!-- Кнопка удаления -->
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#deleteModal<%= patient.id %>">
+                  <i class="bi bi-trash"></i> Удалить
+                </button>
+              </div>
             <% else %>
               <div class="alert alert-warning">
                 <i class="bi bi-exclamation-circle"></i> Триаж не создан
                 <a href="/patients/<%= patient.id %>/triage" class="btn btn-sm btn-primary mt-2">Начать триаж</a>
               </div>
+              
+              <!-- Кнопки управления для пациента без триажа -->
+              <div class="action-bar mt-3 pt-2 border-top">
+                <a href="/patients/<%= patient.id %>/edit" class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-pencil"></i> Редактировать
+                </a>
+                
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#deleteModal<%= patient.id %>">
+                  <i class="bi bi-trash"></i> Удалить
+                </button>
+              </div>
             <% end %>
           </div>
           <div class="app-card-footer card-footer text-muted small">
             <i class="bi bi-clock-history"></i> Создан: <%= patient.created_at.strftime("%d.%m.%Y %H:%M") %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Модальное окно подтверждения удаления -->
+      <div class="modal fade" id="deleteModal<%= patient.id %>" tabindex="-1">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Подтверждение удаления</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p>Вы уверены, что хотите удалить пациента?</p>
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Внимание!</strong> Это действие нельзя отменить. Будут удалены все данные пациента, включая триаж.
+              </div>
+              <p><strong>Пациент:</strong> <%= patient.full_name %></p>
+              <p><strong>ID:</strong> <%= patient.id %></p>
+              <% if patient.triage %>
+                <p><strong>Статус триажа:</strong> 
+                  <% if patient.triage.completed_at %>
+                    Завершен (<%= patient.triage.priority_name %>)
+                  <% else %>
+                    Активен (этап <%= patient.triage.step %>)
+                  <% end %>
+                </p>
+              <% end %>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+              <form action="/patients/<%= patient.id %>" method="post" style="display: inline;">
+                <input type="hidden" name="_method" value="DELETE">
+                <button type="submit" class="btn btn-danger">Удалить</button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -370,15 +459,17 @@
 </div>
 
 <script>
+// Используем jQuery.noConflict() для безопасности
+var $j = jQuery.noConflict();
 var serverDown = false;
 
 function stepClass(s) { return s === 1 ? 'bg-primary' : (s === 2 ? 'bg-warning' : (s === 3 ? 'bg-success' : 'bg-secondary')); }
 function priorityClass(p) { return p === 'red' ? 'bg-danger' : (p === 'yellow' ? 'bg-warning' : (p === 'purple' ? 'bg-purple' : (p === 'green' ? 'bg-success' : 'bg-secondary'))); }
 
 function renderPatientsList(patients) {
-  var container = $('#patients-list-container');
+  var container = document.getElementById('patients-list-container');
   if (!patients || patients.length === 0) {
-    container.html('<div class="col-12"><div class="alert alert-info"><i class="bi bi-info-circle"></i> Пациенты не найдены</div></div>');
+    container.innerHTML = '<div class="col-12"><div class="alert alert-info"><i class="bi bi-info-circle"></i> Пациенты не найдены</div></div>';
     return;
   }
   var html = '';
@@ -391,16 +482,36 @@ function renderPatientsList(patients) {
       html += '<div class="col-12"><strong><i class="bi bi-person-badge"></i> Исполнитель:</strong> ' + escapeHtml(p.performer_name || '') + '</div>';
       html += '<div class="col-12"><strong><i class="bi bi-clipboard"></i> Вид обращения:</strong> <span class="badge bg-info">' + escapeHtml(p.appeal_type || '') + '</span></div>';
       html += '<div class="col-12"><strong><i class="bi bi-calendar-heart"></i> Срок беременности:</strong> ' + escapeHtml(p.pregnancy_display || '') + '</div></div></div>';
-      html += '<div class="alert alert-warning"><i class="bi bi-exclamation-circle"></i> Триаж не создан <a href="/patients/' + p.id + '/triage" class="btn btn-sm btn-primary mt-2">Начать триаж</a></div></div>';
-      html += '<div class="app-card-footer card-footer text-muted small"><i class="bi bi-clock-history"></i> Создан: ' + (p.created_at || '') + '</div></div></div>';
+      html += '<div class="alert alert-warning"><i class="bi bi-exclamation-circle"></i> Триаж не создан <a href="/patients/' + p.id + '/triage" class="btn btn-sm btn-primary mt-2">Начать триаж</a></div>';
+      html += '<div class="action-bar mt-3 pt-2 border-top">';
+      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Редактировать</a>';
+      html += '<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal' + p.id + '"><i class="bi bi-trash"></i> Удалить</button>';
+      html += '</div>';
+      html += '</div><div class="app-card-footer card-footer text-muted small"><i class="bi bi-clock-history"></i> Создан: ' + (p.created_at || '') + '</div></div></div>';
+      
+      // Модальное окно удаления
+      html += '<div class="modal fade" id="deleteModal' + p.id + '" tabindex="-1">';
+      html += '<div class="modal-dialog"><div class="modal-content">';
+      html += '<div class="modal-header"><h5 class="modal-title">Подтверждение удаления</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>';
+      html += '<div class="modal-body"><p>Вы уверены, что хотите удалить пациента?</p>';
+      html += '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i><strong>Внимание!</strong> Это действие нельзя отменить. Будут удалены все данные пациента.</div>';
+      html += '<p><strong>Пациент:</strong> ' + escapeHtml(p.full_name) + '</p><p><strong>ID:</strong> ' + p.id + '</p>';
+      html += '</div><div class="modal-footer">';
+      html += '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>';
+      html += '<form action="/patients/' + p.id + '" method="post" style="display: inline;">';
+      html += '<input type="hidden" name="_method" value="DELETE">';
+      html += '<button type="submit" class="btn btn-danger">Удалить</button>';
+      html += '</form></div></div></div></div>';
       return;
     }
+    
     var maxTime = t.max_time || 120;
     var endsAt = t.timer_ends_at || 0;
     var tr = t.time_remaining || 0;
     var percent = maxTime ? Math.round((tr / maxTime) * 100) : 0;
     var progClass = percent <= 25 ? 'bg-danger' : (percent <= 50 ? 'bg-warning' : 'bg-success');
     var timerBoxClass = t.expired ? 'timer-expired' : 'timer-running';
+    
     html += '<div class="col-12 col-sm-6 col-lg-4 col-card"><div class="app-card card h-100"><div class="card-body">';
     html += '<h5 class="card-title"><span class="badge bg-secondary">ID: ' + p.id + '</span> ' + escapeHtml(p.full_name) + '</h5>';
     html += '<div class="card-text mb-3"><div class="row small text-muted"><div class="col-12"><strong><i class="bi bi-calendar"></i> Поступил:</strong> ' + (p.admission_date || '') + ' ' + (p.admission_time || '') + '</div>';
@@ -420,6 +531,8 @@ function renderPatientsList(patients) {
     html += '<div class="progress mt-2" style="height: 5px;"><div class="progress-bar ' + progClass + '" style="width: ' + percent + '%"></div></div>';
     if (t.expired && t.timer_active) html += '<div class="alert alert-danger mt-2 mb-0 py-1"><i class="bi bi-exclamation-triangle"></i> Время вышло!</div>';
     html += '</div></div><div class="mt-2">';
+    
+    // Основные кнопки действий
     if (t.timer_active && !t.completed_at) {
       var step = t.step || 1;
       var link = step === 1 ? '/patients/' + p.id + '/triage' : (step === 2 ? '/patients/' + p.id + '/triage/step2' : '/patients/' + p.id + '/triage/step3');
@@ -429,9 +542,82 @@ function renderPatientsList(patients) {
       html += '<a href="/patients/' + p.id + '/triage/actions" class="btn btn-info btn-sm w-100 mb-2"><i class="bi bi-eye"></i> Действия (' + escapeHtml(t.priority_name || '') + ')</a>';
       html += '<a href="/patients/' + p.id + '/triage" class="btn btn-outline-secondary btn-sm w-100"><i class="bi bi-file-text"></i> Просмотр данных</a>';
     }
+    
+    // Кнопки управления (редактирование, удаление)
+    html += '</div><div class="action-bar mt-3 pt-2 border-top">';
+    html += '<a href="/patients/' + p.id + '/edit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i> Редактировать</a>';
+    
+    // Кнопки редактирования этапов - всегда показываем для заполненных этапов
+    if (t) {
+      // Простая проверка: если есть данные для этапа
+      var step1Data = t.step1_data;
+      var step2Data = t.step2_data;
+      var step3Data = t.step3_data;
+      
+      // Проверяем наличие любых данных в этапах
+      var hasStep1Data = step1Data && (
+        step1Data.eye_opening || 
+        step1Data.verbal_response || 
+        step1Data.motor_response ||
+        step1Data.breathing === true || step1Data.breathing === 'true' ||
+        step1Data.heartbeat === true || step1Data.heartbeat === 'true' ||
+        step1Data.seizures === true || step1Data.seizures === 'true' ||
+        step1Data.active_bleeding === true || step1Data.active_bleeding === 'true'
+      );
+      
+      var hasStep2Data = step2Data && (
+        step2Data.position ||
+        (step2Data.urgency_criteria && step2Data.urgency_criteria.length > 0) ||
+        (step2Data.infection_signs && step2Data.infection_signs.length > 0)
+      );
+      
+      var hasStep3Data = step3Data && (
+        step3Data.respiratory_rate ||
+        step3Data.saturation ||
+        step3Data.systolic_bp ||
+        step3Data.diastolic_bp ||
+        step3Data.heart_rate ||
+        step3Data.temperature
+      );
+      
+      if (hasStep1Data) {
+        html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-sm btn-outline-info" title="Редактировать этап 1"><i class="bi bi-1-circle"></i></a>';
+      }
+      if (hasStep2Data) {
+        html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-sm btn-outline-info" title="Редактировать этап 2"><i class="bi bi-2-circle"></i></a>';
+      }
+      if (hasStep3Data) {
+        html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-sm btn-outline-info" title="Редактировать этап 3"><i class="bi bi-3-circle"></i></a>';
+      }
+    }
+    
+    html += '<button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal' + p.id + '"><i class="bi bi-trash"></i> Удалить</button>';
     html += '</div></div><div class="app-card-footer card-footer text-muted small"><i class="bi bi-clock-history"></i> Создан: ' + (p.created_at || '') + '</div></div></div>';
+    
+    // Модальное окно удаления
+    html += '<div class="modal fade" id="deleteModal' + p.id + '" tabindex="-1">';
+    html += '<div class="modal-dialog"><div class="modal-content">';
+    html += '<div class="modal-header"><h5 class="modal-title">Подтверждение удаления</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>';
+    html += '<div class="modal-body"><p>Вы уверены, что хотите удалить пациента?</p>';
+    html += '<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i><strong>Внимание!</strong> Это действие нельзя отменить. Будут удалены все данные пациента, включая триаж.</div>';
+    html += '<p><strong>Пациент:</strong> ' + escapeHtml(p.full_name) + '</p><p><strong>ID:</strong> ' + p.id + '</p>';
+    if (t) {
+      html += '<p><strong>Статус триажа:</strong> ';
+      if (t.completed_at) {
+        html += 'Завершен (' + escapeHtml(t.priority_name || '') + ')';
+      } else {
+        html += 'Активен (этап ' + (t.step || 1) + ')';
+      }
+      html += '</p>';
+    }
+    html += '</div><div class="modal-footer">';
+    html += '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>';
+    html += '<form action="/patients/' + p.id + '" method="post" style="display: inline;">';
+    html += '<input type="hidden" name="_method" value="DELETE">';
+    html += '<button type="submit" class="btn btn-danger">Удалить</button>';
+    html += '</form></div></div></div></div>';
   });
-  container.html(html);
+  container.innerHTML = html;
 }
 
 function escapeHtml(s) {
@@ -443,72 +629,179 @@ function escapeHtml(s) {
 
 function fetchPatientsList() {
   var qs = window.location.search || '';
-  $.ajax({
-    url: '/api/patients_list' + qs,
-    type: 'GET',
-    dataType: 'json',
-    success: function(patients) {
+  
+  // Используем чистый JavaScript для AJAX запроса
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/patients_list' + qs, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  
+  xhr.onload = function() {
+    if (xhr.status === 200) {
       serverDown = false;
-      $('#server-down-alert').addClass('d-none');
-      renderPatientsList(patients);
-    },
-    error: function() {
+      var serverDownAlert = document.getElementById('server-down-alert');
+      if (serverDownAlert) {
+        serverDownAlert.classList.add('d-none');
+      }
+      
+      try {
+        var patients = JSON.parse(xhr.responseText);
+        renderPatientsList(patients);
+      } catch(e) {
+        console.error('Ошибка парсинга JSON:', e);
+      }
+    } else {
       serverDown = true;
-      $('#server-down-alert').removeClass('d-none').addClass('show');
+      var serverDownAlert = document.getElementById('server-down-alert');
+      if (serverDownAlert) {
+        serverDownAlert.classList.remove('d-none');
+        serverDownAlert.classList.add('show');
+      }
     }
-  });
+  };
+  
+  xhr.onerror = function() {
+    serverDown = true;
+    var serverDownAlert = document.getElementById('server-down-alert');
+    if (serverDownAlert) {
+      serverDownAlert.classList.remove('d-none');
+      serverDownAlert.classList.add('show');
+    }
+  };
+  
+  xhr.send();
 }
 
 function updateAllTimers() {
   if (serverDown) {
-    $('[data-timer-ends-at]').each(function() {
-      var box = $(this);
-      if (parseFloat(box.data('timer-ends-at')) > 0) {
-        box.find('.timer-value').text('Сервер не отвечает');
-        box.find('.progress').hide();
-        box.addClass('timer-expired');
+    var timerBoxes = document.querySelectorAll('[data-timer-ends-at]');
+    timerBoxes.forEach(function(box) {
+      var endsAt = parseFloat(box.getAttribute('data-timer-ends-at')) || 0;
+      if (endsAt > 0) {
+        var timerValue = box.querySelector('.timer-value');
+        if (timerValue) {
+          timerValue.textContent = 'Сервер не отвечает';
+        }
+        var progress = box.querySelector('.progress');
+        if (progress) {
+          progress.style.display = 'none';
+        }
+        box.classList.remove('timer-running');
+        box.classList.add('timer-expired');
       }
     });
     return;
   }
+  
   var nowSec = Date.now() / 1000;
-  $('[data-timer-ends-at]').each(function() {
-    var box = $(this);
-    var endsAt = parseFloat(box.data('timer-ends-at')) || 0;
-    var maxTime = parseFloat(box.data('step-max')) || 120;
-    box.find('.progress').show();
-    if (!endsAt || endsAt <= 0) return;
-    var remaining = Math.max(0, Math.floor(endsAt - nowSec));
-    box.find('.timer-value').text(remaining + ' сек');
-    box.removeClass('timer-running timer-expired');
-    if (remaining <= 0) {
-      box.addClass('timer-expired');
-      box.find('.timer-value').text('0 сек');
-    } else {
-      box.addClass('timer-running');
+  var timerBoxes = document.querySelectorAll('[data-timer-ends-at]');
+  
+  timerBoxes.forEach(function(box) {
+    var endsAt = parseFloat(box.getAttribute('data-timer-ends-at')) || 0;
+    var maxTime = parseFloat(box.getAttribute('data-step-max')) || 120;
+    var progress = box.querySelector('.progress');
+    
+    if (progress) {
+      progress.style.display = 'block';
     }
+    
+    if (!endsAt || endsAt <= 0) return;
+    
+    var remaining = Math.max(0, Math.floor(endsAt - nowSec));
+    var timerValue = box.querySelector('.timer-value');
+    if (timerValue) {
+      timerValue.textContent = remaining + ' сек';
+    }
+    
+    box.classList.remove('timer-running', 'timer-expired');
+    if (remaining <= 0) {
+      box.classList.add('timer-expired');
+      if (timerValue) {
+        timerValue.textContent = '0 сек';
+      }
+    } else {
+      box.classList.add('timer-running');
+    }
+    
     var percent = Math.round((remaining / maxTime) * 100);
-    var bar = box.find('.progress-bar');
-    bar.css('width', percent + '%');
-    bar.removeClass('bg-success bg-warning bg-danger').addClass(percent <= 25 ? 'bg-danger' : (percent <= 50 ? 'bg-warning' : 'bg-success'));
+    var bar = box.querySelector('.progress-bar');
+    if (bar) {
+      bar.style.width = percent + '%';
+      bar.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+      if (percent <= 25) {
+        bar.classList.add('bg-danger');
+      } else if (percent <= 50) {
+        bar.classList.add('bg-warning');
+      } else {
+        bar.classList.add('bg-success');
+      }
+    }
   });
 }
 
-setInterval(updateAllTimers, 1000);
-setInterval(fetchPatientsList, 5000);
-fetchPatientsList();
-updateAllTimers();
-
-$(document).ready(function() {
-  // Устанавливаем текущую дату как значение по умолчанию, если параметр не передан
-  if (!$('input[name="admission_date"]').val()) {
-    $('input[name="admission_date"]').val(new Date().toISOString().split('T')[0]);
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+  // Устанавливаем текущую дату как значение по умолчанию
+  var admissionDateInput = document.querySelector('input[name="admission_date"]');
+  if (admissionDateInput && !admissionDateInput.value) {
+    var today = new Date().toISOString().split('T')[0];
+    admissionDateInput.value = today;
   }
   
+  // Устанавливаем значения из URL параметров
   var urlParams = new URLSearchParams(window.location.search);
   urlParams.forEach(function(value, key) {
-    var el = $('[name="' + key + '"]');
-    if (el.length && el.val() !== value) el.val(value);
+    var element = document.querySelector('[name="' + key + '"]');
+    if (element && element.value !== value) {
+      element.value = value;
+    }
   });
+  
+  // Запускаем обновления
+  setInterval(updateAllTimers, 1000);
+  setInterval(fetchPatientsList, 5000);
+  
+  // Первоначальная загрузка
+  fetchPatientsList();
+  updateAllTimers();
+  
+  // Инициализация Bootstrap компонентов для новых элементов
+  setInterval(function() {
+    // Инициализация всех модальных окон
+    var modalElements = document.querySelectorAll('.modal');
+    modalElements.forEach(function(modalEl) {
+      if (!modalEl._modal) {
+        var modal = new bootstrap.Modal(modalEl);
+        modalEl._modal = modal;
+      }
+    });
+    
+    // Инициализация всех алертов с закрытием
+    var alertElements = document.querySelectorAll('.alert-dismissible');
+    alertElements.forEach(function(alertEl) {
+      if (!alertEl._alert) {
+        var alert = new bootstrap.Alert(alertEl);
+        alertEl._alert = alert;
+      }
+    });
+  }, 1000);
 });
+
+// Альтернативный вариант: если jQuery все же нужен, убедимся, что он загружен
+if (typeof jQuery === 'undefined') {
+  // Динамически загружаем jQuery если не загружен
+  var script = document.createElement('script');
+  script.src = 'https://code.jquery.com/jquery-3.6.4.min.js';
+  script.integrity = 'sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=';
+  script.crossOrigin = 'anonymous';
+  script.onload = function() {
+    console.log('jQuery загружен динамически');
+    // Переинициализируем компоненты после загрузки jQuery
+    if (typeof $ !== 'undefined') {
+      $(document).ready(function() {
+        // Ваш код с использованием $ здесь
+      });
+    }
+  };
+  document.head.appendChild(script);
+}
 </script>

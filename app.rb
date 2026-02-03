@@ -7,7 +7,7 @@ require 'sprockets'
 require 'sprockets-helpers'
 require 'bootstrap'
 require 'securerandom'
-
+require 'eventmachine'
 # Конфигурация
 configure do
   set :database, {adapter: 'sqlite3', database: 'hospital.db'}
@@ -219,6 +219,7 @@ get '/api/patient_timer/:id' do
 end
 
 # SSE поток для обновления триажа
+# SSE поток для обновления триажа
 get '/triage_events/:patient_id', provides: 'text/event-stream' do
   stream(:keep_open) do |out|
     TRIAGE_CONNECTIONS << out
@@ -299,7 +300,6 @@ get '/monitor_events', provides: 'text/event-stream' do
     }
   end
 end
-
 
 # Страница триажа (этап 1)
 get '/patients/:id/triage' do
@@ -462,4 +462,165 @@ get '/api/active_patients' do
       consciousness_score: triage.total_consciousness_score
     }
   end.to_json
+end
+
+# app.rb - добавьте эти маршруты после существующих
+
+# Удаление пациента
+delete '/patients/:id' do
+  patient = Patient.find(params[:id])
+  
+  if patient.destroy
+    flash[:notice] = "Пациент удален"
+  else
+    flash[:error] = "Ошибка при удалении пациента"
+  end
+  
+  redirect '/patients'
+end
+
+# Редактирование пациента
+get '/patients/:id/edit' do
+  @patient = Patient.find(params[:id])
+  erb :patients_edit
+end
+
+post '/patients/:id/edit' do
+  patient = Patient.find(params[:id])
+  
+  patient_params = {
+    full_name: params[:full_name],
+    admission_date: params[:admission_date],
+    admission_time: params[:admission_time],
+    birth_date: params[:birth_date],
+    performer_name: params[:performer_name],
+    appeal_type: params[:appeal_type],
+    pregnancy_unknown: params[:pregnancy_unknown] == '1'
+  }
+  
+  if params[:pregnancy_unknown] != '1' && params[:pregnancy_weeks].present?
+    patient_params[:pregnancy_weeks] = params[:pregnancy_weeks].to_f
+  else
+    patient_params[:pregnancy_weeks] = nil
+  end
+  
+  if patient.update(patient_params)
+    flash[:notice] = "Данные пациента обновлены"
+    redirect "/patients"
+  else
+    flash[:error] = "Ошибка при обновлении: #{patient.errors.full_messages.join(', ')}"
+    redirect "/patients/#{patient.id}/edit"
+  end
+end
+
+# Редактирование этапа триажа
+get '/patients/:id/triage/edit_step/:step' do |id, step|
+  @patient = Patient.find(id)
+  @triage = @patient.triage
+  @step = step.to_i
+  
+  if @triage.nil?
+    flash[:error] = "Триаж не найден"
+    redirect "/patients"
+  end
+  
+  # Проверяем, что этап существует
+  if @step < 1 || @step > 3
+    flash[:error] = "Неверный номер этапа"
+    redirect "/patients"
+  end
+  
+  # Проверяем, что данные для этого этапа есть
+  if @step > @triage.step && !@triage.completed_at
+    flash[:error] = "Этот этап еще не был пройден"
+    redirect "/patients"
+  end
+  
+  case @step
+  when 1
+    erb :triage_edit_step1
+  when 2
+    erb :triage_edit_step2
+  when 3
+    erb :triage_edit_step3
+  end
+end
+
+post '/patients/:id/triage/update_step/:step' do |id, step|
+  patient = Patient.find(id)
+  triage = patient.triage
+  step_num = step.to_i
+  
+  if triage.nil?
+    flash[:error] = "Триаж не найден"
+    redirect "/patients"
+  end
+  
+  case step_num
+  when 1
+    step_data = {
+      'eye_opening' => params[:eye_opening],
+      'verbal_response' => params[:verbal_response],
+      'motor_response' => params[:motor_response],
+      'breathing' => params[:breathing] == 'true',
+      'heartbeat' => params[:heartbeat] == 'true',
+      'seizures' => params[:seizures] == 'true',
+      'active_bleeding' => params[:active_bleeding] == 'true'
+    }
+    
+    triage.update_step_data(1, step_data)
+    
+    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
+    if triage.timer_active && triage.step == 1 && triage.check_step1_priority
+      triage.completed_at = Time.now
+      triage.timer_active = false
+    end
+    
+  when 2
+    step_data = {
+      'position' => params[:position],
+      'urgency_criteria' => params[:urgency_criteria] || [],
+      'infection_signs' => params[:infection_signs] || []
+    }
+    
+    triage.update_step_data(2, step_data)
+    
+    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
+    if triage.timer_active && triage.step == 2 && triage.check_step2_priority
+      triage.completed_at = Time.now
+      triage.timer_active = false
+    end
+    
+  when 3
+    step_data = {
+      'respiratory_rate' => params[:respiratory_rate],
+      'saturation' => params[:saturation],
+      'systolic_bp' => params[:systolic_bp],
+      'diastolic_bp' => params[:diastolic_bp],
+      'heart_rate' => params[:heart_rate],
+      'temperature' => params[:temperature]
+    }
+    
+    triage.update_step_data(3, step_data)
+    
+    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
+    if triage.timer_active && triage.step == 3 && triage.check_step3_priority
+      triage.completed_at = Time.now
+      triage.timer_active = false
+    end
+  end
+  
+  if triage.save
+    flash[:notice] = "Данные этапа #{step_num} обновлены"
+    
+    # Если триаж завершился из-за изменений
+    if triage.completed_at
+      redirect "/patients/#{patient.id}/triage/actions"
+    else
+      redirect "/patients"
+    end
+  else
+    flash[:error] = "Ошибка при обновлении данных"
+    redirect "/patients/#{patient.id}/triage/edit_step/#{step_num}"
+  end
 end

@@ -1,0 +1,93 @@
+<%# Редактирование этапа 2 %>
+<div class="row align-items-start">
+  <div class="col-12 col-md-8">
+    <h1 class="page-title">Редактирование этапа 2 — <%= @patient.full_name %></h1>
+    <p class="text-muted small mb-0">Двигательные функции и опрос</p>
+  </div>
+  <div class="col-12 col-md-4 mb-3 mb-md-0">
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i> Режим редактирования
+      <% if @triage.completed_at %>
+        <div class="small">Триаж завершен</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<form action="/patients/<%= @patient.id %>/triage/update_step/2" method="post" class="mt-4">
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Положение пациента</span>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">Положение пациента*</label>
+        <% Triage::POSITIONS.each do |position| %>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="position" 
+                   value="<%= position %>" id="position_<%= position.gsub(/[^a-zA-Z0-9]/, '_') %>"
+                   <%= 'checked' if @triage.step2_data['position'] == position %> required>
+            <label class="form-check-label" for="position_<%= position.gsub(/[^a-zA-Z0-9]/, '_') %>">
+              <%= position %>
+            </label>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Критерии неотложности (в течение суток)</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <% Triage::URGENCY_CRITERIA.each_with_index do |criterion, index| %>
+          <div class="col-md-6">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" 
+                     name="urgency_criteria[]" value="true" 
+                     id="urgency_<%= index %>"
+                     <%= 'checked' if @triage.step2_data['urgency_criteria']&.include?('true') %>>
+              <label class="form-check-label" for="urgency_<%= index %>">
+                <%= criterion %>
+              </label>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Признаки инфекционных заболеваний</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <% Triage::INFECTION_SIGNS.each_with_index do |sign, index| %>
+          <div class="col-md-6">
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" 
+                     name="infection_signs[]" value="true" 
+                     id="infection_<%= index %>"
+                     <%= 'checked' if @triage.step2_data['infection_signs']&.include?('true') %>>
+              <label class="form-check-label" for="infection_<%= index %>">
+                <%= sign %>
+              </label>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    <button type="submit" class="btn btn-success btn-lg">
+      <i class="bi bi-save"></i> Сохранить изменения
+    </button>
+    <a href="/patients" class="btn btn-secondary btn-lg">
+      <i class="bi bi-x-lg"></i> Отмена
+    </a>
+  </div>
+</form>

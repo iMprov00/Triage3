@@ -1,0 +1,83 @@
+<%# Редактирование этапа 3 %>
+<div class="row align-items-start">
+  <div class="col-12 col-md-8">
+    <h1 class="page-title">Редактирование этапа 3 — <%= @patient.full_name %></h1>
+    <p class="text-muted small mb-0">Витальные функции</p>
+  </div>
+  <div class="col-12 col-md-4 mb-3 mb-md-0">
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i> Режим редактирования
+      <% if @triage.completed_at %>
+        <div class="small">Триаж завершен</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<form action="/patients/<%= @patient.id %>/triage/update_step/3" method="post" class="mt-4">
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Витальные показатели</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Частота дыхания (дыханий/мин)*</label>
+          <input type="number" name="respiratory_rate" class="form-control" 
+                 min="0" max="60" step="1"
+                 value="<%= @triage.step3_data['respiratory_rate'] %>" required>
+          <div class="form-text">Норма: 16-24 дыханий/мин</div>
+        </div>
+        
+        <div class="col-md-4">
+          <label class="form-label">Сатурация (SpO₂, %)*</label>
+          <input type="number" name="saturation" class="form-control" 
+                 min="0" max="100" step="1"
+                 value="<%= @triage.step3_data['saturation'] %>" required>
+          <div class="form-text">Норма: ≥ 95%</div>
+        </div>
+        
+        <div class="col-md-4">
+          <label class="form-label">Температура тела (°C)*</label>
+          <input type="number" name="temperature" class="form-control" 
+                 min="34" max="42" step="0.1"
+                 value="<%= @triage.step3_data['temperature'] %>" required>
+          <div class="form-text">Норма: 36.0-37.2°C</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">АД систолическое (мм рт. ст.)*</label>
+          <input type="number" name="systolic_bp" class="form-control" 
+                 min="0" max="300" step="1"
+                 value="<%= @triage.step3_data['systolic_bp'] %>" required>
+          <div class="form-text">Норма: 90-139</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">АД диастолическое (мм рт. ст.)*</label>
+          <input type="number" name="diastolic_bp" class="form-control" 
+                 min="0" max="200" step="1"
+                 value="<%= @triage.step3_data['diastolic_bp'] %>" required>
+          <div class="form-text">Норма: 60-89</div>
+        </div>
+        
+        <div class="col-md-3">
+          <label class="form-label">Частота сердечных сокращений (уд/мин)*</label>
+          <input type="number" name="heart_rate" class="form-control" 
+                 min="0" max="200" step="1"
+                 value="<%= @triage.step3_data['heart_rate'] %>" required>
+          <div class="form-text">Норма: 60-100 уд/мин</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    <button type="submit" class="btn btn-success btn-lg">
+      <i class="bi bi-save"></i> Сохранить изменения
+    </button>
+    <a href="/patients" class="btn btn-secondary btn-lg">
+      <i class="bi bi-x-lg"></i> Отмена
+    </a>
+  </div>
+</form>
