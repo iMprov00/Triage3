@@ -1,13 +1,14 @@
-<!-- views/triage_step3.erb -->
-<div class="row">
-  <div class="col-md-8">
-    <h1>Этап 3: Объективная оценка степени тяжести - <%= @patient.full_name %></h1>
+<%# Этап 3: витальные функции %>
+<div class="row align-items-start">
+  <div class="col-12 col-md-8">
+    <h1 class="page-title">Этап 3 — <%= @patient.full_name %></h1>
+    <p class="text-muted small mb-0">Витальные функции · 10 мин</p>
     <div class="alert alert-success">
       <i class="bi bi-info-circle"></i> Время на этап: 10 минут
     </div>
     
-    <!-- Информация о пациенте -->
-    <div class="card mb-4">
+    <%# Краткая информация о пациенте и предыдущих этапах %>
+    <div class="app-card card mb-4">
       <div class="card-body bg-light">
         <div class="row small">
           <div class="col-md-3">
@@ -36,9 +37,8 @@
       </div>
     </div>
   </div>
-  
-  <div class="col-md-4">
-    <div id="triage-timer" class="timer-box alert alert-success">
+  <div class="col-12 col-md-4 mb-3 mb-md-0">
+    <div id="triage-timer" class="timer-box timer-running">
       <h4 class="text-center mb-0">
         <i class="bi bi-clock"></i>
         <span id="timer-display"><%= @triage.time_remaining %></span> сек
@@ -55,11 +55,9 @@
 
 <form id="triage-form" action="/patients/<%= @patient.id %>/triage/step3" method="post" class="mt-4">
   
-  <!-- Оценка витальных функций -->
-  <div class="card mb-4">
-    <div class="card-header bg-success text-white">
-      <h5 class="mb-0"><i class="bi bi-activity"></i> Оценка витальных функций</h5>
-      <small class="text-light">Введите показатели пациента. Цвет изменится автоматически при выходе за норму</small>
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Витальные функции</span>
     </div>
     <div class="card-body">
       <div class="row g-3">

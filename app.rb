@@ -42,37 +42,68 @@ get '/' do
   redirect '/patients'
 end
 
+# API списка пациентов (JSON, для обновления в реальном времени)
+get '/api/patients_list' do
+  content_type :json
+  base = Patient.includes(:triage)
+  base = base.search(params[:search]) if params[:search].present?
+  base = apply_filters(base, params)
+  active_in_triage = base.joins(:triage).where(triages: { timer_active: true })
+                         .order(admission_date: :desc, admission_time: :desc)
+  ids_active = active_in_triage.pluck(:id)
+  rest = base.where.not(id: ids_active).order(admission_date: :desc, admission_time: :desc).limit(100)
+  patients = active_in_triage.to_a + rest.to_a
+  patients.map do |p|
+    t = p.triage
+    max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120
+    {
+      id: p.id,
+      full_name: p.full_name,
+      admission_date: p.admission_date.to_s,
+      admission_time: p.admission_time.to_s,
+      performer_name: p.performer_name,
+      appeal_type: p.appeal_type,
+      pregnancy_display: p.pregnancy_display,
+      created_at: p.created_at.strftime("%d.%m.%Y %H:%M"),
+      triage: t ? {
+        step: t.step,
+        priority: t.priority,
+        priority_name: t.priority_name,
+        completed_at: t.completed_at,
+        timer_active: t.timer_active,
+        time_remaining: t.time_remaining,
+        timer_ends_at: t.timer_ends_at,
+        expired: t.expired?,
+        max_time: max_time
+      } : nil
+    }
+  end.to_json
+end
+
 # Список пациентов
 get '/patients' do
-  # Начинаем с базового запроса
-  @patients = Patient.includes(:triage)
-  
-  # Поиск
-  if params[:search].present?
-    @patients = @patients.search(params[:search])
-  end
-  
-  # Применяем фильтры
-  @patients = apply_filters(@patients, params)
-  
-  # Сортировка по дате поступления (новые сверху)
-  @patients = @patients.order(admission_date: :desc, admission_time: :desc)
-  
-  # Получаем уникальных исполнителей для фильтра
+  base = Patient.includes(:triage)
+  base = base.search(params[:search]) if params[:search].present?
+  base = apply_filters(base, params)
+
+  # Активные в триаже (на мониторе) — всегда сверху, независимо от даты
+  active_in_triage = base.joins(:triage).where(triages: { timer_active: true })
+                         .order(admission_date: :desc, admission_time: :desc)
+  ids_active = active_in_triage.pluck(:id)
+
+  # Остальные по дате поступления (новые сверху), лимит для компактного списка
+  rest = base.where.not(id: ids_active).order(admission_date: :desc, admission_time: :desc).limit(100)
+  @patients = active_in_triage.to_a + rest.to_a
+
   @performers = Patient.distinct.pluck(:performer_name).compact.sort
-  
   erb :patients_index
 end
 
 # Вспомогательный метод для фильтрации
 def apply_filters(patients, params)
-  # Фильтр по дате поступления
-  if params[:admission_date_from].present?
-    patients = patients.where("admission_date >= ?", params[:admission_date_from])
-  end
-  
-  if params[:admission_date_to].present?
-    patients = patients.where("admission_date <= ?", params[:admission_date_to])
+  # Фильтр по дате поступления (одна дата вместо диапазона)
+  if params[:admission_date].present?
+    patients = patients.where(admission_date: params[:admission_date])
   end
   
   # Фильтр по виду обращения
@@ -101,7 +132,6 @@ def apply_filters(patients, params)
   
   patients
 end
-
 # Создание нового пациента
 get '/patients/new' do
   erb :patients_new
@@ -171,27 +201,6 @@ get '/monitor' do
   erb :monitor
 end
 
-# API для получения данных мониторинга
-get '/api/active_patients' do
-  content_type :json
-  
-  patients = Patient.joins(:triage)
-                   .where(triages: { timer_active: true })
-                   .includes(:triage)
-                   .all
-  
-  patients.map do |patient|
-    {
-      id: patient.id,
-      full_name: patient.full_name,
-      time_remaining: patient.triage.time_remaining,
-      eye_opening: patient.triage.eye_opening,
-      verbal_response: patient.triage.verbal_response,
-      consciousness_level: patient.triage.consciousness_level
-    }
-  end.to_json
-end
-
 # API для получения таймера пациента
 get '/api/patient_timer/:id' do
   content_type :json
@@ -233,30 +242,58 @@ get '/triage_events/:patient_id', provides: 'text/event-stream' do
   end
 end
 
-# SSE поток для мониторинга
+# SSE поток для мониторинга (тот же формат, что и /api/active_patients)
 get '/monitor_events', provides: 'text/event-stream' do
   stream(:keep_open) do |out|
     MONITOR_CONNECTIONS << out
-    
-    # Отправляем обновления каждую секунду
+
+    patients_data = Patient.joins(:triage)
+                         .where(triages: { timer_active: true })
+                         .includes(:triage)
+                         .map do |patient|
+      triage = patient.triage
+      {
+        id: patient.id,
+        full_name: patient.full_name,
+        performer_name: patient.performer_name,
+        step: triage.step,
+        step_name: triage.step_name,
+        priority: triage.priority,
+        time_remaining: triage.time_remaining,
+        timer_ends_at: triage.timer_ends_at,
+        eye_opening_score: triage.eye_score,
+        verbal_score: triage.verbal_score,
+        motor_score: triage.motor_score,
+        consciousness_score: triage.total_consciousness_score
+      }
+    end
+    out << "data: #{patients_data.to_json}\n\n"
+
     timer = EventMachine.add_periodic_timer(1) do
       patients_data = Patient.joins(:triage)
                            .where(triages: { timer_active: true })
                            .includes(:triage)
                            .map do |patient|
+        triage = patient.triage
         {
           id: patient.id,
           full_name: patient.full_name,
-          time_remaining: patient.triage.time_remaining,
-          eye_opening: patient.triage.eye_opening,
-          verbal_response: patient.triage.verbal_response
+          performer_name: patient.performer_name,
+          step: triage.step,
+          step_name: triage.step_name,
+          priority: triage.priority,
+          time_remaining: triage.time_remaining,
+          timer_ends_at: triage.timer_ends_at,
+          eye_opening_score: triage.eye_score,
+          verbal_score: triage.verbal_score,
+          motor_score: triage.motor_score,
+          consciousness_score: triage.total_consciousness_score
         }
       end
-      
       out << "data: #{patients_data.to_json}\n\n"
     end
-    
-    out.callback { 
+
+    out.callback {
       MONITOR_CONNECTIONS.delete(out)
       EventMachine.cancel_timer(timer) if timer
     }
@@ -418,6 +455,7 @@ get '/api/active_patients' do
       step_name: triage.step_name,
       priority: triage.priority,
       time_remaining: triage.time_remaining,
+      timer_ends_at: triage.timer_ends_at,
       eye_opening_score: triage.eye_score,
       verbal_score: triage.verbal_score,
       motor_score: triage.motor_score,

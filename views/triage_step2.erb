@@ -1,13 +1,14 @@
-<!-- views/triage_step2.erb -->
-<div class="row">
-  <div class="col-md-8">
-    <h1>Этап 2: Двигательные функции и опрос - <%= @patient.full_name %></h1>
+<%# Этап 2: двигательные функции и опрос %>
+<div class="row align-items-start">
+  <div class="col-12 col-md-8">
+    <h1 class="page-title">Этап 2 — <%= @patient.full_name %></h1>
+    <p class="text-muted small mb-0">Двигательные функции и опрос · 5 мин</p>
     <div class="alert alert-warning">
       <i class="bi bi-info-circle"></i> Время на этап: 5 минут
     </div>
     
-    <!-- Информация о пациенте -->
-    <div class="card mb-4">
+    <%# Краткая информация о пациенте и баллы сознания %>
+    <div class="app-card card mb-4">
       <div class="card-body bg-light">
         <div class="row small">
           <div class="col-md-4">
@@ -28,9 +29,8 @@
       </div>
     </div>
   </div>
-  
-  <div class="col-md-4">
-    <div id="triage-timer" class="timer-box alert alert-warning">
+  <div class="col-12 col-md-4 mb-3 mb-md-0">
+    <div id="triage-timer" class="timer-box timer-running">
       <h4 class="text-center mb-0">
         <i class="bi bi-clock"></i>
         <span id="timer-display"><%= @triage.time_remaining %></span> сек
@@ -47,10 +47,9 @@
 
 <form id="triage-form" action="/patients/<%= @patient.id %>/triage/step2" method="post" class="mt-4">
   
-  <!-- Положение и двигательные функции -->
-  <div class="card mb-4">
-    <div class="card-header bg-warning text-dark">
-      <h5 class="mb-0"><i class="bi bi-person-walking"></i> Положение и двигательные функции</h5>
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Положение и двигательные функции</span>
     </div>
     <div class="card-body">
       <div class="row">
@@ -76,10 +75,9 @@
   </div>
 
   <!-- Выявление критериев неотложности -->
-  <div class="card mb-4">
-    <div class="card-header bg-danger text-white">
-      <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Выявление критериев неотложности</h5>
-      <small class="text-light">Отметьте симптомы, если они присутствуют в течение указанного времени</small>
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Критерии неотложности</span>
     </div>
     <div class="card-body">
       <div class="row">
@@ -105,10 +103,9 @@
   </div>
 
   <!-- Выявление признаков инфекционных заболеваний -->
-  <div class="card mb-4">
-    <div class="card-header bg-purple text-white">
-      <h5 class="mb-0"><i class="bi bi-virus"></i> Выявление признаков инфекционных заболеваний</h5>
-      <small class="text-light">Отметьте симптомы, если они присутствуют в течение указанного времени</small>
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Признаки инфекционных заболеваний</span>
     </div>
     <div class="card-body">
       <div class="row">

@@ -1,75 +1,67 @@
-<!-- views/patients_new.erb -->
-<h1>Регистрация нового пациента</h1>
+<%# Регистрация нового пациента %>
+<h1 class="page-title">Новый пациент</h1>
 
-<form action="/patients" method="post" class="mt-4">
-  <div class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">ФИО пациента</label>
-      <input type="text" name="full_name" class="form-control" required>
-    </div>
-    
-    <div class="col-md-6">
-      <label class="form-label">ФИО исполнителя</label>
-      <input type="text" name="performer_name" class="form-control" required>
-    </div>
-    
-    <div class="col-md-3">
-      <label class="form-label">Дата поступления</label>
-      <input type="date" name="admission_date" class="form-control" 
-             value="<%= Date.today %>" required>
-    </div>
-    
-    <div class="col-md-3">
-      <label class="form-label">Время поступления</label>
-      <input type="time" name="admission_time" class="form-control" 
-             value="<%= Time.now.strftime('%H:%M') %>" required>
-    </div>
-    
-    <div class="col-md-6">
-      <label class="form-label">Дата рождения</label>
-      <input type="date" name="birth_date" class="form-control" required>
-    </div>
-    
-    <div class="col-md-6">
-      <label class="form-label">Вид обращения</label>
-      <select name="appeal_type" class="form-select" required>
-        <option value="">Выберите вид обращения...</option>
-        <% Patient::APPEAL_TYPES.each do |type| %>
-          <option value="<%= type %>"><%= type %></option>
-        <% end %>
-      </select>
-    </div>
-    
-    <div class="col-md-6">
-      <label class="form-label">Срок беременности</label>
-      <div class="input-group">
-        <input type="number" name="pregnancy_weeks" class="form-control" 
-               step="0.1" min="0" max="42" id="pregnancy_weeks_input"
-               placeholder="Количество недель">
-        <span class="input-group-text">недель</span>
-      </div>
-      <div class="form-check mt-2">
-        <input type="checkbox" name="pregnancy_unknown" class="form-check-input" 
-               id="pregnancy_unknown_checkbox" value="1">
-        <label class="form-check-label" for="pregnancy_unknown_checkbox">
-          Неизвестно
-        </label>
-      </div>
-    </div>
+<div class="app-card card">
+  <div class="app-card-header card-header">
+    <span class="text-muted small text-uppercase fw-normal">Данные пациента</span>
   </div>
-  
-  <div class="mt-4">
-    <button type="submit" class="btn btn-primary">
-      <i class="bi bi-save"></i> Сохранить и перейти к триажу
-    </button>
-    <a href="/patients" class="btn btn-secondary">Отмена</a>
+  <div class="card-body">
+    <form action="/patients" method="post">
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">ФИО пациента</label>
+          <input type="text" name="full_name" class="form-control" required placeholder="Фамилия Имя Отчество">
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">ФИО исполнителя</label>
+          <input type="text" name="performer_name" class="form-control" required placeholder="Исполнитель">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Дата поступления</label>
+          <input type="date" name="admission_date" class="form-control" value="<%= Date.today %>" required>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label">Время поступления</label>
+          <input type="time" name="admission_time" class="form-control" value="<%= Time.now.strftime('%H:%M') %>" required>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Дата рождения</label>
+          <input type="date" name="birth_date" class="form-control" required>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Вид обращения</label>
+          <select name="appeal_type" class="form-select" required>
+            <option value="">Выберите вид обращения...</option>
+            <% Patient::APPEAL_TYPES.each do |type| %>
+              <option value="<%= type %>"><%= type %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Срок беременности</label>
+          <div class="input-group">
+            <input type="number" name="pregnancy_weeks" class="form-control" step="0.1" min="0" max="42"
+                   id="pregnancy_weeks_input" placeholder="Недель">
+            <span class="input-group-text">недель</span>
+          </div>
+          <div class="form-check mt-2">
+            <input type="checkbox" name="pregnancy_unknown" class="form-check-input" id="pregnancy_unknown_checkbox" value="1">
+            <label class="form-check-label" for="pregnancy_unknown_checkbox">Неизвестно</label>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar mt-4">
+        <button type="submit" class="btn btn-primary">Сохранить и перейти к триажу</button>
+        <a href="/patients" class="btn btn-secondary">Отмена</a>
+      </div>
+    </form>
   </div>
-</form>
+</div>
 
 <script>
-// Обработка галочки "Неизвестно"
+// Галочка «Неизвестно» отключает поле срока беременности
 document.getElementById('pregnancy_unknown_checkbox').addEventListener('change', function() {
-  const input = document.getElementById('pregnancy_weeks_input');
+  var input = document.getElementById('pregnancy_weeks_input');
   if (this.checked) {
     input.disabled = true;
     input.value = '';
@@ -78,15 +70,12 @@ document.getElementById('pregnancy_unknown_checkbox').addEventListener('change',
     input.disabled = false;
   }
 });
-
-// Валидация формы
 document.querySelector('form').addEventListener('submit', function(e) {
-  const unknownChecked = document.getElementById('pregnancy_unknown_checkbox').checked;
-  const weeksInput = document.getElementById('pregnancy_weeks_input');
-  
+  var unknownChecked = document.getElementById('pregnancy_unknown_checkbox').checked;
+  var weeksInput = document.getElementById('pregnancy_weeks_input');
   if (!unknownChecked && !weeksInput.value.trim()) {
     e.preventDefault();
-    alert('Пожалуйста, укажите срок беременности или отметьте "Неизвестно"');
+    alert('Укажите срок беременности или отметьте «Неизвестно»');
   }
 });
 </script>

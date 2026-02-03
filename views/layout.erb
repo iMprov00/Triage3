@@ -2,38 +2,46 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Госпитальная система</title>
-  <!-- Bootstrap 5 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Триаж — Госпитальная система</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-  <style>
-    body { padding-top: 20px; background-color: #f8f9fa; }
-    .timer-box { background: #fff; border-radius: 10px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .timer-expired { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .timer-running { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-    /* Добавьте в layout.erb */
-    .bg-purple {
-      background-color: #6f42c1 !important;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <div class="container">
+  <%# Верхняя полоса: название и ссылка на монитор ТВ %>
+  <header class="app-header">
+    <div class="app-container container d-flex align-items-center justify-content-between">
+      <a href="/patients" class="app-logo">Триаж</a>
+      <a href="/monitor" target="_blank" class="app-nav-link"><i class="bi bi-tv"></i> Монитор ТВ</a>
+    </div>
+  </header>
+
+  <main class="app-container container">
+    <%# Сообщения после редиректа %>
     <% if flash[:notice] %>
-      <div class="alert alert-success"><%= flash[:notice] %></div>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= flash[:notice] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+      </div>
     <% end %>
     <% if flash[:error] %>
-      <div class="alert alert-danger"><%= flash[:error] %></div>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= flash[:error] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+      </div>
     <% end %>
-    
+    <% if flash[:info] %>
+      <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <%= flash[:info] %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+      </div>
+    <% end %>
+
     <%= yield %>
-  </div>
-  
-  <!-- Bootstrap JS Bundle -->
+  </main>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- jQuery для удобства -->
   <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 </body>
 </html>

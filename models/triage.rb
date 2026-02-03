@@ -98,6 +98,12 @@ class Triage < ActiveRecord::Base
     remaining = duration - elapsed.to_i
     remaining > 0 ? remaining : 0
   end
+
+  # Время окончания таймера (Unix timestamp в секундах) — для клиентского обратного отсчёта в реальном времени
+  def timer_ends_at
+    return nil unless timer_active && start_time && STEPS[step]
+    (start_time + STEPS[step][:duration]).to_i
+  end
   
   def expired?
     time_remaining <= 0
