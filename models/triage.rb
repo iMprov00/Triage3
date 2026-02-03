@@ -1,4 +1,3 @@
-# models/triage.rb
 class Triage < ActiveRecord::Base
   belongs_to :patient
   
@@ -215,7 +214,7 @@ class Triage < ActiveRecord::Base
   end
   
   def advance_step
-    return false if completed_at || !timer_active
+    return false if completed_at
     
     case step
     when 1

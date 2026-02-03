@@ -98,35 +98,7 @@
               <% end %>
             </div>
             
-            <div class="app-card card">
-              <div class="app-card-header card-header">
-                <span class="text-muted small text-uppercase fw-normal">Результаты триажа</span>
-              </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-4">
-                    <strong>Этап 1:</strong><br>
-                    <%= @triage.total_consciousness_score %>/15 баллов
-                  </div>
-                  <div class="col-md-4">
-                    <strong>Этап 2:</strong><br>
-                    <% if @triage.step_data(2)['position'] %>
-                      <%= @triage.step_data(2)['position'] %>
-                    <% else %>
-                      Не заполнено
-                    <% end %>
-                  </div>
-                  <div class="col-md-4">
-                    <strong>Этап 3:</strong><br>
-                    <% if @triage.step_data(3)['respiratory_rate'] %>
-                      Заполнено
-                    <% else %>
-                      Не заполнено
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
         

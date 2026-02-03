@@ -5,7 +5,7 @@
     <p class="text-muted small mb-0">Уровень сознания · 2 мин</p>
   </div>
   <div class="col-12 col-md-4 mb-3 mb-md-0">
-    <div id="triage-timer" class="timer-box timer-running">
+    <div id="triage-timer" class="timer-box <%= @triage.expired? ? 'timer-expired' : 'timer-running' %>">
       <h4 class="text-center mb-0">
         <i class="bi bi-clock"></i>
         <span id="timer-display"><%= @triage.time_remaining %></span> сек
@@ -14,8 +14,9 @@
   </div>
 </div>
 
-<div id="time-expired-warning" class="alert alert-danger d-none">
+<div id="time-expired-warning" class="alert alert-warning <%= @triage.expired? ? '' : 'd-none' %>">
   <h4><i class="bi bi-exclamation-triangle"></i> Время вышло!</h4>
+  <p class="mb-0 small">Таймер этапа истек, но вы можете продолжить заполнение формы.</p>
 </div>
 
 <form id="triage-form" action="/patients/<%= @patient.id %>/triage/step1" method="post" class="mt-4">
@@ -57,7 +58,7 @@
       </div>
       
       <div class="mt-3 text-center">
-        <div class="alert alert-secondary">
+        <div class="alert <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-secondary' %>">
           <strong>Сумма баллов: <span id="total-score">0</span></strong>
           <div class="small text-muted">Если сумма ≤ 8 баллов - приоритет Красный</div>
         </div>
@@ -123,19 +124,18 @@ eventSource.onmessage = function(event) {
   const timerDisplay = $('#timer-display');
   const timerBox = $('#triage-timer');
   const warning = $('#time-expired-warning');
-  const form = $('#triage-form');
   
   // Обновление таймера
   timerDisplay.text(data.time_remaining);
   
   if (data.expired) {
-    timerBox.removeClass('alert-info').addClass('alert-danger');
-    warning.removeClass('d-none');
+    timerBox.removeClass('timer-running').addClass('timer-expired');
     
-    // Автоматическая отправка формы если время вышло
-    if (form.find('select').filter(function() { return $(this).val() !== ''; }).length > 0) {
-      form.submit();
-    }
+    // Просто показываем предупреждение, НЕ отправляем форму
+    warning.removeClass('d-none');
+  } else {
+    timerBox.removeClass('timer-expired').addClass('timer-running');
+    warning.addClass('d-none');
   }
 };
 

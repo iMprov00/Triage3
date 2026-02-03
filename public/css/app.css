@@ -5,9 +5,9 @@
 
 /* ========== Палитра (3 основных цвета) ========== */
 :root {
-  --primary: #0d9488;
-  --primary-hover: #0f766e;
-  --primary-light: #ccfbf1;
+  --primary: #54c654;
+  --primary-hover: #3da53d;
+  --primary-light: #e8f7e8;
   --neutral: #475569;
   --neutral-dark: #334155;
   --neutral-light: #f1f5f9;
@@ -16,13 +16,16 @@
   --text: #1e293b;
   --text-muted: #64748b;
   /* Критичные состояния — только где необходимо */
-  --danger: #dc2626;
+  --danger: #dc2626;  
   --danger-bg: #fef2f2;
   --radius: 10px;
   --radius-sm: 6px;
   --touch: 44px;
   --shadow: 0 1px 3px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --warning: #f59e0b;         /* Желтый - приоритет 2 */
+  --purple: #a855f7;          /* Фиолетовый - приоритет 3 */
+  --success: #10b981;         /* Зеленый - приоритет 4 */
 }
 
 /* ========== Сброс и база ========== */
@@ -255,11 +258,11 @@ body {
 }
 .bg-primary { background: var(--primary) !important; }
 .bg-secondary { background: var(--neutral) !important; }
-.bg-success { background: var(--primary) !important; }
+.bg-success { background: var(--success) !important; }
 .bg-danger { background: var(--danger) !important; }
-.bg-warning { background: var(--neutral) !important; color: var(--text) !important; }
+.bg-warning { background: var(--warning) !important; }
 .bg-info { background: var(--neutral) !important; }
-.bg-purple { background: var(--neutral-dark) !important; }
+.bg-purple { background: var(--purple) !important; }
 
 /* ========== Алерты ========== */
 .alert {

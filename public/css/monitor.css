@@ -1,272 +1,464 @@
 /**
- * Монитор триажа — ТВ
- * Та же палитра: Teal (акцент), Slate (нейтраль), тёмный фон.
- * Минимализм, крупный шрифт, читаемость с расстояния.
+ * Монитор триажа — для телевизоров
+ * Самостоятельное представление без layout
+ * Цветовая схема с приоритетами: 1-красный, 2-желтый, 3-фиолетовый, 4-зеленый
  */
 
 :root {
-  --m-bg: #0f172a;
+  /* Основной цвет интерфейса */
+  --m-primary: #54c654;
+  --m-primary-dark: #3da53d;
+  --m-primary-light: #e8f7e8;
+  
+  /* Цвета приоритетов */
+  --m-priority-1: #dc2626;     /* Красный */
+  --m-priority-2: #f59e0b;     /* Желтый */
+  --m-priority-3: #a855f7;     /* Фиолетовый */
+  --m-priority-4: #10b981;     /* Зеленый */
+  
+  /* Нейтральные цвета */
+  --m-bg: #0f172a;             /* Тёмный фон для контраста */
   --m-surface: #1e293b;
+  --m-surface-light: #2d3748;
   --m-border: #334155;
   --m-text: #f1f5f9;
-  --m-muted: #94a3b8;
-  --m-primary: #2dd4bf;
-  --m-primary-dim: #14b8a6;
-  --m-danger: #ef4444;
-  --m-warning: #f59e0b;
+  --m-text-muted: #94a3b8;
+  --m-text-light: #e2e8f0;
+  
+  /* Размеры для ТВ */
+  --m-font-size-base: 1.2rem;
+  --m-font-size-large: 1.8rem;
+  --m-font-size-xlarge: 2.5rem;
+  --m-font-size-xxlarge: 3.5rem;
+  --m-card-padding: 1.5rem;
+  --m-gap: 1rem;
+  --m-border-radius: 12px;
 }
 
-* { box-sizing: border-box; }
-body {
+/* Сброс и база */
+* {
+  box-sizing: border-box;
   margin: 0;
-  padding: 1.5rem;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   background: var(--m-bg);
   color: var(--m-text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
+  font-size: var(--m-font-size-base);
   line-height: 1.5;
   min-height: 100vh;
+  padding: 1.5rem;
+  overflow-x: hidden;
 }
 
-/* ========== Шапка ========== */
-.m-header {
+/* ========== ШАПКА МОНИТОРА ========== */
+.monitor-header {
   background: var(--m-surface);
-  border: 1px solid var(--m-border);
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  margin-bottom: 1.5rem;
+  border: 2px solid var(--m-border);
+  border-radius: var(--m-border-radius);
+  padding: var(--m-card-padding);
+  margin-bottom: var(--m-gap);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.monitor-title {
+  display: flex;
+  align-items: center;
   gap: 1rem;
 }
-.m-title {
-  font-size: clamp(1.5rem, 4vw, 2.25rem);
+
+.monitor-title h1 {
+  font-size: var(--m-font-size-xlarge);
   font-weight: 700;
-  letter-spacing: -0.02em;
   color: var(--m-primary);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  letter-spacing: -0.02em;
 }
-.m-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1.5rem;
+
+.monitor-title .badge {
   font-size: 1rem;
-  color: var(--m-muted);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  background: var(--m-surface-light);
+  color: var(--m-text);
+  border-radius: 20px;
 }
-.m-meta strong { color: var(--m-text); }
-.m-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.75rem;
-  background: var(--m-surface);
-  border: 1px solid var(--m-border);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: var(--m-muted);
-}
-.m-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--m-primary);
-}
-.m-status.ok .m-status-dot { background: var(--m-primary); }
-.m-status.warn .m-status-dot { background: var(--m-warning); }
 
-/* ========== Легенда (минимально) ========== */
-.m-legend {
+.monitor-meta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-  color: var(--m-muted);
+  align-items: center;
+  gap: 2rem;
+  font-size: 1.1rem;
 }
-.m-legend span {
-  display: inline-flex;
+
+.meta-item {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.m-legend .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.m-legend .dot.red { background: var(--m-danger); }
-.m-legend .dot.yellow { background: var(--m-warning); }
-.m-legend .dot.teal { background: var(--m-primary); }
-.m-legend .dot.slate { background: var(--m-muted); }
 
-/* ========== Карточка пациента ========== */
-.patient-card {
-  background: var(--m-surface);
-  border: 1px solid var(--m-border);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.meta-item .label {
+  color: var(--m-text-muted);
 }
-.patient-card:hover {
-  border-color: var(--m-primary);
-  box-shadow: 0 0 0 1px var(--m-primary);
-}
-/* Полоска приоритета слева — только цвет, без градиентов */
-.priority-red { border-left: 4px solid var(--m-danger); }
-.priority-yellow { border-left: 4px solid var(--m-warning); }
-.priority-green { border-left: 4px solid var(--m-primary); }
-.priority-purple { border-left: 4px solid var(--m-muted); }
 
-.patient-name {
-  font-size: 1.35rem;
+.meta-item .value {
   font-weight: 600;
-  color: var(--m-text);
-  margin: 0 0 0.75rem 0;
-}
-.patient-name .badge {
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: var(--m-border);
-  color: var(--m-muted);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  margin-left: 0.5rem;
+  color: var(--m-text-light);
 }
 
-.patient-info {
-  color: var(--m-muted);
-  font-size: 0.9375rem;
-}
-.info-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--m-border);
-}
-.info-row:last-child { border-bottom: none; }
-.icon-col { color: var(--m-primary); width: 1.5rem; flex-shrink: 0; }
-.info-row strong { color: var(--m-text); }
-
-/* Бейджи этапов в палитре */
-.step-badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-.step-1 { background: var(--m-primary); color: var(--m-bg); }
-.step-2 { background: var(--m-warning); color: var(--m-bg); }
-.step-3 { background: var(--m-muted); color: var(--m-bg); }
-
-/* ========== Таймер ========== */
-.timer-box {
-  padding: 1rem 1.25rem;
-  border-radius: 10px;
-  font-weight: 700;
-  text-align: center;
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  background: var(--m-bg);
-  border: 1px solid var(--m-border);
-  color: var(--m-text);
-}
-.timer-normal {
-  border-color: var(--m-primary);
+.meta-item .time {
+  font-family: 'Courier New', monospace;
+  font-size: 1.3rem;
   color: var(--m-primary);
-}
-.timer-warning {
-  border-color: var(--m-warning);
-  color: var(--m-warning);
-}
-.timer-critical {
-  border-color: var(--m-danger);
-  color: var(--m-danger);
-  animation: m-pulse 1s ease-in-out infinite;
-}
-.timer-expired {
-  border-color: var(--m-border);
-  color: var(--m-muted);
-}
-@keyframes m-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
 }
 
 .status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--m-surface-light);
+  border-radius: 20px;
+  font-weight: 500;
 }
-.status-active { background: var(--m-primary); }
-.status-warning { background: var(--m-warning); }
-.status-critical { background: var(--m-danger); }
-.status-inactive { background: var(--m-muted); }
 
-/* ========== Прогресс-бар ========== */
-.progress {
-  height: 6px;
-  background: var(--m-bg);
-  border-radius: 3px;
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--m-primary);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.connected {
+  background: var(--m-primary);
+}
+
+.status-dot.disconnected {
+  background: var(--m-priority-1);
+  animation: blink 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ========== ЛЕГЕНДА ПРИОРИТЕТОВ ========== */
+.priority-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--m-surface);
+  border-radius: var(--m-border-radius);
+  border: 1px solid var(--m-border);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.legend-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.legend-dot.priority-1 { background: var(--m-priority-1); }
+.legend-dot.priority-2 { background: var(--m-priority-2); }
+.legend-dot.priority-3 { background: var(--m-priority-3); }
+.legend-dot.priority-4 { background: var(--m-priority-4); }
+
+/* ========== ОСНОВНОЙ КОНТЕНТ ========== */
+.patients-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: var(--m-gap);
+  margin-bottom: 1.5rem;
+}
+
+/* ========== КАРТОЧКА ПАЦИЕНТА ========== */
+.patient-card {
+  background: var(--m-surface);
+  border: 2px solid var(--m-border);
+  border-radius: var(--m-border-radius);
+  padding: var(--m-card-padding);
+  transition: all 0.3s ease;
+  position: relative;
   overflow: hidden;
 }
-.progress-bar {
-  transition: width 0.5s ease;
-}
-.bg-success { background: var(--m-primary) !important; }
-.bg-warning { background: var(--m-warning) !important; }
-.bg-danger { background: var(--m-danger) !important; }
 
-/* ========== Сетка и прокрутка ========== */
-.scroll-container {
-  max-height: calc(100vh - 220px);
-  overflow-y: auto;
-  padding-right: 0.5rem;
+.patient-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  border-color: var(--m-primary);
 }
-.scroll-container::-webkit-scrollbar { width: 8px; }
-.scroll-container::-webkit-scrollbar-track { background: var(--m-surface); border-radius: 4px; }
-.scroll-container::-webkit-scrollbar-thumb { background: var(--m-border); border-radius: 4px; }
 
-.m-muted { color: var(--m-muted); }
-#sse-status.ok { color: var(--m-primary); }
-#sse-status.warn { color: var(--m-warning); }
-/* Кнопка в контексте монитора (ошибка и т.д.) */
-.m-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+/* Полоска приоритета слева */
+.patient-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+}
+
+.patient-card.priority-1::before { background: var(--m-priority-1); }
+.patient-card.priority-2::before { background: var(--m-priority-2); }
+.patient-card.priority-3::before { background: var(--m-priority-3); }
+.patient-card.priority-4::before { background: var(--m-priority-4); }
+
+/* Заголовок карточки */
+.patient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.patient-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--m-text-light);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.patient-id {
+  font-size: 1rem;
+  color: var(--m-text-muted);
+  background: var(--m-surface-light);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
   font-weight: 500;
-  border: none;
-  background: var(--m-primary);
-  color: var(--m-bg);
-  cursor: pointer;
 }
-.m-btn:hover { opacity: 0.9; color: var(--m-bg); }
 
-.m-footer {
+/* Информация о пациенте */
+.patient-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-label {
+  font-size: 0.9rem;
+  color: var(--m-text-muted);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--m-text-light);
+}
+
+.info-value.highlight {
+  color: var(--m-primary);
+}
+
+/* Этап и приоритет */
+.patient-status {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.step-badge, .priority-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.step-badge {
+  background: var(--m-surface-light);
+  color: var(--m-text);
+}
+
+.step-badge.step-1 { background: #1e40af; color: white; }
+.step-badge.step-2 { background: #92400e; color: white; }
+.step-badge.step-3 { background: #065f46; color: white; }
+
+.priority-badge {
+  color: white;
+}
+
+.priority-badge.priority-1 { background: var(--m-priority-1); }
+.priority-badge.priority-2 { background: var(--m-priority-2); }
+.priority-badge.priority-3 { background: var(--m-priority-3); }
+.priority-badge.priority-4 { background: var(--m-priority-4); }
+
+/* ========== ТАЙМЕР ========== */
+.timer-section {
+  background: var(--m-surface-light);
+  border-radius: var(--m-border-radius);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.timer-label {
+  font-size: 1rem;
+  color: var(--m-text-muted);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.timer-display {
+  font-family: 'Courier New', monospace;
+  font-size: var(--m-font-size-xxlarge);
+  font-weight: 700;
   text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.8125rem;
-  color: var(--m-muted);
+  margin-bottom: 1rem;
+  letter-spacing: 2px;
 }
 
-/* Адаптив */
-@media (max-width: 768px) {
-  body { padding: 1rem; }
-  .m-header { flex-direction: column; align-items: flex-start; }
-  .m-title { font-size: 1.5rem; }
-  .patient-name { font-size: 1.15rem; }
-  .timer-box { font-size: 1.5rem; }
+.timer-display.normal { color: var(--m-primary); }
+.timer-display.warning { color: var(--m-priority-2); }
+.timer-display.critical { color: var(--m-priority-1); animation: pulse 1s infinite; }
+.timer-display.expired { color: var(--m-text-muted); }
+
+.timer-progress {
+  height: 8px;
+  background: var(--m-border);
+  border-radius: 4px;
+  overflow: hidden;
 }
+
+.timer-progress-bar {
+  height: 100%;
+  transition: width 1s linear, background-color 0.3s;
+}
+
+.timer-progress-bar.normal { background: var(--m-primary); }
+.timer-progress-bar.warning { background: var(--m-priority-2); }
+.timer-progress-bar.critical { background: var(--m-priority-1); }
+.timer-progress-bar.expired { background: var(--m-text-muted); }
+
+/* ========== СТАТУС ПОТОКА ========== */
+.stream-status {
+  text-align: center;
+  padding: 1rem;
+  background: var(--m-surface);
+  border-radius: var(--m-border-radius);
+  border: 1px solid var(--m-border);
+  font-size: 1rem;
+  color: var(--m-text-muted);
+}
+
+.stream-status.connected {
+  color: var(--m-primary);
+  border-color: var(--m-primary);
+}
+
+.stream-status.disconnected {
+  color: var(--m-priority-1);
+  border-color: var(--m-priority-1);
+}
+
+/* ========== ПУСТОЙ ЭКРАН ========== */
+.no-patients {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--m-surface);
+  border: 2px dashed var(--m-border);
+  border-radius: var(--m-border-radius);
+}
+
+.no-patients h3 {
+  font-size: var(--m-font-size-large);
+  color: var(--m-text-muted);
+  margin-bottom: 1rem;
+}
+
+.no-patients p {
+  color: var(--m-text-muted);
+  font-size: 1.1rem;
+}
+
+/* ========== ФУТЕР ========== */
+.monitor-footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--m-text-muted);
+  font-size: 0.9rem;
+  border-top: 1px solid var(--m-border);
+  margin-top: 1.5rem;
+}
+
+/* ========== АДАПТИВ ДЛЯ ТЕЛЕВИЗОРОВ ========== */
+@media (max-width: 1920px) {
+  .patients-container {
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  }
+}
+
+@media (max-width: 1600px) {
+  .patients-container {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  }
+  :root {
+    --m-font-size-base: 1.1rem;
+    --m-font-size-large: 1.6rem;
+    --m-font-size-xlarge: 2.2rem;
+    --m-font-size-xxlarge: 3rem;
+  }
+}
+
+@media (max-width: 1366px) {
+  .patients-container {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+  body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .patients-container {
+    grid-template-columns: 1fr;
+  }
+  .monitor-header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  .monitor-meta {
+    justify-content: center;
+  }
+}
+
+.patient-card {
+  animation: none !important;
+}
+
+/* Обновление app.css с новой цветовой схемой */
+/* Добавьте в :root app.css */
+/* Обновите только цвета приоритетов в app.css */

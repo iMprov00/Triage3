@@ -18,7 +18,7 @@
           <div class="col-md-3">
             <strong>Этап 1:</strong><br>
             <span class="badge <%= @triage.total_consciousness_score <= 8 ? 'bg-danger' : 'bg-success' %>">
-              <%= @triage.total_consciousness_score %>/15 баллов
+              <%= @triage.total_consciousness_score %>/14 баллов
             </span>
           </div>
           <div class="col-md-3">
@@ -29,10 +29,7 @@
               Не заполнено
             <% end %>
           </div>
-          <div class="col-md-3">
-            <strong>Текущий статус:</strong><br>
-            <span class="badge bg-warning">Оценка витальных функций</span>
-          </div>
+
         </div>
       </div>
     </div>
@@ -52,7 +49,7 @@
   <h4><i class="bi bi-exclamation-triangle"></i> Время вышло!</h4>
   <p class="mb-0">Автоматическое сохранение...</p>
 </div>
-
+<div>
 <form id="triage-form" action="/patients/<%= @patient.id %>/triage/step3" method="post" class="mt-4">
   
   <div class="app-card card mb-4">
@@ -67,9 +64,7 @@
           <input type="number" name="respiratory_rate" class="form-control vital-input" 
                  id="respiratory_rate" min="0" max="100" step="1" required
                  placeholder="12-20">
-          <div class="vital-status mt-2" id="respiratory_status">
-            <span class="badge bg-success">Норма: 16-24</span>
-          </div>
+
         </div>
         
         <!-- Сатурация -->
@@ -78,9 +73,7 @@
           <input type="number" name="saturation" class="form-control vital-input" 
                  id="saturation" min="0" max="100" step="1" required
                  placeholder="95-100">
-          <div class="vital-status mt-2" id="saturation_status">
-            <span class="badge bg-success">Норма: ≥93%</span>
-          </div>
+
         </div>
         
         <!-- Систолическое АД -->
@@ -89,9 +82,7 @@
           <input type="number" name="systolic_bp" class="form-control vital-input" 
                  id="systolic_bp" min="0" max="300" step="1" required
                  placeholder="110-139">
-          <div class="vital-status mt-2" id="systolic_status">
-            <span class="badge bg-success">Норма: <140</span>
-          </div>
+
         </div>
         
         <!-- Диастолическое АД -->
@@ -100,9 +91,7 @@
           <input type="number" name="diastolic_bp" class="form-control vital-input" 
                  id="diastolic_bp" min="0" max="200" step="1" required
                  placeholder="70-89">
-          <div class="vital-status mt-2" id="diastolic_status">
-            <span class="badge bg-success">Норма: <90</span>
-          </div>
+
         </div>
         
         <!-- ЧСС -->
@@ -111,9 +100,7 @@
           <input type="number" name="heart_rate" class="form-control vital-input" 
                  id="heart_rate" min="0" max="250" step="1" required
                  placeholder="60-100">
-          <div class="vital-status mt-2" id="heart_rate_status">
-            <span class="badge bg-success">Норма: 50-110</span>
-          </div>
+
         </div>
         
         <!-- Температура -->
@@ -122,38 +109,13 @@
           <input type="number" name="temperature" class="form-control vital-input" 
                  id="temperature" min="35" max="42" step="0.1" required
                  placeholder="36.6">
-          <div class="vital-status mt-2" id="temperature_status">
-            <span class="badge bg-success">Норма: <37.5</span>
-          </div>
-        </div>
+
       </div>
       
-      <!-- Легенда -->
-      <div class="row mt-4">
-        <div class="col-12">
-          <div class="alert alert-secondary">
-            <div class="row text-center">
-              <div class="col-md-4">
-                <span class="badge bg-success">Зеленый</span> - норма
-              </div>
-              <div class="col-md-4">
-                <span class="badge bg-warning">Желтый</span> - отклонение (приоритет 2)
-              </div>
-              <div class="col-md-4">
-                <span class="badge" style="background-color: #6f42c1;">Фиолетовый</span> - температура ≥37.5 (приоритет 3)
-              </div>
-            </div>
-            <div class="mt-2 text-center small">
-              <i class="bi bi-info-circle"></i> Если хотя бы один показатель желтый → приоритет <span class="badge bg-warning">ЖЕЛТЫЙ</span>
-              <br>Если все зеленые, но температура фиолетовая → приоритет <span class="badge" style="background-color: #6f42c1;">ФИОЛЕТОВЫЙ</span>
-              <br>Если все зеленые → приоритет <span class="badge bg-success">ЗЕЛЕНЫЙ</span>
-            </div>
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
-  
+  </div>
   <div class="d-grid gap-2 d-md-flex justify-content-md-between">
     <a href="/patients/<%= @patient.id %>/triage/step2" class="btn btn-secondary btn-lg">
       <i class="bi bi-arrow-left"></i> Назад к этапу 2

@@ -2,596 +2,444 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Монитор триажа</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Монитор Триажа — ТВ</title>
   <style>
-    /* Стили для монитора */
-    body {
-      background: linear-gradient(135deg, #0c2461 0%, #1e3799 100%);
-      color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      min-height: 100vh;
-      padding: 0;
-      margin: 0;
-    }
-    
-    .container-fluid {
-      padding: 0;
-    }
-    
-    /* Заголовок */
-    .m-header {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 15px 20px;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    
-    .m-title {
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin: 0;
-      color: white;
-    }
-    
-    .m-title i {
-      color: #00d2d3;
-      margin-right: 10px;
-    }
-    
-    .m-meta {
-      display: flex;
-      gap: 20px;
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-    
-    .m-meta span {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    
-    .m-meta strong {
-      font-size: 1.1rem;
-      margin-left: 5px;
-    }
-    
-    /* Статус подключения */
-    #sse-status.ok { color: #00d2d3; }
-    #sse-status.warn { color: #ff9f43; }
-    
-    /* Легенда */
-    .m-legend {
-      background: rgba(0, 0, 0, 0.2);
-      padding: 12px 20px;
-      display: flex;
-      gap: 25px;
-      flex-wrap: wrap;
-      font-size: 0.85rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .m-legend .dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    
-    .m-legend .dot.red { background: #ff6b6b; }
-    .m-legend .dot.yellow { background: #ffd93d; }
-    .m-legend .dot.teal { background: #00d2d3; }
-    .m-legend .dot.slate { background: #bc8cff; }
-    
-    /* Контейнер пациентов */
-    .scroll-container {
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-      gap: 15px;
-      min-height: calc(100vh - 170px);
-      overflow-y: auto;
-    }
-    
-    /* Карточка пациента */
-    .patient-card {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 10px;
-      padding: 15px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-    
-    .patient-card:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    .patient-name {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: white;
-      display: flex;
-      align-items: center;
-    }
-    
-    .patient-info {
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-    
-    .info-row {
-      margin-bottom: 8px;
-      align-items: center;
-    }
-    
-    .icon-col {
-      width: 24px;
-      text-align: center;
-      margin-right: 8px;
-      opacity: 0.7;
-    }
-    
-    /* Таймер - КОМПАКТНЫЙ ВАРИАНТ */
-    .timer-box {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 5px;
-      text-align: center;
-    }
-    
-    .timer-normal {
-      border-left: 4px solid #00d2d3;
-    }
-    
-    .timer-warning {
-      border-left: 4px solid #ffd93d;
-      animation: pulse 1s infinite;
-    }
-    
-    .timer-critical {
-      border-left: 4px solid #ff6b6b;
-      animation: pulse 0.5s infinite;
-    }
-    
-    .timer-expired {
-      border-left: 4px solid #ff3838;
-      background: rgba(255, 56, 56, 0.15);
-    }
-    
-    .timer-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      font-family: 'Courier New', monospace;
-      color: white;
-      margin: 0;
-      line-height: 1;
-    }
-    
-    .timer-unit {
-      font-size: 0.8rem;
-      opacity: 0.7;
-      margin-top: 2px;
-    }
-    
-    /* Статус индикатор */
-    .status-indicator {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-    
-    .status-active { background: #00d2d3; }
-    .status-warning { background: #ffd93d; }
-    .status-critical { background: #ff6b6b; }
-    .status-inactive { background: #95a5a6; }
-    
-    /* Бейджи */
-    .step-badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-left: 5px;
-    }
-    
-    .step-1 { background: #3498db; }
-    .step-2 { background: #f39c12; }
-    .step-3 { background: #2ecc71; }
-    
-    /* Цвета приоритетов */
-    .priority-red { border-top: 3px solid #ff6b6b; }
-    .priority-yellow { border-top: 3px solid #ffd93d; }
-    .priority-purple { border-top: 3px solid #bc8cff; }
-    .priority-green { border-top: 3px solid #00d2d3; }
-    
-    .bg-red { background: #ff6b6b !important; }
-    .bg-yellow { background: #ffd93d !important; color: #333 !important; }
-    .bg-purple { background: #bc8cff !important; }
-    .bg-teal { background: #00d2d3 !important; }
-    
-    /* Прогресс бар */
-    .progress {
-      height: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 3px;
-      margin-top: 8px;
-    }
-    
-    .progress-bar {
-      border-radius: 3px;
-    }
-    
-    /* Анимации */
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.7; }
-      100% { opacity: 1; }
-    }
-    
-    /* Футер */
-    .m-footer {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 10px 20px;
-      text-align: center;
-      font-size: 0.8rem;
-      opacity: 0.7;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    /* Пустой список */
-    .m-muted {
-      opacity: 0.5;
-      font-size: 1.1rem;
-    }
-    
-    /* Кнопка */
-    .m-btn {
-      background: rgba(0, 210, 211, 0.2);
-      border: 1px solid #00d2d3;
-      color: white;
-      padding: 5px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .m-btn:hover {
-      background: rgba(0, 210, 211, 0.3);
-    }
-    
-    /* Адаптивность */
-    @media (max-width: 768px) {
-      .scroll-container {
-        grid-template-columns: 1fr;
-        padding: 10px;
-      }
-      
-      .m-header {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-      }
-      
-      .m-meta {
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-      
-      .m-legend {
-        gap: 15px;
-      }
-    }
+    /* Встроенные базовые стили для гарантии работы */
+    body { margin: 0; padding: 0; font-family: sans-serif; }
+    .hidden { display: none !important; }
   </style>
+  <link rel="stylesheet" href="/css/monitor.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
-  <div class="container-fluid">
-    <!-- Заголовок монитора -->
-    <header class="m-header">
-      <h1 class="m-title">
-        <i class="bi bi-heart-pulse"></i>
-        Монитор триажа
-      </h1>
-      <div class="m-meta">
-        <span><i class="bi bi-clock"></i> <span id="current-time"><%= Time.now.strftime("%d.%m.%Y %H:%M:%S") %></span></span>
-        <span><i class="bi bi-person-fill"></i> Пациентов: <strong id="patient-count">0</strong></span>
-        <span id="sse-status"><i class="bi bi-broadcast"></i> Подключение...</span>
-      </div>
-    </header>
-
-    <!-- Легенда цветов -->
-    <div class="m-legend">
-      <span><span class="dot red"></span> Красный</span>
-      <span><span class="dot yellow"></span> Жёлтый</span>
-      <span><span class="dot teal"></span> Зелёный</span>
-      <span><span class="dot slate"></span> Фиолетовый</span>
+  <!-- ШАПКА -->
+  <header class="monitor-header">
+    <div class="monitor-title">
+      <h1><i class="bi bi-hospital"></i> ТРИАЖ — МОНИТОР</h1>
+      <span class="badge">ТВ-ДИСПЛЕЙ</span>
     </div>
-
-    <!-- Список пациентов -->
-    <div id="patients-container" class="scroll-container">
-      <div class="col-12 text-center py-5 m-muted">
-        <p class="mb-0"><i class="bi bi-hourglass-split"></i> Загрузка данных...</p>
+    
+    <div class="monitor-meta">
+      <div class="meta-item">
+        <span class="label">Время:</span>
+        <span class="value time" id="current-time">--:--:--</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Пациентов:</span>
+        <span class="value" id="patients-count">0</span>
+      </div>
+      <div class="meta-item">
+        <span class="label">Статус:</span>
+        <div class="status-indicator">
+          <span class="status-dot connected" id="status-dot"></span>
+          <span id="status-text">Подключение...</span>
+        </div>
       </div>
     </div>
+  </header>
 
-    <footer class="m-footer">
-      Система триажа • Обновление в реальном времени
-    </footer>
+  <!-- ЛЕГЕНДА ПРИОРИТЕТОВ -->
+  <div class="priority-legend">
+    <div class="legend-item">
+      <div class="legend-dot priority-1"></div>
+      <span>1 — Красный (Неотложный)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot priority-2"></div>
+      <span>2 — Желтый (Срочный)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot priority-3"></div>
+      <span>3 — Фиолетовый (Плановый)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot priority-4"></div>
+      <span>4 — Зеленый (Амбулаторный)</span>
+    </div>
   </div>
 
-  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-  <script>
-  /** Отрисовка списка пациентов */
-  function renderPatientsList(patients) {
-    const container = $('#patients-container');
-    const countElement = $('#patient-count');
+  <!-- ОСНОВНОЙ КОНТЕНТ -->
+  <main>
+    <div id="patients-container" class="patients-container">
+      <!-- Карточки пациентов будут вставляться здесь через JavaScript -->
+    </div>
 
-    countElement.text(patients.length);
+    <!-- СООБЩЕНИЕ ЕСЛИ НЕТ ПАЦИЕНТОВ -->
+    <div id="no-patients" class="no-patients hidden">
+      <h3><i class="bi bi-people"></i> Нет активных пациентов</h3>
+      <p>Ожидание поступления новых пациентов...</p>
+    </div>
 
-    if (patients.length === 0) {
-      container.html(`
-        <div class="col-12 text-center py-5 m-muted">
-          <p class="mb-0" style="font-size: 1.1rem;"><i class="bi bi-inbox"></i> Нет активных пациентов</p>
+    <!-- СТАТУС ПОТОКА ДАННЫХ -->
+    <div id="stream-status" class="stream-status">
+      <i class="bi bi-broadcast"></i> <span id="stream-status-text">Установка соединения...</span>
+    </div>
+  </main>
+
+  <!-- ФУТЕР -->
+  <footer class="monitor-footer">
+    <div>
+      <span>Монитор триажа • Система в реальном времени • </span>
+      <span id="last-update">Обновлено: --:--:--</span>
+    </div>
+  </footer>
+
+  <!-- ШАБЛОН КАРТОЧКИ ПАЦИЕНТА -->
+  <template id="patient-card-template">
+    <div class="patient-card" data-id="">
+      <div class="patient-header">
+        <h2 class="patient-name"></h2>
+        <span class="patient-id"></span>
+      </div>
+      
+      <div class="patient-info-grid">
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-person-badge"></i> Исполнитель:</span>
+          <span class="info-value performer"></span>
         </div>
-      `);
-      return;
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-clipboard"></i> Вид обращения:</span>
+          <span class="info-value appeal"></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-clock-history"></i> Поступил:</span>
+          <span class="info-value admission-time"></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label"><i class="bi bi-heart-pulse"></i> Сознание:</span>
+          <span class="info-value highlight consciousness"></span>
+        </div>
+      </div>
+      
+      <div class="patient-status">
+        <span class="step-badge"></span>
+        <span class="priority-badge"></span>
+      </div>
+      
+      <div class="timer-section">
+        <div class="timer-label">Таймер этапа:</div>
+        <div class="timer-display normal"></div>
+        <div class="timer-progress">
+          <div class="timer-progress-bar normal" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // Конфигурация
+    const CONFIG = {
+      UPDATE_INTERVAL: 1000, // 1 секунда
+      MAX_TIMER_WARNING: 60, // секунд до предупреждения
+      MAX_TIMER_CRITICAL: 30, // секунд до критического
+      EVENT_SOURCE_URL: '/monitor_events'
+    };
+
+    // Глобальные переменные
+    let eventSource = null;
+    let patientsData = {};
+    let lastUpdateTime = null;
+
+    // DOM элементы
+    const elements = {
+      patientsContainer: document.getElementById('patients-container'),
+      noPatients: document.getElementById('no-patients'),
+      patientsCount: document.getElementById('patients-count'),
+      currentTime: document.getElementById('current-time'),
+      lastUpdate: document.getElementById('last-update'),
+      statusDot: document.getElementById('status-dot'),
+      statusText: document.getElementById('status-text'),
+      streamStatus: document.getElementById('stream-status'),
+      streamStatusText: document.getElementById('stream-status-text'),
+      template: document.getElementById('patient-card-template')
+    };
+
+    // Вспомогательные функции
+    function formatTime(seconds) {
+      if (!seconds && seconds !== 0) return '--:--';
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    let html = '';
+    function getTimeClass(seconds) {
+      if (seconds === undefined) return 'expired';
+      if (seconds <= CONFIG.MAX_TIMER_CRITICAL) return 'critical';
+      if (seconds <= CONFIG.MAX_TIMER_WARNING) return 'warning';
+      return 'normal';
+    }
 
-    // Сортируем: красные -> желтые -> фиолетовые -> зеленые
-    patients.sort((a, b) => {
-      const priorityOrder = { 'red': 1, 'yellow': 2, 'purple': 3, 'green': 4 };
-      return (priorityOrder[a.priority] || 5) - (priorityOrder[b.priority] || 5);
-    });
+    function getPriorityClass(priority) {
+      return `priority-${priority}`;
+    }
 
-    patients.forEach(patient => {
-      // Определяем класс таймера
-      let timerClass = 'timer-normal';
-      let timeText = patient.time_remaining;
-      let timerStatus = 'status-active';
+    function getPriorityText(priority) {
+      const texts = {
+        'red': '1 — Красный',
+        'yellow': '2 — Желтый',
+        'purple': '3 — Фиолетовый',
+        'green': '4 — Зеленый'
+      };
+      return texts[priority] || priority;
+    }
+
+    function getStepText(step) {
+      const texts = {
+        1: 'Этап 1: Оценка сознания',
+        2: 'Этап 2: Общая оценка',
+        3: 'Этап 3: Витальные функции'
+      };
+      return texts[step] || `Этап ${step}`;
+    }
+
+    // Обновление времени
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('ru-RU');
+      elements.currentTime.textContent = timeStr;
       
-      if (patient.time_remaining <= 0) {
-        timerClass = 'timer-expired';
-        timeText = '0';
-        timerStatus = 'status-inactive';
-      } else if (patient.time_remaining <= 30) {
-        timerClass = 'timer-critical';
-        timerStatus = 'status-critical';
-      } else if (patient.time_remaining <= 60) {
-        timerClass = 'timer-warning';
-        timerStatus = 'status-warning';
+      if (lastUpdateTime) {
+        const diff = Math.floor((now - lastUpdateTime) / 1000);
+        if (diff < 10) {
+          elements.lastUpdate.textContent = `Обновлено: только что`;
+        } else {
+          elements.lastUpdate.textContent = `Обновлено: ${diff} сек назад`;
+        }
+      }
+    }
+
+    // Отрисовка карточки пациента
+    function renderPatientCard(patient) {
+      let card = elements.patientsContainer.querySelector(`[data-id="${patient.id}"]`);
+      
+      if (!card) {
+        // Создаем новую карточку БЕЗ анимации
+        card = elements.template.content.cloneNode(true).querySelector('.patient-card');
+        card.dataset.id = patient.id;
+        elements.patientsContainer.appendChild(card);
+        card = elements.patientsContainer.querySelector(`[data-id="${patient.id}"]`);
+        
+        // Плавное появление только для новых карточек
+        card.style.opacity = '0';
+        setTimeout(() => {
+          card.style.transition = 'opacity 0.3s ease';
+          card.style.opacity = '1';
+        }, 10);
       }
       
-      // Определяем класс приоритета
-      let priorityClass = '';
-      let priorityText = '';
-      let priorityIcon = '';
+      // Остальной код остается без изменений...
+      // Обновляем класс приоритета
+      const priorityClass = getPriorityClass(patient.priority);
+      card.className = `patient-card ${priorityClass}`;
       
-      switch(patient.priority) {
-        case 'red':
-          priorityClass = 'priority-red';
-          priorityText = 'КРАСНЫЙ';
-          priorityIcon = '<i class="bi bi-exclamation-triangle-fill" style="color: #ff6b6b;"></i>';
-          break;
-        case 'yellow':
-          priorityClass = 'priority-yellow';
-          priorityText = 'ЖЕЛТЫЙ';
-          priorityIcon = '<i class="bi bi-exclamation-circle-fill" style="color: #ffd93d;"></i>';
-          break;
-        case 'purple':
-          priorityClass = 'priority-purple';
-          priorityText = 'ФИОЛЕТОВЫЙ';
-          priorityIcon = '<i class="bi bi-info-circle-fill" style="color: #bc8cff;"></i>';
-          break;
-        case 'green':
-          priorityClass = 'priority-green';
-          priorityText = 'ЗЕЛЕНЫЙ';
-          priorityIcon = '<i class="bi bi-check-circle-fill" style="color: #00d2d3;"></i>';
-          break;
-        default:
-          priorityClass = '';
-          priorityText = 'ОЦЕНКА';
-          priorityIcon = '<i class="bi bi-hourglass-split" style="color: #3498db;"></i>';
+      // Заполняем данные
+      card.querySelector('.patient-name').textContent = patient.full_name;
+      card.querySelector('.patient-id').textContent = `ID: ${patient.id}`;
+      card.querySelector('.performer').textContent = patient.performer_name || 'Не указан';
+      card.querySelector('.appeal').textContent = patient.appeal_type || '—';
+      card.querySelector('.admission-time').textContent = patient.admission_time || '—';
+      card.querySelector('.consciousness').textContent = patient.consciousness_score || '0';
+      
+      // Этап и приоритет
+      const stepBadge = card.querySelector('.step-badge');
+      stepBadge.textContent = getStepText(patient.step);
+      stepBadge.className = `step-badge step-${patient.step}`;
+      
+      const priorityBadge = card.querySelector('.priority-badge');
+      priorityBadge.textContent = getPriorityText(patient.priority);
+      priorityBadge.className = `priority-badge ${priorityClass}`;
+      
+      // Таймер
+      updatePatientTimer(card, patient);
+    }
+
+    function updatePatientTimer(card, patient) {
+      const timeRemaining = patient.time_remaining || 0;
+      const timerDisplay = card.querySelector('.timer-display');
+      const timerBar = card.querySelector('.timer-progress-bar');
+      
+      const timeClass = getTimeClass(timeRemaining);
+      timerDisplay.textContent = formatTime(timeRemaining);
+      timerDisplay.className = `timer-display ${timeClass}`;
+      timerBar.className = `timer-progress-bar ${timeClass}`;
+      
+      // Прогресс-бар (простая визуализация)
+      let percent = 100;
+      if (patient.max_time && patient.max_time > 0) {
+        percent = Math.max(0, (timeRemaining / patient.max_time) * 100);
       }
-      
-      // Максимальное время для этапа
-      let maxTime = 120;
-      if (patient.step === 2) maxTime = 300;
-      if (patient.step === 3) maxTime = 600;
-      
-      let progressPercent = Math.max(0, Math.min(100, (patient.time_remaining / maxTime) * 100));
-      
-      // Цвет прогресса
-      let progressColor = 'bg-success';
-      if (progressPercent <= 25) progressColor = 'bg-danger';
-      else if (progressPercent <= 50) progressColor = 'bg-warning';
-      
-      html += `
-        <div class="patient-card ${priorityClass}">
-          <div class="patient-name">
-            ${patient.full_name}
-            <span class="badge bg-dark ms-2" style="font-size: 0.7rem;">ID: ${patient.id}</span>
-          </div>
-          
-          <div class="row">
-            <div class="col-8">
-              <div class="patient-info">
-                <div class="info-row">
-                  <div class="icon-col">
-                    <i class="bi bi-person-badge"></i>
-                  </div>
-                  <div>
-                    <strong>Исполнитель:</strong> ${patient.performer_name || '—'}
-                  </div>
-                </div>
-                
-                <div class="info-row">
-                  <div class="icon-col">
-                    <i class="bi bi-clipboard2-pulse"></i>
-                  </div>
-                  <div>
-                    <strong>Этап:</strong> 
-                    <span class="step-badge step-${patient.step}">${patient.step}</span>
-                  </div>
-                </div>
-                
-                <div class="info-row">
-                  <div class="icon-col">
-                    ${priorityIcon}
-                  </div>
-                  <div>
-                    <strong>Приоритет:</strong> 
-                    <span class="badge ${priorityClass.replace('priority-', 'bg-') || 'bg-secondary'}" style="font-size: 0.75rem;">
-                      ${priorityText}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="col-4">
-              <div class="timer-box ${timerClass}" data-timer-ends-at="${patient.timer_ends_at || 0}" data-patient-id="${patient.id}">
-                <div style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 5px;">Осталось</div>
-                <div class="d-flex align-items-center justify-content-center">
-                  <span class="status-indicator ${timerStatus}" style="margin-right: 8px;"></span>
-                  <div class="timer-value">${timeText}</div>
-                </div>
-                <div class="timer-unit">секунд</div>
-                
-                <!-- Прогресс бар -->
-                <div class="progress mt-2">
-                  <div class="progress-bar ${progressColor}" 
-                       role="progressbar" 
-                       style="width: ${100 - progressPercent}%">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    });
+      timerBar.style.width = `${percent}%`;
+    }
 
-    container.html(html);
-  }
-
-  // Загрузка по API
-  function updateMonitor() {
-    $.ajax({
-      url: '/api/active_patients',
-      type: 'GET',
-      dataType: 'json',
-      success: function(patients) { renderPatientsList(patients); },
-      error: function(xhr, status, error) {
-        console.error('Ошибка загрузки данных:', error);
-        $('#patients-container').html(`
-          <div class="col-12 text-center py-5 m-muted">
-            <p class="mb-2"><i class="bi bi-exclamation-triangle"></i> Ошибка загрузки</p>
-            <button class="m-btn mt-2" onclick="updateMonitor()">
-              <i class="bi bi-arrow-clockwise"></i> Повторить
-            </button>
-          </div>
-        `);
-      }
-    });
-  }
-
-  // Подключение к потоку SSE
-  let eventSource = null;
-
-  function connectSSE() {
-    if (eventSource) return;
-    eventSource = new EventSource('/monitor_events');
-    
-    eventSource.onopen = function() {
-      $('#sse-status').removeClass('warn').addClass('ok').html('<i class="bi bi-broadcast"></i> Подключен');
-    };
-    
-    eventSource.onmessage = function(event) {
-      try {
-        const patients = JSON.parse(event.data);
-        renderPatientsList(patients);
-      } catch (e) { console.error('SSE parse error:', e); }
-    };
-    
-    eventSource.onerror = function() {
-      $('#sse-status').removeClass('ok').addClass('warn').html('<i class="bi bi-wifi-off"></i> Переподключение...');
-      eventSource.close();
-      eventSource = null;
-      setTimeout(connectSSE, 3000); // Переподключение через 3 секунды
-    };
-  }
-
-  // Обновление таймеров в реальном времени
-  function updateAllTimers() {
-    const nowSec = Date.now() / 1000;
-    $('[data-timer-ends-at]').each(function() {
-      const box = $(this);
-      const endsAt = parseFloat(box.data('timer-ends-at')) || 0;
+    // Обновление всех карточек
+    function renderAllPatients(patients) {
+      lastUpdateTime = new Date();
       
-      if (!endsAt || endsAt <= 0) {
-        box.find('.timer-value').text('0');
-        box.removeClass('timer-normal timer-warning timer-critical').addClass('timer-expired');
-        box.find('.status-indicator').removeClass('status-active status-warning status-critical').addClass('status-inactive');
+      // Обновляем счетчик
+      elements.patientsCount.textContent = patients.length;
+      
+      if (patients.length === 0) {
+        elements.noPatients.classList.remove('hidden');
+        elements.patientsContainer.innerHTML = '';
         return;
       }
       
-      let remaining = Math.max(0, Math.floor(endsAt - nowSec));
+      elements.noPatients.classList.add('hidden');
       
-      box.find('.timer-value').text(remaining);
-      box.removeClass('timer-normal timer-warning timer-critical timer-expired');
-      box.find('.status-indicator').removeClass('status-active status-warning status-critical status-inactive');
+      // Сохраняем текущие ID для удаления отсутствующих пациентов
+      const currentIds = new Set(patients.map(p => p.id));
+      const existingCards = elements.patientsContainer.querySelectorAll('.patient-card');
       
-      if (remaining <= 0) {
-        box.addClass('timer-expired');
-        box.find('.status-indicator').addClass('status-inactive');
-        box.find('.timer-value').text('0');
-      } else if (remaining <= 30) {
-        box.addClass('timer-critical');
-        box.find('.status-indicator').addClass('status-critical');
-      } else if (remaining <= 60) {
-        box.addClass('timer-warning');
-        box.find('.status-indicator').addClass('status-warning');
-      } else {
-        box.addClass('timer-normal');
-        box.find('.status-indicator').addClass('status-active');
+      // Удаляем карточки пациентов, которых больше нет
+      existingCards.forEach(card => {
+        const id = parseInt(card.dataset.id);
+        if (!currentIds.has(id)) {
+          card.remove();
+        }
+      });
+      
+      // Обновляем или создаем карточки
+      patients.forEach(patient => {
+        renderPatientCard(patient);
+      });
+      
+      // Сортируем по приоритету (красные сверху)
+      const container = elements.patientsContainer;
+      const cards = Array.from(container.querySelectorAll('.patient-card'));
+      
+      const priorityOrder = { 'red': 1, 'yellow': 2, 'purple': 3, 'green': 4 };
+      
+      cards.sort((a, b) => {
+        const aPriority = a.className.includes('priority-1') ? 1 : 
+                         a.className.includes('priority-2') ? 2 :
+                         a.className.includes('priority-3') ? 3 : 4;
+        const bPriority = b.className.includes('priority-1') ? 1 : 
+                         b.className.includes('priority-2') ? 2 :
+                         b.className.includes('priority-3') ? 3 : 4;
+        return aPriority - bPriority;
+      });
+      
+      // Переставляем карточки в правильном порядке
+      cards.forEach(card => container.appendChild(card));
+    }
+
+    // Подключение к SSE
+    function connectSSE() {
+      try {
+        if (eventSource) {
+          eventSource.close();
+        }
+        
+        eventSource = new EventSource(CONFIG.EVENT_SOURCE_URL);
+        
+
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const patients = JSON.parse(event.data);
+            patientsData = patients.reduce((acc, p) => {
+              acc[p.id] = p;
+              return acc;
+            }, {});
+            
+            // Добавляем максимальное время для каждого этапа
+            const maxTimes = { 1: 120, 2: 300, 3: 600 };
+            patients.forEach(p => {
+              p.max_time = maxTimes[p.step] || 120;
+            });
+            
+            renderAllPatients(patients);
+          } catch (e) {
+            console.error('Ошибка парсинга данных:', e);
+          }
+        };
+        
+
+        
+      } catch (e) {
+        console.error('Ошибка SSE:', e);
+        updateStatus('disconnected', 'Ошибка подключения');
+        setTimeout(connectSSE, 10000); // Повторная попытка через 10 сек
+      }
+    }
+
+    // Обновление статуса подключения
+    function updateStatus(status, text) {
+      elements.statusDot.className = `status-dot ${status}`;
+      elements.statusText.textContent = text;
+      elements.streamStatus.className = `stream-status ${status}`;
+      elements.streamStatusText.textContent = text;
+    }
+
+    // Анимация обновления времени
+    function updateTimers() {
+      const now = Date.now() / 1000;
+      const cards = elements.patientsContainer.querySelectorAll('.patient-card');
+      
+      cards.forEach(card => {
+        const timerDisplay = card.querySelector('.timer-display');
+        const timerBar = card.querySelector('.timer-progress-bar');
+        
+        // Получаем данные пациента
+        const patientId = parseInt(card.dataset.id);
+        const patient = patientsData[patientId];
+        
+        if (!patient || patient.time_remaining === undefined) return;
+        
+        // Обновляем оставшееся время
+        let timeRemaining = patient.time_remaining;
+        if (patient.timer_ends_at) {
+          timeRemaining = Math.max(0, Math.floor(patient.timer_ends_at - now));
+        }
+        
+        // Обновляем отображение
+        const timeClass = getTimeClass(timeRemaining);
+        timerDisplay.textContent = formatTime(timeRemaining);
+        timerDisplay.className = `timer-display ${timeClass}`;
+        timerBar.className = `timer-progress-bar ${timeClass}`;
+        
+        // Обновляем прогресс-бар
+        if (patient.max_time && patient.max_time > 0) {
+          const percent = Math.max(0, (timeRemaining / patient.max_time) * 100);
+          timerBar.style.width = `${percent}%`;
+        }
+      });
+    }
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', () => {
+      // Обновляем часы каждую секунду
+      updateClock();
+      setInterval(updateClock, 1000);
+      
+      // Обновляем таймеры каждую секунду
+      setInterval(updateTimers, 1000);
+      
+      // Подключаемся к SSE
+      connectSSE();
+      
+      // Фокус на окне для предотвращения сна экрана
+      window.addEventListener('focus', () => {
+        if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+          connectSSE();
+        }
+      });
+      
+      // Обработка видимости страницы
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && (!eventSource || eventSource.readyState === EventSource.CLOSED)) {
+          connectSSE();
+        }
+      });
+    });
+
+    // Автоматическое обновление при потере соединения
+    window.addEventListener('online', () => {
+      if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+        connectSSE();
       }
     });
-  }
-  
-  // Обновление текущего времени
-  function updateCurrentTime() {
-    const now = new Date();
-    const timeString = now.toLocaleDateString('ru-RU') + ' ' + 
-                      now.toLocaleTimeString('ru-RU', { 
-                        hour: '2-digit', 
-                        minute: '2-digit', 
-                        second: '2-digit' 
-                      });
-    $('#current-time').text(timeString);
-  }
-  
-  // Инициализация
-  connectSSE();
-  updateMonitor();
-  setInterval(updateAllTimers, 1000);
-  setInterval(updateCurrentTime, 1000);
   </script>
 </body>
 </html>

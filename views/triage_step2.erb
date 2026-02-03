@@ -22,7 +22,7 @@
           <div class="col-md-4">
             <strong>Баллы сознания:</strong><br>
             <span class="badge <%= @triage.total_consciousness_score <= 8 ? 'bg-danger' : 'bg-success' %>">
-              <%= @triage.total_consciousness_score %>/15
+              <%= @triage.total_consciousness_score %>/14
             </span>
           </div>
         </div>
@@ -62,9 +62,9 @@
               <label class="form-check-label" for="position_<%= position.parameterize %>">
                 <%= position %>
                 <% if position == 'активное положение, свободное перемещение' %>
-                  <span class="badge bg-success ms-2">Без ограничений</span>
+
                 <% else %>
-                  <span class="badge bg-warning ms-2">Ограничения</span>
+
                 <% end %>
               </label>
             </div>
@@ -95,10 +95,7 @@
           </div>
         <% end %>
       </div>
-      <div class="alert alert-info mt-3">
-        <i class="bi bi-info-circle"></i> 
-        <strong>Внимание:</strong> Если выбран любой пункт кроме "активное положение" ИЛИ отмечен хотя бы один критерий неотложности - приоритет становится <span class="badge bg-warning">ЖЕЛТЫМ</span>
-      </div>
+
     </div>
   </div>
 
@@ -123,10 +120,7 @@
           </div>
         <% end %>
       </div>
-      <div class="alert alert-purple mt-3" style="background-color: #6f42c1; color: white;">
-        <i class="bi bi-info-circle"></i> 
-        <strong>Внимание:</strong> Если выбрано "активное положение", нет критериев неотложности, но есть признаки инфекции - приоритет становится <span class="badge" style="background-color: #6f42c1">ФИОЛЕТОВЫМ</span>
-      </div>
+
     </div>
   </div>
   
