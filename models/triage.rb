@@ -218,6 +218,7 @@ class Triage < ActiveRecord::Base
     
     case step
     when 1
+      self.step1_completed_at = Time.now
       if check_step1_priority
         save
         return 'priority_assigned'
@@ -228,6 +229,7 @@ class Triage < ActiveRecord::Base
         return 'step_advanced'
       end
     when 2
+      self.step2_completed_at = Time.now
       if check_step2_priority
         save
         return 'priority_assigned'
@@ -238,6 +240,7 @@ class Triage < ActiveRecord::Base
         return 'step_advanced'
       end
     when 3
+      self.step3_completed_at = Time.now
       check_step3_priority
       save
       return 'priority_assigned'

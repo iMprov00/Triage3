@@ -7,7 +7,21 @@ require 'sprockets'
 require 'sprockets-helpers'
 require 'bootstrap'
 require 'securerandom'
-require 'eventmachine'
+
+# Часовой пояс Новосибирска (UTC+7)
+NOVOSIBIRSK_OFFSET = 7 * 3600  # 7 часов в секундах
+
+# Хелпер для получения текущего времени в Новосибирске
+def novosibirsk_now
+  Time.now.utc + NOVOSIBIRSK_OFFSET
+end
+
+# Хелпер для форматирования времени в Новосибирске
+def format_time_nsk(time, format = "%d.%m.%Y %H:%M:%S")
+  return nil unless time
+  (time.utc + NOVOSIBIRSK_OFFSET).strftime(format)
+end
+
 # Конфигурация
 configure do
   set :database, {adapter: 'sqlite3', database: 'hospital.db'}
@@ -32,6 +46,14 @@ end
 
 register Sinatra::Flash
 helpers Sprockets::Helpers
+
+# Хелперы для представлений
+helpers do
+  def format_nsk(time, format = "%d.%m.%Y %H:%M:%S")
+    return nil unless time
+    (time.utc + NOVOSIBIRSK_OFFSET).strftime(format)
+  end
+end
 
 # Хранилище для SSE соединений
 TRIAGE_CONNECTIONS = []
@@ -60,11 +82,11 @@ get '/api/patients_list' do
       id: p.id,
       full_name: p.full_name,
       admission_date: p.admission_date.to_s,
-      admission_time: p.admission_time.to_s,
+      admission_time: p.admission_time_formatted,
       performer_name: p.performer_name,
       appeal_type: p.appeal_type,
       pregnancy_display: p.pregnancy_display,
-      created_at: p.created_at.strftime("%d.%m.%Y %H:%M"),
+      created_at: format_time_nsk(p.created_at, "%d.%m.%Y %H:%M"),
       triage: t ? {
         step: t.step,
         priority: t.priority,
@@ -74,7 +96,10 @@ get '/api/patients_list' do
         time_remaining: t.time_remaining,
         timer_ends_at: t.timer_ends_at,
         expired: t.expired?,
-        max_time: max_time
+        max_time: max_time,
+        step1_data: t.step1_data || {},
+        step2_data: t.step2_data || {},
+        step3_data: t.step3_data || {}
       } : nil
     }
   end.to_json
@@ -83,6 +108,10 @@ end
 # Список пациентов
 get '/patients' do
   base = Patient.includes(:triage)
+  
+  # Автоматически устанавливаем текущую дату, если не указана
+  params[:admission_date] ||= Date.today.to_s
+  
   base = base.search(params[:search]) if params[:search].present?
   base = apply_filters(base, params)
 
@@ -101,10 +130,9 @@ end
 
 # Вспомогательный метод для фильтрации
 def apply_filters(patients, params)
-  # Фильтр по дате поступления (одна дата вместо диапазона)
-  if params[:admission_date].present?
-    patients = patients.where(admission_date: params[:admission_date])
-  end
+  # Фильтр по дате поступления (обязательный)
+  admission_date = params[:admission_date].presence || Date.today.to_s
+  patients = patients.where(admission_date: admission_date)
   
   # Фильтр по виду обращения
   if params[:appeal_type].present? && params[:appeal_type] != 'all'
@@ -130,8 +158,14 @@ def apply_filters(patients, params)
     patients = patients.where("performer_name LIKE ?", "%#{params[:performer_filter]}%")
   end
   
+  # НОВЫЙ ФИЛЬТР: только незавершенные триажи
+  if params[:only_active] == '1'
+    patients = patients.joins(:triage).where(triages: { completed_at: nil })
+  end
+  
   patients
 end
+
 # Создание нового пациента
 get '/patients/new' do
   erb :patients_new
@@ -198,7 +232,7 @@ end
 
 # Страница мониторинга (для телевизора)
 get '/monitor' do
-  erb :monitor
+  erb :monitor, layout: false
 end
 
 # API для получения таймера пациента
@@ -434,6 +468,19 @@ get '/patients/:id/triage/actions' do
   end
   
   erb :triage_actions
+end
+
+# Просмотр всех данных триажа
+get '/patients/:id/triage/view' do
+  @patient = Patient.find(params[:id])
+  @triage = @patient.triage
+  
+  if @triage.nil?
+    flash[:error] = "Триаж не найден"
+    redirect "/patients"
+  end
+  
+  erb :triage_view
 end
 
 # API для получения данных мониторинга

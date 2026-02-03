@@ -31,7 +31,7 @@
                     <%= @triage.priority_name %>
                   </span>
                 </p>
-                <p><strong>Время завершения:</strong> <%= @triage.completed_at.strftime("%d.%m.%Y %H:%M:%S") %></p>
+                <p><strong>Время завершения:</strong> <%= format_nsk(@triage.completed_at) %></p>
               </div>
             </div>
           </div>
@@ -104,7 +104,7 @@
         
         <div class="mt-4 action-bar justify-content-center">
           <a href="/patients" class="btn btn-primary">К списку пациентов</a>
-          <a href="/patients/<%= @patient.id %>/triage" class="btn btn-secondary">Просмотр данных</a>
+          <a href="/patients/<%= @patient.id %>/triage/view" class="btn btn-secondary">Просмотр данных триажа</a>
         </div>
       </div>
     </div>

@@ -1,0 +1,261 @@
+<%# Просмотр данных триажа — все этапы %>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1">Данные триажа</h1>
+    <p class="text-muted mb-0"><%= @patient.full_name %> · ID: <%= @patient.id %></p>
+  </div>
+  <div class="action-bar">
+    <a href="/patients" class="btn btn-secondary">К списку пациентов</a>
+    <% if @triage.completed_at %>
+      <a href="/patients/<%= @patient.id %>/triage/actions" class="btn btn-primary">Действия по приоритету</a>
+    <% end %>
+  </div>
+</div>
+
+<%# Информация о пациенте %>
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header">
+    <span class="text-muted small text-uppercase fw-normal">Пациент</span>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Исполнитель:</strong><br>
+        <%= @patient.performer_name %>
+      </div>
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Дата поступления:</strong><br>
+        <%= @patient.admission_date %> <%= @patient.admission_time_formatted %>
+      </div>
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Вид обращения:</strong><br>
+        <%= @patient.appeal_type %>
+      </div>
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Срок беременности:</strong><br>
+        <%= @patient.pregnancy_display %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# Статус триажа %>
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+    <span class="text-muted small text-uppercase fw-normal">Статус триажа</span>
+    <% if @triage.completed_at %>
+      <span class="badge bg-success">Завершен</span>
+    <% else %>
+      <span class="badge bg-warning">В процессе</span>
+    <% end %>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Текущий этап:</strong><br>
+        Этап <%= @triage.step %>
+      </div>
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Приоритет:</strong><br>
+        <% if @triage.priority && @triage.priority != 'pending' %>
+          <% badge_class = case @triage.priority when 'red' then 'bg-danger' when 'yellow' then 'bg-warning' when 'purple' then 'bg-purple' when 'green' then 'bg-success' else 'bg-secondary' end %>
+          <span class="badge <%= badge_class %>"><%= @triage.priority_name %></span>
+        <% else %>
+          <span class="text-muted">Не определен</span>
+        <% end %>
+      </div>
+      <% if @triage.completed_at %>
+        <div class="col-6 col-md-3 mb-2">
+          <strong>Время завершения:</strong><br>
+          <%= format_nsk(@triage.completed_at) %>
+        </div>
+      <% end %>
+      <div class="col-6 col-md-3 mb-2">
+        <strong>Баллы сознания:</strong><br>
+        <span class="<%= @triage.total_consciousness_score <= 8 ? 'text-danger fw-bold' : '' %>">
+          <%= @triage.total_consciousness_score %>/15
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# Этап 1: Уровень сознания %>
+<% step1 = @triage.step_data(1) || {} %>
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+    <span class="text-muted small text-uppercase fw-normal">Этап 1 — Уровень сознания</span>
+    <div>
+      <% if @triage.step1_completed_at %>
+        <span class="text-muted small me-2"><%= format_nsk(@triage.step1_completed_at) %></span>
+      <% end %>
+      <% if step1.any? %>
+        <span class="badge bg-success">Заполнено</span>
+      <% else %>
+        <span class="badge bg-secondary">Не заполнено</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="card-body">
+    <% if step1.any? %>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <strong>Открывание глаз:</strong><br>
+          <%= step1['eye_opening'] || '—' %>
+          <% if @triage.eye_score > 0 %>
+            <span class="badge bg-secondary ms-1"><%= @triage.eye_score %> балл(ов)</span>
+          <% end %>
+        </div>
+        <div class="col-md-4 mb-3">
+          <strong>Речевые реакции:</strong><br>
+          <%= step1['verbal_response'] || '—' %>
+          <% if @triage.verbal_score > 0 %>
+            <span class="badge bg-secondary ms-1"><%= @triage.verbal_score %> балл(ов)</span>
+          <% end %>
+        </div>
+        <div class="col-md-4 mb-3">
+          <strong>Двигательные реакции:</strong><br>
+          <%= step1['motor_response'] || '—' %>
+          <% if @triage.motor_score > 0 %>
+            <span class="badge bg-secondary ms-1"><%= @triage.motor_score %> балл(ов)</span>
+          <% end %>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-3 mb-2">
+          <strong>Дыхание:</strong><br>
+          <%= step1['breathing'] == 'true' || step1['breathing'] == true ? 'Есть' : 'Нет/Не указано' %>
+        </div>
+        <div class="col-md-3 mb-2">
+          <strong>Сердцебиение:</strong><br>
+          <%= step1['heartbeat'] == 'true' || step1['heartbeat'] == true ? 'Есть' : 'Нет/Не указано' %>
+        </div>
+        <div class="col-md-3 mb-2">
+          <strong>Судороги:</strong><br>
+          <%= step1['seizures'] == 'true' || step1['seizures'] == true ? 'Да' : 'Нет' %>
+        </div>
+        <div class="col-md-3 mb-2">
+          <strong>Активное кровотечение:</strong><br>
+          <%= step1['active_bleeding'] == 'true' || step1['active_bleeding'] == true ? 'Да' : 'Нет' %>
+        </div>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">Данные этапа 1 отсутствуют</p>
+    <% end %>
+  </div>
+</div>
+
+<%# Этап 2: Двигательные функции и опрос %>
+<% step2 = @triage.step_data(2) || {} %>
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+    <span class="text-muted small text-uppercase fw-normal">Этап 2 — Двигательные функции и опрос</span>
+    <div>
+      <% if @triage.step2_completed_at %>
+        <span class="text-muted small me-2"><%= format_nsk(@triage.step2_completed_at) %></span>
+      <% end %>
+      <% if step2.any? %>
+        <span class="badge bg-success">Заполнено</span>
+      <% else %>
+        <span class="badge bg-secondary">Не заполнено</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="card-body">
+    <% if step2.any? %>
+      <div class="mb-3">
+        <strong>Положение пациента:</strong><br>
+        <%= step2['position'] || '—' %>
+      </div>
+      
+      <% urgency = step2['urgency_criteria'] || [] %>
+      <% urgency_active = urgency.is_a?(Array) ? urgency.each_with_index.select { |v, i| v == 'true' }.map { |v, i| Triage::URGENCY_CRITERIA[i] }.compact : [] %>
+      <div class="mb-3">
+        <strong>Критерии неотложности:</strong><br>
+        <% if urgency_active.any? %>
+          <ul class="mb-0">
+            <% urgency_active.each do |item| %>
+              <li><%= item %></li>
+            <% end %>
+          </ul>
+        <% else %>
+          <span class="text-muted">Нет</span>
+        <% end %>
+      </div>
+      
+      <% infection = step2['infection_signs'] || [] %>
+      <% infection_active = infection.is_a?(Array) ? infection.each_with_index.select { |v, i| v == 'true' }.map { |v, i| Triage::INFECTION_SIGNS[i] }.compact : [] %>
+      <div class="mb-0">
+        <strong>Признаки инфекционных заболеваний:</strong><br>
+        <% if infection_active.any? %>
+          <ul class="mb-0">
+            <% infection_active.each do |item| %>
+              <li><%= item %></li>
+            <% end %>
+          </ul>
+        <% else %>
+          <span class="text-muted">Нет</span>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">Данные этапа 2 отсутствуют</p>
+    <% end %>
+  </div>
+</div>
+
+<%# Этап 3: Витальные функции %>
+<% step3 = @triage.step_data(3) || {} %>
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+    <span class="text-muted small text-uppercase fw-normal">Этап 3 — Витальные функции</span>
+    <div>
+      <% if @triage.step3_completed_at %>
+        <span class="text-muted small me-2"><%= format_nsk(@triage.step3_completed_at) %></span>
+      <% end %>
+      <% if step3.any? %>
+        <span class="badge bg-success">Заполнено</span>
+      <% else %>
+        <span class="badge bg-secondary">Не заполнено</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="card-body">
+    <% if step3.any? %>
+      <div class="row">
+        <div class="col-6 col-md-4 mb-3">
+          <strong>ЧДД (дыхание в минуту):</strong><br>
+          <%= step3['respiratory_rate'] || '—' %>
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+          <strong>Сатурация SpO2 (%):</strong><br>
+          <%= step3['saturation'] || '—' %>
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+          <strong>АД систолическое:</strong><br>
+          <%= step3['systolic_bp'] || '—' %> мм рт.ст.
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+          <strong>АД диастолическое:</strong><br>
+          <%= step3['diastolic_bp'] || '—' %> мм рт.ст.
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+          <strong>Пульс (ЧСС):</strong><br>
+          <%= step3['heart_rate'] || '—' %> уд/мин
+        </div>
+        <div class="col-6 col-md-4 mb-3">
+          <strong>Температура:</strong><br>
+          <%= step3['temperature'] || '—' %> °C
+        </div>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">Данные этапа 3 отсутствуют</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="action-bar justify-content-center mt-4">
+  <a href="/patients" class="btn btn-secondary">К списку пациентов</a>
+  <% if @triage.completed_at %>
+    <a href="/patients/<%= @patient.id %>/triage/actions" class="btn btn-primary">Действия по приоритету</a>
+  <% end %>
+</div>

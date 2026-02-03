@@ -82,6 +82,11 @@ class Patient < ActiveRecord::Base
     end
   end
   
+  # Форматированное время поступления (только HH:MM)
+  def admission_time_formatted
+    admission_time&.strftime("%H:%M")
+  end
+  
   private
   
   def create_triage_entry
