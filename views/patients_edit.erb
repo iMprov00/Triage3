@@ -32,10 +32,44 @@
                    value="<%= @patient.admission_time.strftime('%H:%M') rescue '' %>" required>
           </div>
           
-          <div class="col-md-4">
+          <div class="col-12 col-md-6">
             <label class="form-label">Дата рождения*</label>
-            <input type="date" name="birth_date" class="form-control" 
-                   value="<%= @patient.birth_date %>" required>
+            <div class="row g-2">
+              <div class="col-4">
+                <select name="birth_day" class="form-select" id="birth_day" required>
+                  <option value="">День</option>
+                  <% (1..31).each do |day| %>
+                    <option value="<%= day %>"><%= day %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-4">
+                <select name="birth_month" class="form-select" id="birth_month" required>
+                  <option value="">Месяц</option>
+                  <% 
+                    months = [
+                      ['Январь', 1], ['Февраль', 2], ['Март', 3], ['Апрель', 4],
+                      ['Май', 5], ['Июнь', 6], ['Июль', 7], ['Август', 8],
+                      ['Сентябрь', 9], ['Октябрь', 10], ['Ноябрь', 11], ['Декабрь', 12]
+                    ]
+                  %>
+                  <% months.each do |name, value| %>
+                    <option value="<%= value %>"><%= name %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="col-4">
+                <select name="birth_year" class="form-select" id="birth_year" required>
+                  <option value="">Год</option>
+                  <% current_year = Date.today.year %>
+                  <% (current_year - 120..current_year).reverse_each do |year| %>
+                    <option value="<%= year %>"><%= year %></option>
+                  <% end %>
+                </select>
+              </div>
+            </div>
+            <!-- Скрытое поле для отправки даты в формате YYYY-MM-DD -->
+            <input type="hidden" name="birth_date" id="birth_date_hidden">
           </div>
           
           <div class="col-md-4">
@@ -102,6 +136,38 @@
 </div>
 
 <script>
+
+// Объединяем день, месяц и год в одну дату
+function updateBirthDate() {
+  const day = document.getElementById('birth_day').value;
+  const month = document.getElementById('birth_month').value;
+  const year = document.getElementById('birth_year').value;
+  
+  if (day && month && year) {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    document.getElementById('birth_date_hidden').value = dateStr;
+  }
+}
+
+// Для редактирования: разбираем существующую дату
+<% if @patient %>
+  document.addEventListener('DOMContentLoaded', function() {
+    const birthDate = '<%= @patient.birth_date %>';
+    if (birthDate) {
+      const date = new Date(birthDate);
+      document.getElementById('birth_day').value = date.getDate();
+      document.getElementById('birth_month').value = date.getMonth() + 1;
+      document.getElementById('birth_year').value = date.getFullYear();
+      updateBirthDate();
+    }
+  });
+<% end %>
+
+// Слушаем изменения в селектах
+['birth_day', 'birth_month', 'birth_year'].forEach(id => {
+  document.getElementById(id).addEventListener('change', updateBirthDate);
+});
+  
 // Показать/скрыть поле срока беременности
 document.getElementById('pregnancy_unknown').addEventListener('change', function() {
   const container = document.getElementById('pregnancy_weeks_container');

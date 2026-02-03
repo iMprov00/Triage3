@@ -81,15 +81,6 @@ body {
   letter-spacing: -0.02em;
 }
 
-.monitor-title .badge {
-  font-size: 1rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  background: var(--m-surface-light);
-  color: var(--m-text);
-  border-radius: 20px;
-}
-
 .monitor-meta {
   display: flex;
   flex-wrap: wrap;

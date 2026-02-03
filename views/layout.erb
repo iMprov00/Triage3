@@ -9,11 +9,14 @@
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <%# Верхняя полоса: название и ссылка на монитор ТВ %>
+  <%# Верхняя полоса: навигация %>
   <header class="app-header">
     <div class="app-container container d-flex align-items-center justify-content-between">
-      <a href="/patients" class="app-logo">Триаж</a>
-      <a href="/monitor" target="_blank" class="app-nav-link"><i class="bi bi-tv"></i> Монитор ТВ</a>
+      <div class="d-flex align-items-center gap-3">
+        <a href="/patients" class="app-logo">Триаж</a>
+        <a href="/patients" class="app-nav-btn"><i class="bi bi-people"></i> К списку пациентов</a>
+      </div>
+      <a href="/monitor" target="_blank" class="app-nav-btn"><i class="bi bi-tv"></i> Монитор ТВ</a>
     </div>
   </header>
 

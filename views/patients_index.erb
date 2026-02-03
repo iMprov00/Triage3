@@ -450,64 +450,102 @@
 
 <%# Модальное окно статистики %>
 <div class="modal fade" id="statsModal" tabindex="-1" aria-labelledby="statsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="statsModalLabel">
           <i class="bi bi-graph-up me-2"></i>Статистика триажа
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <%# Подсчёт статистики для модального окна %>
         <%
+          # Общие данные
           total_patients = @patients.size
-          active_triages = @patients.count { |p| p.triage&.timer_active }
-          completed_triages = @patients.count { |p| p.triage&.completed_at }
           patients_with_triage = @patients.count { |p| p.triage }
+          
+          # По статусам триажа
+          active_triages = @patients.count { |p| p.triage&.timer_active }
+          in_actions = @patients.count { |p| p.triage&.completed_at && !p.triage&.actions_completed? }
+          completed_all = @patients.count { |p| p.triage&.actions_completed? }
+          completed_triages = @patients.count { |p| p.triage&.completed_at }
+          
+          # По этапам (только активные триажи)
+          step_stats = { 1 => 0, 2 => 0, 3 => 0 }
+          @patients.each do |p|
+            next unless p.triage&.timer_active
+            step_stats[p.triage.step] = (step_stats[p.triage.step] || 0) + 1
+          end
+          
+          # По приоритетам
           priority_stats = {}
           Triage::PRIORITIES.each_key { |k| priority_stats[k] = 0 }
           @patients.each do |p|
-            next unless p.triage&.priority
+            next unless p.triage&.priority && p.triage.priority != 'pending'
             pr = p.triage.priority
             priority_stats[pr] = (priority_stats[pr] || 0) + 1
           end
+          
+          # Статистика за сегодня
+          today = Date.today
+          today_patients = @patients.select { |p| p.admission_date == today }
+          today_total = today_patients.size
+          today_completed = today_patients.count { |p| p.triage&.completed_at }
+          today_in_progress = today_patients.count { |p| p.triage&.timer_active || (p.triage&.completed_at && !p.triage&.actions_completed?) }
+          
+          # Приоритеты за сегодня
+          today_priority_stats = {}
+          Triage::PRIORITIES.each_key { |k| today_priority_stats[k] = 0 }
+          today_patients.each do |p|
+            next unless p.triage&.priority && p.triage.priority != 'pending'
+            pr = p.triage.priority
+            today_priority_stats[pr] = (today_priority_stats[pr] || 0) + 1
+          end
         %>
         
-        <div class="row g-4">
-          <!-- Общая статистика -->
-          <div class="col-md-6">
-            <div class="app-card card h-100">
-              <div class="app-card-header card-header">
-                <span class="text-muted small text-uppercase fw-normal">Общая статистика</span>
+        <div class="row g-3">
+          <!-- Статистика за сегодня -->
+          <div class="col-12">
+            <div class="alert alert-primary mb-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div>
+                <i class="bi bi-calendar-check me-2"></i>
+                <strong>Сегодня (<%= today.strftime('%d.%m.%Y') %>):</strong>
+                <%= today_total %> пациентов
               </div>
-              <div class="card-body">
-                <div class="list-group list-group-flush">
-                  <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <div class="d-flex gap-3 flex-wrap">
+                <span><i class="bi bi-hourglass-split text-warning"></i> В работе: <strong><%= today_in_progress %></strong></span>
+                <span><i class="bi bi-check-circle text-success"></i> Завершено: <strong><%= today_completed %></strong></span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Общая статистика -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+              <div class="card-header py-2">
+                <span class="text-muted small text-uppercase fw-semibold">Общая статистика</span>
+              </div>
+              <div class="card-body py-2">
+                <div class="list-group list-group-flush small">
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
                     <div>
                       <i class="bi bi-people text-primary me-2"></i>
-                      <span>Всего пациентов</span>
+                      Всего пациентов
                     </div>
                     <span class="badge bg-primary rounded-pill"><%= total_patients %></span>
                   </div>
-                  <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
                     <div>
-                      <i class="bi bi-clock text-warning me-2"></i>
-                      <span>Активных триажей</span>
+                      <i class="bi bi-clipboard2-pulse text-info me-2"></i>
+                      С триажем
                     </div>
-                    <span class="badge bg-warning rounded-pill"><%= active_triages %></span>
+                    <span class="badge bg-info rounded-pill"><%= patients_with_triage %></span>
                   </div>
-                  <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                    <div>
-                      <i class="bi bi-check-circle text-success me-2"></i>
-                      <span>Завершенных триажей</span>
-                    </div>
-                    <span class="badge bg-success rounded-pill"><%= completed_triages %></span>
-                  </div>
-                  <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
                     <div>
                       <i class="bi bi-person-x text-secondary me-2"></i>
-                      <span>Без триажа</span>
+                      Без триажа
                     </div>
                     <span class="badge bg-secondary rounded-pill"><%= total_patients - patients_with_triage %></span>
                   </div>
@@ -516,30 +554,143 @@
             </div>
           </div>
           
-          <!-- Распределение по приоритетам -->
-          <div class="col-md-6">
-            <div class="app-card card h-100">
-              <div class="app-card-header card-header">
-                <span class="text-muted small text-uppercase fw-normal">Распределение по приоритетам</span>
+          <!-- Статус триажей -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+              <div class="card-header py-2">
+                <span class="text-muted small text-uppercase fw-semibold">Статус триажей</span>
               </div>
-              <div class="card-body">
-                <div class="list-group list-group-flush">
+              <div class="card-body py-2">
+                <div class="list-group list-group-flush small">
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <i class="bi bi-stopwatch text-warning me-2"></i>
+                      На этапах триажа
+                    </div>
+                    <span class="badge bg-warning text-dark rounded-pill"><%= active_triages %></span>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <i class="bi bi-list-check text-primary me-2"></i>
+                      Выполняют действия
+                    </div>
+                    <span class="badge bg-primary rounded-pill"><%= in_actions %></span>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <i class="bi bi-check-circle text-success me-2"></i>
+                      Полностью завершено
+                    </div>
+                    <span class="badge bg-success rounded-pill"><%= completed_all %></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Активные по этапам -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+              <div class="card-header py-2">
+                <span class="text-muted small text-uppercase fw-semibold">Активные по этапам</span>
+              </div>
+              <div class="card-body py-2">
+                <div class="list-group list-group-flush small">
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <span class="badge bg-primary me-2">1</span>
+                      Этап 1 — Сознание
+                    </div>
+                    <span class="badge bg-secondary rounded-pill"><%= step_stats[1] %></span>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <span class="badge bg-warning text-dark me-2">2</span>
+                      Этап 2 — Осмотр
+                    </div>
+                    <span class="badge bg-secondary rounded-pill"><%= step_stats[2] %></span>
+                  </div>
+                  <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                    <div>
+                      <span class="badge bg-success me-2">3</span>
+                      Этап 3 — Витальные
+                    </div>
+                    <span class="badge bg-secondary rounded-pill"><%= step_stats[3] %></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Распределение по приоритетам (всего) -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header py-2">
+                <span class="text-muted small text-uppercase fw-semibold">Приоритеты (всего)</span>
+              </div>
+              <div class="card-body py-2">
+                <div class="list-group list-group-flush small">
                   <% Triage::PRIORITIES.each do |key, data| %>
                     <%
-                      badge_color = case key
-                        when 'red' then 'badge-priority-1'
-                        when 'yellow' then 'badge-priority-2'
-                        when 'purple' then 'badge-priority-3'
-                        when 'green' then 'badge-priority-4'
-                        else 'bg-secondary'
+                      priority_color = case key
+                        when 'red' then '#dc2626'
+                        when 'yellow' then '#f59e0b'
+                        when 'purple' then '#a855f7'
+                        when 'green' then '#10b981'
+                        else '#6b7280'
                       end
+                      count = priority_stats[key]
+                      percent = completed_triages > 0 ? (count.to_f / completed_triages * 100).round(1) : 0
                     %>
-                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-                      <div class="d-flex align-items-center">
-                        <span class="badge <%= badge_color %> me-2" style="width: 12px; height: 12px; padding: 0;">&nbsp;</span>
-                        <%= data[:name] %>
+                    <div class="list-group-item px-0 py-2">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex align-items-center">
+                          <span class="me-2" style="width: 12px; height: 12px; border-radius: 50%; background: <%= priority_color %>; display: inline-block;"></span>
+                          <%= data[:name] %>
+                        </div>
+                        <span class="fw-semibold"><%= count %></span>
                       </div>
-                      <span class="badge bg-secondary rounded-pill"><%= priority_stats[key] %></span>
+                      <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" style="width: <%= percent %>%; background: <%= priority_color %>;"></div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Приоритеты за сегодня -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header py-2">
+                <span class="text-muted small text-uppercase fw-semibold">Приоритеты (сегодня)</span>
+              </div>
+              <div class="card-body py-2">
+                <div class="list-group list-group-flush small">
+                  <% Triage::PRIORITIES.each do |key, data| %>
+                    <%
+                      priority_color = case key
+                        when 'red' then '#dc2626'
+                        when 'yellow' then '#f59e0b'
+                        when 'purple' then '#a855f7'
+                        when 'green' then '#10b981'
+                        else '#6b7280'
+                      end
+                      count = today_priority_stats[key]
+                      percent = today_completed > 0 ? (count.to_f / today_completed * 100).round(1) : 0
+                    %>
+                    <div class="list-group-item px-0 py-2">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex align-items-center">
+                          <span class="me-2" style="width: 12px; height: 12px; border-radius: 50%; background: <%= priority_color %>; display: inline-block;"></span>
+                          <%= data[:name] %>
+                        </div>
+                        <span class="fw-semibold"><%= count %></span>
+                      </div>
+                      <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" style="width: <%= percent %>%; background: <%= priority_color %>;"></div>
+                      </div>
                     </div>
                   <% end %>
                 </div>
