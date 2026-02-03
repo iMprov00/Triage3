@@ -27,17 +27,40 @@ class Triage < ActiveRecord::Base
   # Действия для красного приоритета (в порядке выполнения)
   RED_PRIORITY_ACTIONS = [
     { key: 'emergency_button', text: 'Нажата кнопка экстренного вызова' },
-    { key: 'brigade_called', text: 'Вызвана бригада экстренной помощи', starts_timer: true },
+    { key: 'brigade_called', text: 'Вызвана бригада экстренной помощи', starts_timer: true, timer_minutes: 12 },
     { key: 'patient_prepared', text: 'Пациентка уложена на каталку, твердую поверхность и снята верхняя одежда' },
     { key: 'help_provided', text: 'Оказана помощь по алгоритму до прибытия бригады' },
     { key: 'delivered_to_or', text: 'Пациентка доставлена в операционную', final: true }
   ].freeze
   
+  # Действия для желтого приоритета
+  YELLOW_PRIORITY_ACTIONS = [
+    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
+    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
+    { key: 'clothes_accepted', text: 'Принята верхняя одежда и оформлена вещевая квитанция' },
+    { key: 'nurse_called', text: 'Вызвана младшая медсестра триажной палаты', starts_timer: true, timer_minutes: 12 },
+    { key: 'delivered_to_triage', text: 'Пациентка доставлена в триажную палату', final: true }
+  ].freeze
+  
+  # Действия для фиолетового приоритета
+  PURPLE_PRIORITY_ACTIONS = [
+    { key: 'nurse_called', text: 'Вызвана младшая медсестра боксированных палат', starts_timer: true, timer_minutes: 15 },
+    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
+    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
+    { key: 'delivered_to_box', text: 'Пациентка доставлена в боксированную палату', final: true }
+  ].freeze
+  
+  # Действия для зеленого приоритета
+  GREEN_PRIORITY_ACTIONS = [
+    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
+    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
+    { key: 'clothes_accepted', text: 'Принята верхняя одежда и оформлена вещевая квитанция' },
+    { key: 'route_explained', text: 'Объяснен дальнейший маршрут по "зеленому потоку"', starts_timer: true, timer_minutes: 15 },
+    { key: 'in_triage_room', text: 'Пациентка находится в триажной палате', final: true }
+  ].freeze
+  
   # Время на выполнение действий (5 минут)
   ACTIONS_TIME_LIMIT = 300
-  
-  # Время прибытия бригады (12 минут)
-  BRIGADE_TIME_LIMIT = 720
   
   # Баллы для глаз
   EYE_OPENING_SCORES = {
@@ -156,11 +179,9 @@ class Triage < ActiveRecord::Base
   end
   
   def check_step1_priority
-    # Правила для этапа 1
+    # Правила для этапа 1: баллы сознания <= 8 -> красный приоритет
     if total_consciousness_score <= 8
       self.priority = 'red'
-      self.completed_at = Time.now
-      self.timer_active = false
       return true
     end
     false
@@ -175,8 +196,6 @@ class Triage < ActiveRecord::Base
     if position != 'активное положение, свободное перемещение' || 
        (urgency_criteria.is_a?(Array) && urgency_criteria.any? { |c| c == 'true' })
       self.priority = 'yellow'
-      self.completed_at = Time.now
-      self.timer_active = false
       return true
     end
     
@@ -185,8 +204,6 @@ class Triage < ActiveRecord::Base
        (!urgency_criteria.is_a?(Array) || urgency_criteria.all? { |c| c != 'true' }) &&
        infection_signs.is_a?(Array) && infection_signs.any? { |c| c == 'true' }
       self.priority = 'purple'
-      self.completed_at = Time.now
-      self.timer_active = false
       return true
     end
     
@@ -224,9 +241,7 @@ class Triage < ActiveRecord::Base
       self.priority = 'green'
     end
     
-    self.completed_at = Time.now
-    self.timer_active = false
-    true
+    true # Этап 3 всегда определяет приоритет
   end
   
   def advance_step
@@ -236,6 +251,9 @@ class Triage < ActiveRecord::Base
     when 1
       self.step1_completed_at = Time.now
       if check_step1_priority
+        self.completed_at = Time.now
+        self.timer_active = false
+        self.actions_started_at = Time.now  # Автостарт действий
         save
         return 'priority_assigned'
       else
@@ -247,6 +265,9 @@ class Triage < ActiveRecord::Base
     when 2
       self.step2_completed_at = Time.now
       if check_step2_priority
+        self.completed_at = Time.now
+        self.timer_active = false
+        self.actions_started_at = Time.now  # Автостарт действий
         save
         return 'priority_assigned'
       else
@@ -258,6 +279,9 @@ class Triage < ActiveRecord::Base
     when 3
       self.step3_completed_at = Time.now
       check_step3_priority
+      self.completed_at = Time.now
+      self.timer_active = false
+      self.actions_started_at = Time.now  # Автостарт действий
       save
       return 'priority_assigned'
     end
@@ -308,8 +332,9 @@ class Triage < ActiveRecord::Base
     
     actions_data[action_key] = Time.now.to_i
     
-    # Если отмечено "Вызвана бригада" — запускаем таймер бригады
-    if action_key == 'brigade_called' && !brigade_called_at
+    # Проверяем, запускает ли это действие таймер
+    action = priority_actions.find { |a| a[:key] == action_key }
+    if action && action[:starts_timer] && !brigade_called_at
       self.brigade_called_at = Time.now
     end
     
@@ -321,8 +346,9 @@ class Triage < ActiveRecord::Base
     self.actions_data ||= {}
     actions_data.delete(action_key)
     
-    # Если снята отметка "Вызвана бригада" — сбрасываем таймер
-    if action_key == 'brigade_called'
+    # Проверяем, был ли это таймер
+    action = priority_actions.find { |a| a[:key] == action_key }
+    if action && action[:starts_timer]
       self.brigade_called_at = nil
     end
     
@@ -345,7 +371,9 @@ class Triage < ActiveRecord::Base
   
   # Завершить все действия
   def complete_actions!
-    return unless can_complete_final_action? && action_completed?('delivered_to_or')
+    final_action = priority_actions.find { |a| a[:final] }
+    return false unless final_action
+    return false unless can_complete_final_action? && action_completed?(final_action[:key])
     update(actions_completed_at: Time.now)
   end
   
@@ -358,8 +386,21 @@ class Triage < ActiveRecord::Base
   def priority_actions
     case priority
     when 'red' then RED_PRIORITY_ACTIONS
+    when 'yellow' then YELLOW_PRIORITY_ACTIONS
+    when 'purple' then PURPLE_PRIORITY_ACTIONS
+    when 'green' then GREEN_PRIORITY_ACTIONS
     else []
     end
+  end
+  
+  # Получить финальное действие для приоритета
+  def final_action
+    priority_actions.find { |a| a[:final] }
+  end
+  
+  # Получить действие с таймером
+  def timer_action
+    priority_actions.find { |a| a[:starts_timer] }
   end
   
   # Оставшееся время на действия (5 минут)
@@ -380,16 +421,38 @@ class Triage < ActiveRecord::Base
     actions_started_at.to_i + ACTIONS_TIME_LIMIT
   end
   
-  # Оставшееся время до прибытия бригады (12 минут)
+  # Время таймера для текущего приоритета (в секундах)
+  def brigade_time_limit
+    action = timer_action
+    return 720 unless action # по умолчанию 12 минут
+    (action[:timer_minutes] || 12) * 60
+  end
+  
+  # Оставшееся время до прибытия бригады/медсестры
   def brigade_time_remaining
     return nil unless brigade_called_at
     elapsed = Time.now - brigade_called_at
-    [BRIGADE_TIME_LIMIT - elapsed.to_i, 0].max
+    [brigade_time_limit - elapsed.to_i, 0].max
   end
   
   # Время окончания таймера бригады (Unix timestamp)
   def brigade_timer_ends_at
     return nil unless brigade_called_at
-    brigade_called_at.to_i + BRIGADE_TIME_LIMIT
+    brigade_called_at.to_i + brigade_time_limit
+  end
+  
+  # Название таймера для UI
+  def brigade_timer_label
+    action = timer_action
+    return 'Время прибытия' unless action
+    
+    minutes = action[:timer_minutes] || 12
+    case priority
+    when 'red' then "Время прибытия бригады (#{minutes} мин)"
+    when 'yellow' then "Время прибытия медсестры (#{minutes} мин)"
+    when 'purple' then "Время прибытия медсестры (#{minutes} мин)"
+    when 'green' then "Время ожидания (#{minutes} мин)"
+    else "Таймер (#{minutes} мин)"
+    end
   end
 end

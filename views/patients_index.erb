@@ -321,8 +321,8 @@
                   <i class="bi bi-pencil"></i>
                 </a>
                 
-                <!-- Кнопки редактирования этапов (только если триаж не завершен) -->
-                <% if patient.triage && !patient.triage.completed_at %>
+                <!-- Кнопки редактирования этапов (пока действия не завершены) -->
+                <% if patient.triage && !patient.triage.actions_completed? %>
                   <% if patient.triage.step1_data.present? && patient.triage.step1_data.any? { |k,v| v.present? } %>
                     <a href="/patients/<%= patient.id %>/triage/edit_step/1" 
                        class="btn btn-sm btn-outline-info" title="Редактировать этап 1">
@@ -564,7 +564,7 @@ var lastPatientsHash = null; // Для предотвращения лишних
 function getPatientsHash(patients) {
   return patients.map(function(p) {
     var t = p.triage;
-    return p.id + ':' + (t ? t.step + ':' + t.priority + ':' + (t.completed_at ? '1' : '0') + ':' + (t.timer_active ? '1' : '0') : 'null');
+    return p.id + ':' + (t ? t.step + ':' + t.priority + ':' + (t.completed_at ? '1' : '0') + ':' + (t.timer_active ? '1' : '0') + ':' + (t.actions_completed_at ? '1' : '0') : 'null');
   }).join('|');
 }
 
@@ -761,8 +761,8 @@ function renderPatientsList(patients) {
       html += '<i class="bi bi-pencil"></i>';
       html += '</a>';
       
-      // Кнопки редактирования этапов (только если триаж не завершен)
-      if (t && !t.completed_at) {
+      // Кнопки редактирования этапов (пока действия не завершены)
+      if (t && !t.actions_completed_at) {
         // Проверяем наличие данных для этапов
         var hasStep1 = t.step1_data && Object.keys(t.step1_data).length > 0;
         var hasStep2 = t.step2_data && Object.keys(t.step2_data).length > 0;

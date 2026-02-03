@@ -197,104 +197,72 @@ body {
 }
 
 /* ========== КАРТОЧКА ПАЦИЕНТА ========== */
+/* ========== КАРТОЧКА ПАЦИЕНТА ========== */
 .patient-card {
   background: var(--m-surface);
-  border: 2px solid var(--m-border);
   border-radius: var(--m-border-radius);
-  padding: var(--m-card-padding);
+  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  border-left: 6px solid var(--m-primary);
 }
 
-.patient-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-  border-color: var(--m-primary);
-}
+.patient-card.priority-1 { border-left-color: var(--m-priority-1); }
+.patient-card.priority-2 { border-left-color: var(--m-priority-2); }
+.patient-card.priority-3 { border-left-color: var(--m-priority-3); }
+.patient-card.priority-4 { border-left-color: var(--m-priority-4); }
+.patient-card.priority-pending { border-left-color: var(--m-primary); }
 
-/* Полоска приоритета слева */
-.patient-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-}
-
-.patient-card.priority-1::before { background: var(--m-priority-1); }
-.patient-card.priority-2::before { background: var(--m-priority-2); }
-.patient-card.priority-3::before { background: var(--m-priority-3); }
-.patient-card.priority-4::before { background: var(--m-priority-4); }
-
-/* Заголовок карточки */
-.patient-header {
+/* Верхняя часть карточки */
+.card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.25rem;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.patient-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .patient-name {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--m-text-light);
-  margin: 0;
+  margin: 0 0 0.25rem 0;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.patient-id {
-  font-size: 1rem;
+.patient-meta {
+  font-size: 0.95rem;
   color: var(--m-text-muted);
-  background: var(--m-surface-light);
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+}
+
+.patient-meta .performer {
+  color: var(--m-text-light);
   font-weight: 500;
 }
 
-/* Информация о пациенте */
-.patient-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.info-item {
+/* Бейджи */
+.card-badges {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.info-label {
-  font-size: 0.9rem;
-  color: var(--m-text-muted);
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--m-text-light);
-}
-
-.info-value.highlight {
-  color: var(--m-primary);
-}
-
-/* Этап и приоритет */
-.patient-status {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.5rem;
+  align-items: flex-end;
 }
 
 .step-badge, .priority-badge {
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.9rem;
   border-radius: 20px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .step-badge {
@@ -311,31 +279,35 @@ body {
 }
 
 .priority-badge.priority-1 { background: var(--m-priority-1); }
-.priority-badge.priority-2 { background: var(--m-priority-2); }
+.priority-badge.priority-2 { background: var(--m-priority-2); color: #000; }
 .priority-badge.priority-3 { background: var(--m-priority-3); }
 .priority-badge.priority-4 { background: var(--m-priority-4); }
+.priority-badge.priority-pending { background: var(--m-primary); }
 
-/* ========== ТАЙМЕР ========== */
-.timer-section {
+/* ========== БЛОК ТАЙМЕРА ========== */
+.timer-block {
   background: var(--m-surface-light);
-  border-radius: var(--m-border-radius);
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  padding: 1rem;
 }
 
-.timer-label {
-  font-size: 1rem;
+.timer-header {
+  font-size: 0.85rem;
   color: var(--m-text-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   font-weight: 500;
+}
+
+.timer-header i {
+  margin-right: 0.3rem;
 }
 
 .timer-display {
   font-family: 'Courier New', monospace;
-  font-size: var(--m-font-size-xxlarge);
+  font-size: 2.8rem;
   font-weight: 700;
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   letter-spacing: 2px;
 }
 
@@ -345,9 +317,9 @@ body {
 .timer-display.expired { color: var(--m-text-muted); }
 
 .timer-progress {
-  height: 8px;
+  height: 6px;
   background: var(--m-border);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -361,25 +333,35 @@ body {
 .timer-progress-bar.critical { background: var(--m-priority-1); }
 .timer-progress-bar.expired { background: var(--m-text-muted); }
 
-/* ========== СТАТУС ПОТОКА ========== */
-.stream-status {
-  text-align: center;
-  padding: 1rem;
-  background: var(--m-surface);
-  border-radius: var(--m-border-radius);
-  border: 1px solid var(--m-border);
-  font-size: 1rem;
-  color: var(--m-text-muted);
+/* Ряд из двух таймеров для режима действий */
+.timers-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
-.stream-status.connected {
-  color: var(--m-primary);
-  border-color: var(--m-primary);
+.timers-row .timer-block {
+  padding: 0.75rem;
 }
 
-.stream-status.disconnected {
-  color: var(--m-priority-1);
-  border-color: var(--m-priority-1);
+.timers-row .timer-display {
+  font-size: 2rem;
+}
+
+/* Если только один таймер виден */
+.timers-row .timer-block.hidden + .timer-block,
+.timers-row .timer-block:only-child {
+  grid-column: 1 / -1;
+}
+
+/* Прогресс действий */
+.actions-progress-badge {
+  background: var(--m-surface-light);
+  color: var(--m-text);
+  padding: 0.35rem 0.7rem;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 /* ========== ПУСТОЙ ЭКРАН ========== */
@@ -459,6 +441,12 @@ body {
   animation: none !important;
 }
 
-/* Обновление app.css с новой цветовой схемой */
-/* Добавьте в :root app.css */
-/* Обновите только цвета приоритетов в app.css */
+/* ========== РЕЖИМ ДЕЙСТВИЙ ПРИОРИТЕТА ========== */
+.patient-card.action-mode {
+  border-left-width: 8px;
+}
+
+/* Скрытие элементов */
+.hidden {
+  display: none !important;
+}

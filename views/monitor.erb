@@ -29,35 +29,9 @@
         <span class="label">Пациентов:</span>
         <span class="value" id="patients-count">0</span>
       </div>
-      <div class="meta-item">
-        <span class="label">Статус:</span>
-        <div class="status-indicator">
-          <span class="status-dot connected" id="status-dot"></span>
-          <span id="status-text">Подключение...</span>
-        </div>
-      </div>
     </div>
   </header>
 
-  <!-- ЛЕГЕНДА ПРИОРИТЕТОВ -->
-  <div class="priority-legend">
-    <div class="legend-item">
-      <div class="legend-dot priority-1"></div>
-      <span>1 — Красный (Неотложный)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot priority-2"></div>
-      <span>2 — Желтый (Срочный)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot priority-3"></div>
-      <span>3 — Фиолетовый (Плановый)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot priority-4"></div>
-      <span>4 — Зеленый (Амбулаторный)</span>
-    </div>
-  </div>
 
   <!-- ОСНОВНОЙ КОНТЕНТ -->
   <main>
@@ -70,58 +44,66 @@
       <h3><i class="bi bi-people"></i> Нет активных пациентов</h3>
       <p>Ожидание поступления новых пациентов...</p>
     </div>
-
-    <!-- СТАТУС ПОТОКА ДАННЫХ -->
-    <div id="stream-status" class="stream-status">
-      <i class="bi bi-broadcast"></i> <span id="stream-status-text">Установка соединения...</span>
-    </div>
   </main>
 
-  <!-- ФУТЕР -->
-  <footer class="monitor-footer">
-    <div>
-      <span>Монитор триажа • Система в реальном времени • </span>
-      <span id="last-update">Обновлено: --:--:--</span>
-    </div>
-  </footer>
-
-  <!-- ШАБЛОН КАРТОЧКИ ПАЦИЕНТА -->
+  <!-- ШАБЛОН КАРТОЧКИ ПАЦИЕНТА (ЭТАПЫ ТРИАЖА) -->
   <template id="patient-card-template">
     <div class="patient-card" data-id="">
-      <div class="patient-header">
-        <h2 class="patient-name"></h2>
-        <span class="patient-id"></span>
-      </div>
-      
-      <div class="patient-info-grid">
-        <div class="info-item">
-          <span class="info-label"><i class="bi bi-person-badge"></i> Исполнитель:</span>
-          <span class="info-value performer"></span>
+      <div class="card-top">
+        <div class="patient-main">
+          <h2 class="patient-name"></h2>
+          <div class="patient-meta">
+            <span class="performer"></span> • <span class="admission-time"></span>
+          </div>
         </div>
-        <div class="info-item">
-          <span class="info-label"><i class="bi bi-clipboard"></i> Вид обращения:</span>
-          <span class="info-value appeal"></span>
-        </div>
-        <div class="info-item">
-          <span class="info-label"><i class="bi bi-clock-history"></i> Поступил:</span>
-          <span class="info-value admission-time"></span>
-        </div>
-        <div class="info-item">
-          <span class="info-label"><i class="bi bi-heart-pulse"></i> Сознание:</span>
-          <span class="info-value highlight consciousness"></span>
-        </div>
-      </div>
-      
-      <div class="patient-status">
         <span class="step-badge"></span>
-        <span class="priority-badge"></span>
       </div>
       
-      <div class="timer-section">
-        <div class="timer-label">Таймер этапа:</div>
+      <div class="timer-block">
         <div class="timer-display normal"></div>
         <div class="timer-progress">
           <div class="timer-progress-bar normal" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ШАБЛОН КАРТОЧКИ ПАЦИЕНТА (ДЕЙСТВИЯ ПРИОРИТЕТА) -->
+  <template id="patient-action-card-template">
+    <div class="patient-card action-mode" data-id="">
+      <div class="card-top">
+        <div class="patient-main">
+          <h2 class="patient-name"></h2>
+          <div class="patient-meta">
+            <span class="performer"></span> • <span class="admission-time"></span>
+          </div>
+        </div>
+        <div class="card-badges">
+          <span class="priority-badge"></span>
+          <span class="actions-progress-badge"></span>
+        </div>
+      </div>
+      
+      <!-- Два таймера рядом -->
+      <div class="timers-row">
+        <div class="timer-block actions-timer">
+          <div class="timer-header">
+            <i class="bi bi-stopwatch"></i> На действия
+          </div>
+          <div class="timer-display normal actions-time"></div>
+          <div class="timer-progress">
+            <div class="timer-progress-bar normal actions-bar" style="width: 100%"></div>
+          </div>
+        </div>
+        
+        <div class="timer-block brigade-timer hidden">
+          <div class="timer-header brigade-label">
+            <i class="bi bi-truck"></i> Прибытие
+          </div>
+          <div class="timer-display normal brigade-time"></div>
+          <div class="timer-progress">
+            <div class="timer-progress-bar normal brigade-bar" style="width: 100%"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -147,12 +129,8 @@
       noPatients: document.getElementById('no-patients'),
       patientsCount: document.getElementById('patients-count'),
       currentTime: document.getElementById('current-time'),
-      lastUpdate: document.getElementById('last-update'),
-      statusDot: document.getElementById('status-dot'),
-      statusText: document.getElementById('status-text'),
-      streamStatus: document.getElementById('stream-status'),
-      streamStatusText: document.getElementById('stream-status-text'),
-      template: document.getElementById('patient-card-template')
+      template: document.getElementById('patient-card-template'),
+      actionTemplate: document.getElementById('patient-action-card-template')
     };
 
     // Вспомогательные функции
@@ -171,7 +149,14 @@
     }
 
     function getPriorityClass(priority) {
-      return `priority-${priority}`;
+      const priorityMap = {
+        'red': 'priority-1',
+        'yellow': 'priority-2',
+        'purple': 'priority-3',
+        'green': 'priority-4',
+        'pending': 'priority-pending'
+      };
+      return priorityMap[priority] || `priority-${priority}`;
     }
 
     function getPriorityText(priority) {
@@ -179,18 +164,14 @@
         'red': '1 — Красный',
         'yellow': '2 — Желтый',
         'purple': '3 — Фиолетовый',
-        'green': '4 — Зеленый'
+        'green': '4 — Зеленый',
+        'pending': 'Определяется...'
       };
       return texts[priority] || priority;
     }
 
     function getStepText(step) {
-      const texts = {
-        1: 'Этап 1: Оценка сознания',
-        2: 'Этап 2: Общая оценка',
-        3: 'Этап 3: Витальные функции'
-      };
-      return texts[step] || `Этап ${step}`;
+      return `Этап ${step}`;
     }
 
     // Обновление времени
@@ -198,29 +179,31 @@
       const now = new Date();
       const timeStr = now.toLocaleTimeString('ru-RU');
       elements.currentTime.textContent = timeStr;
-      
-      if (lastUpdateTime) {
-        const diff = Math.floor((now - lastUpdateTime) / 1000);
-        if (diff < 10) {
-          elements.lastUpdate.textContent = `Обновлено: только что`;
-        } else {
-          elements.lastUpdate.textContent = `Обновлено: ${diff} сек назад`;
-        }
-      }
     }
 
     // Отрисовка карточки пациента
     function renderPatientCard(patient) {
       let card = elements.patientsContainer.querySelector(`[data-id="${patient.id}"]`);
+      const isActionMode = patient.is_in_actions;
+      
+      // Проверяем, нужно ли пересоздать карточку (смена режима)
+      if (card) {
+        const wasActionMode = card.classList.contains('action-mode');
+        if (wasActionMode !== isActionMode) {
+          card.remove();
+          card = null;
+        }
+      }
       
       if (!card) {
-        // Создаем новую карточку БЕЗ анимации
-        card = elements.template.content.cloneNode(true).querySelector('.patient-card');
+        // Выбираем нужный шаблон
+        const template = isActionMode ? elements.actionTemplate : elements.template;
+        card = template.content.cloneNode(true).querySelector('.patient-card');
         card.dataset.id = patient.id;
         elements.patientsContainer.appendChild(card);
         card = elements.patientsContainer.querySelector(`[data-id="${patient.id}"]`);
         
-        // Плавное появление только для новых карточек
+        // Плавное появление
         card.style.opacity = '0';
         setTimeout(() => {
           card.style.transition = 'opacity 0.3s ease';
@@ -228,38 +211,76 @@
         }, 10);
       }
       
-      // Остальной код остается без изменений...
       // Обновляем класс приоритета
       const priorityClass = getPriorityClass(patient.priority);
-      card.className = `patient-card ${priorityClass}`;
+      card.className = isActionMode 
+        ? `patient-card action-mode ${priorityClass}` 
+        : `patient-card ${priorityClass}`;
       
-      // Заполняем данные
+      // Заполняем общие данные (новая структура)
       card.querySelector('.patient-name').textContent = patient.full_name;
-      card.querySelector('.patient-id').textContent = `ID: ${patient.id}`;
       card.querySelector('.performer').textContent = patient.performer_name || 'Не указан';
-      card.querySelector('.appeal').textContent = patient.appeal_type || '—';
       card.querySelector('.admission-time').textContent = patient.admission_time || '—';
-      card.querySelector('.consciousness').textContent = patient.consciousness_score || '0';
       
-      // Этап и приоритет
+      if (isActionMode) {
+        renderActionModeCard(card, patient, priorityClass);
+      } else {
+        renderTriageModeCard(card, patient, priorityClass);
+      }
+    }
+    
+    // Режим этапов триажа
+    function renderTriageModeCard(card, patient, priorityClass) {
       const stepBadge = card.querySelector('.step-badge');
       stepBadge.textContent = getStepText(patient.step);
       stepBadge.className = `step-badge step-${patient.step}`;
       
+      // Таймер этапа
+      card.dataset.timerEndsAt = patient.timer_ends_at || 0;
+      card.dataset.maxTime = patient.max_time || 120;
+      card.dataset.mode = 'triage';
+      
+      updateTriageTimer(card, patient);
+    }
+    
+    // Режим действий приоритета
+    function renderActionModeCard(card, patient, priorityClass) {
+      // Приоритет
       const priorityBadge = card.querySelector('.priority-badge');
       priorityBadge.textContent = getPriorityText(patient.priority);
       priorityBadge.className = `priority-badge ${priorityClass}`;
       
-      // Таймер
-      updatePatientTimer(card, patient);
+      // Прогресс действий
+      const progressBadge = card.querySelector('.actions-progress-badge');
+      if (progressBadge) {
+        progressBadge.textContent = `${patient.actions_completed || 0}/${patient.actions_total || 0}`;
+      }
+      
+      // Таймер на действия (5 минут)
+      card.dataset.actionsEndsAt = patient.actions_timer_ends_at || 0;
+      card.dataset.actionsMaxTime = patient.actions_max_time || 300;
+      
+      // Таймер бригады
+      const brigadeBlock = card.querySelector('.brigade-timer');
+      if (patient.brigade_timer_ends_at) {
+        brigadeBlock.classList.remove('hidden');
+        card.dataset.brigadeEndsAt = patient.brigade_timer_ends_at || 0;
+        card.dataset.brigadeMaxTime = patient.brigade_max_time || 720;
+        
+        const brigadeLabel = card.querySelector('.brigade-label');
+        if (brigadeLabel && patient.brigade_timer_label) {
+          brigadeLabel.innerHTML = `<i class="bi bi-truck"></i> ${patient.brigade_timer_label}`;
+        }
+      } else {
+        brigadeBlock.classList.add('hidden');
+      }
+      
+      card.dataset.mode = 'actions';
+      
+      updateActionTimers(card, patient);
     }
 
-    function updatePatientTimer(card, patient) {
-      // Сохраняем timer_ends_at и max_time в data-атрибуты для клиентского countdown
-      card.dataset.timerEndsAt = patient.timer_ends_at || 0;
-      card.dataset.maxTime = patient.max_time || 120;
-      
-      // Начальное отображение (будет обновляться через updateTimers)
+    function updateTriageTimer(card, patient) {
       const now = Date.now() / 1000;
       let timeRemaining = patient.time_remaining || 0;
       if (patient.timer_ends_at) {
@@ -269,17 +290,60 @@
       const timerDisplay = card.querySelector('.timer-display');
       const timerBar = card.querySelector('.timer-progress-bar');
       
+      if (!timerDisplay || !timerBar) return;
+      
       const timeClass = getTimeClass(timeRemaining);
       timerDisplay.textContent = formatTime(timeRemaining);
       timerDisplay.className = `timer-display ${timeClass}`;
       timerBar.className = `timer-progress-bar ${timeClass}`;
       
-      // Прогресс-бар
       let percent = 100;
       if (patient.max_time && patient.max_time > 0) {
         percent = Math.max(0, (timeRemaining / patient.max_time) * 100);
       }
       timerBar.style.width = `${percent}%`;
+    }
+    
+    function updateActionTimers(card, patient) {
+      const now = Date.now() / 1000;
+      
+      // Таймер на действия
+      const actionsEndsAt = parseFloat(card.dataset.actionsEndsAt) || 0;
+      const actionsMaxTime = parseFloat(card.dataset.actionsMaxTime) || 300;
+      const actionsRemaining = Math.max(0, Math.floor(actionsEndsAt - now));
+      
+      const actionsDisplay = card.querySelector('.actions-time');
+      const actionsBar = card.querySelector('.actions-bar');
+      
+      if (actionsDisplay && actionsBar) {
+        const actionsClass = getTimeClass(actionsRemaining);
+        actionsDisplay.textContent = formatTime(actionsRemaining);
+        actionsDisplay.className = `timer-display ${actionsClass} actions-time`;
+        actionsBar.className = `timer-progress-bar ${actionsClass} actions-bar`;
+        
+        const actionsPercent = Math.max(0, (actionsRemaining / actionsMaxTime) * 100);
+        actionsBar.style.width = `${actionsPercent}%`;
+      }
+      
+      // Таймер бригады
+      const brigadeEndsAt = parseFloat(card.dataset.brigadeEndsAt) || 0;
+      if (brigadeEndsAt) {
+        const brigadeMaxTime = parseFloat(card.dataset.brigadeMaxTime) || 720;
+        const brigadeRemaining = Math.max(0, Math.floor(brigadeEndsAt - now));
+        
+        const brigadeDisplay = card.querySelector('.brigade-time');
+        const brigadeBar = card.querySelector('.brigade-bar');
+        
+        if (brigadeDisplay && brigadeBar) {
+          const brigadeClass = getTimeClass(brigadeRemaining);
+          brigadeDisplay.textContent = formatTime(brigadeRemaining);
+          brigadeDisplay.className = `timer-display ${brigadeClass} brigade-time`;
+          brigadeBar.className = `timer-progress-bar ${brigadeClass} brigade-bar`;
+          
+          const brigadePercent = Math.max(0, (brigadeRemaining / brigadeMaxTime) * 100);
+          brigadeBar.style.width = `${brigadePercent}%`;
+        }
+      }
     }
 
     // Обновление всех карточек
@@ -314,20 +378,25 @@
         renderPatientCard(patient);
       });
       
-      // Сортируем по приоритету (красные сверху)
+      // Сортируем: сначала действия (action-mode), потом по приоритету
       const container = elements.patientsContainer;
       const cards = Array.from(container.querySelectorAll('.patient-card'));
       
-      const priorityOrder = { 'red': 1, 'yellow': 2, 'purple': 3, 'green': 4 };
-      
       cards.sort((a, b) => {
-        const aPriority = a.className.includes('priority-1') ? 1 : 
-                         a.className.includes('priority-2') ? 2 :
-                         a.className.includes('priority-3') ? 3 : 4;
-        const bPriority = b.className.includes('priority-1') ? 1 : 
-                         b.className.includes('priority-2') ? 2 :
-                         b.className.includes('priority-3') ? 3 : 4;
-        return aPriority - bPriority;
+        // Режим действий выше этапов триажа
+        const aIsAction = a.classList.contains('action-mode') ? 0 : 1;
+        const bIsAction = b.classList.contains('action-mode') ? 0 : 1;
+        if (aIsAction !== bIsAction) return aIsAction - bIsAction;
+        
+        // Внутри группы сортируем по приоритету
+        const getPriority = (card) => {
+          if (card.className.includes('priority-1')) return 1;
+          if (card.className.includes('priority-2')) return 2;
+          if (card.className.includes('priority-3')) return 3;
+          if (card.className.includes('priority-4')) return 4;
+          return 5;
+        };
+        return getPriority(a) - getPriority(b);
       });
       
       // Переставляем карточки в правильном порядке
@@ -353,10 +422,12 @@
               return acc;
             }, {});
             
-            // Добавляем максимальное время для каждого этапа
+            // Добавляем максимальное время для этапов триажа (если не в режиме действий)
             const maxTimes = { 1: 120, 2: 300, 3: 600 };
             patients.forEach(p => {
-              p.max_time = maxTimes[p.step] || 120;
+              if (!p.is_in_actions) {
+                p.max_time = p.max_time || maxTimes[p.step] || 120;
+              }
             });
             
             renderAllPatients(patients);
@@ -365,21 +436,14 @@
           }
         };
         
-
+        eventSource.onerror = () => {
+          setTimeout(connectSSE, 5000); // Переподключение через 5 сек
+        };
         
       } catch (e) {
         console.error('Ошибка SSE:', e);
-        updateStatus('disconnected', 'Ошибка подключения');
-        setTimeout(connectSSE, 10000); // Повторная попытка через 10 сек
+        setTimeout(connectSSE, 10000);
       }
-    }
-
-    // Обновление статуса подключения
-    function updateStatus(status, text) {
-      elements.statusDot.className = `status-dot ${status}`;
-      elements.statusText.textContent = text;
-      elements.streamStatus.className = `stream-status ${status}`;
-      elements.streamStatusText.textContent = text;
     }
 
     // Клиентский countdown таймеров (работает независимо от SSE)
@@ -388,28 +452,79 @@
       const cards = elements.patientsContainer.querySelectorAll('.patient-card');
       
       cards.forEach(card => {
-        const timerDisplay = card.querySelector('.timer-display');
-        const timerBar = card.querySelector('.timer-progress-bar');
+        const mode = card.dataset.mode;
         
-        // Берём данные из data-атрибутов (устанавливаются при рендеринге)
-        const timerEndsAt = parseFloat(card.dataset.timerEndsAt) || 0;
-        const maxTime = parseFloat(card.dataset.maxTime) || 120;
-        
-        if (!timerEndsAt) return;
-        
-        // Рассчитываем оставшееся время локально
-        const timeRemaining = Math.max(0, Math.floor(timerEndsAt - now));
-        
-        // Обновляем отображение
-        const timeClass = getTimeClass(timeRemaining);
-        timerDisplay.textContent = formatTime(timeRemaining);
-        timerDisplay.className = `timer-display ${timeClass}`;
-        timerBar.className = `timer-progress-bar ${timeClass}`;
-        
-        // Обновляем прогресс-бар
-        const percent = Math.max(0, (timeRemaining / maxTime) * 100);
-        timerBar.style.width = `${percent}%`;
+        if (mode === 'actions') {
+          // Режим действий приоритета
+          updateActionTimersLocal(card, now);
+        } else {
+          // Режим этапов триажа
+          updateTriageTimerLocal(card, now);
+        }
       });
+    }
+    
+    function updateTriageTimerLocal(card, now) {
+      const timerDisplay = card.querySelector('.timer-display');
+      const timerBar = card.querySelector('.timer-progress-bar');
+      
+      const timerEndsAt = parseFloat(card.dataset.timerEndsAt) || 0;
+      const maxTime = parseFloat(card.dataset.maxTime) || 120;
+      
+      if (!timerEndsAt) return;
+      
+      const timeRemaining = Math.max(0, Math.floor(timerEndsAt - now));
+      
+      const timeClass = getTimeClass(timeRemaining);
+      timerDisplay.textContent = formatTime(timeRemaining);
+      timerDisplay.className = `timer-display ${timeClass}`;
+      timerBar.className = `timer-progress-bar ${timeClass}`;
+      
+      const percent = Math.max(0, (timeRemaining / maxTime) * 100);
+      timerBar.style.width = `${percent}%`;
+    }
+    
+    function updateActionTimersLocal(card, now) {
+      // Таймер на действия
+      const actionsEndsAt = parseFloat(card.dataset.actionsEndsAt) || 0;
+      const actionsMaxTime = parseFloat(card.dataset.actionsMaxTime) || 300;
+      
+      if (actionsEndsAt) {
+        const actionsRemaining = Math.max(0, Math.floor(actionsEndsAt - now));
+        
+        const actionsDisplay = card.querySelector('.actions-time');
+        const actionsBar = card.querySelector('.actions-bar');
+        
+        if (actionsDisplay && actionsBar) {
+          const actionsClass = getTimeClass(actionsRemaining);
+          actionsDisplay.textContent = formatTime(actionsRemaining);
+          actionsDisplay.className = `timer-display ${actionsClass} actions-time`;
+          actionsBar.className = `timer-progress-bar ${actionsClass} actions-bar`;
+          
+          const actionsPercent = Math.max(0, (actionsRemaining / actionsMaxTime) * 100);
+          actionsBar.style.width = `${actionsPercent}%`;
+        }
+      }
+      
+      // Таймер бригады
+      const brigadeEndsAt = parseFloat(card.dataset.brigadeEndsAt) || 0;
+      if (brigadeEndsAt) {
+        const brigadeMaxTime = parseFloat(card.dataset.brigadeMaxTime) || 720;
+        const brigadeRemaining = Math.max(0, Math.floor(brigadeEndsAt - now));
+        
+        const brigadeDisplay = card.querySelector('.brigade-time');
+        const brigadeBar = card.querySelector('.brigade-bar');
+        
+        if (brigadeDisplay && brigadeBar) {
+          const brigadeClass = getTimeClass(brigadeRemaining);
+          brigadeDisplay.textContent = formatTime(brigadeRemaining);
+          brigadeDisplay.className = `timer-display ${brigadeClass} brigade-time`;
+          brigadeBar.className = `timer-progress-bar ${brigadeClass} brigade-bar`;
+          
+          const brigadePercent = Math.max(0, (brigadeRemaining / brigadeMaxTime) * 100);
+          brigadeBar.style.width = `${brigadePercent}%`;
+        }
+      }
     }
 
     // Инициализация
