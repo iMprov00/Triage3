@@ -255,7 +255,17 @@
     }
 
     function updatePatientTimer(card, patient) {
-      const timeRemaining = patient.time_remaining || 0;
+      // Сохраняем timer_ends_at и max_time в data-атрибуты для клиентского countdown
+      card.dataset.timerEndsAt = patient.timer_ends_at || 0;
+      card.dataset.maxTime = patient.max_time || 120;
+      
+      // Начальное отображение (будет обновляться через updateTimers)
+      const now = Date.now() / 1000;
+      let timeRemaining = patient.time_remaining || 0;
+      if (patient.timer_ends_at) {
+        timeRemaining = Math.max(0, Math.floor(patient.timer_ends_at - now));
+      }
+      
       const timerDisplay = card.querySelector('.timer-display');
       const timerBar = card.querySelector('.timer-progress-bar');
       
@@ -264,7 +274,7 @@
       timerDisplay.className = `timer-display ${timeClass}`;
       timerBar.className = `timer-progress-bar ${timeClass}`;
       
-      // Прогресс-бар (простая визуализация)
+      // Прогресс-бар
       let percent = 100;
       if (patient.max_time && patient.max_time > 0) {
         percent = Math.max(0, (timeRemaining / patient.max_time) * 100);
@@ -372,7 +382,7 @@
       elements.streamStatusText.textContent = text;
     }
 
-    // Анимация обновления времени
+    // Клиентский countdown таймеров (работает независимо от SSE)
     function updateTimers() {
       const now = Date.now() / 1000;
       const cards = elements.patientsContainer.querySelectorAll('.patient-card');
@@ -381,17 +391,14 @@
         const timerDisplay = card.querySelector('.timer-display');
         const timerBar = card.querySelector('.timer-progress-bar');
         
-        // Получаем данные пациента
-        const patientId = parseInt(card.dataset.id);
-        const patient = patientsData[patientId];
+        // Берём данные из data-атрибутов (устанавливаются при рендеринге)
+        const timerEndsAt = parseFloat(card.dataset.timerEndsAt) || 0;
+        const maxTime = parseFloat(card.dataset.maxTime) || 120;
         
-        if (!patient || patient.time_remaining === undefined) return;
+        if (!timerEndsAt) return;
         
-        // Обновляем оставшееся время
-        let timeRemaining = patient.time_remaining;
-        if (patient.timer_ends_at) {
-          timeRemaining = Math.max(0, Math.floor(patient.timer_ends_at - now));
-        }
+        // Рассчитываем оставшееся время локально
+        const timeRemaining = Math.max(0, Math.floor(timerEndsAt - now));
         
         // Обновляем отображение
         const timeClass = getTimeClass(timeRemaining);
@@ -400,10 +407,8 @@
         timerBar.className = `timer-progress-bar ${timeClass}`;
         
         // Обновляем прогресс-бар
-        if (patient.max_time && patient.max_time > 0) {
-          const percent = Math.max(0, (timeRemaining / patient.max_time) * 100);
-          timerBar.style.width = `${percent}%`;
-        }
+        const percent = Math.max(0, (timeRemaining / maxTime) * 100);
+        timerBar.style.width = `${percent}%`;
       });
     }
 

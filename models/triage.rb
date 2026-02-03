@@ -22,6 +22,22 @@ class Triage < ActiveRecord::Base
   serialize :step1_data
   serialize :step2_data
   serialize :step3_data
+  serialize :actions_data
+  
+  # Действия для красного приоритета (в порядке выполнения)
+  RED_PRIORITY_ACTIONS = [
+    { key: 'emergency_button', text: 'Нажата кнопка экстренного вызова' },
+    { key: 'brigade_called', text: 'Вызвана бригада экстренной помощи', starts_timer: true },
+    { key: 'patient_prepared', text: 'Пациентка уложена на каталку, твердую поверхность и снята верхняя одежда' },
+    { key: 'help_provided', text: 'Оказана помощь по алгоритму до прибытия бригады' },
+    { key: 'delivered_to_or', text: 'Пациентка доставлена в операционную', final: true }
+  ].freeze
+  
+  # Время на выполнение действий (5 минут)
+  ACTIONS_TIME_LIMIT = 300
+  
+  # Время прибытия бригады (12 минут)
+  BRIGADE_TIME_LIMIT = 720
   
   # Баллы для глаз
   EYE_OPENING_SCORES = {
@@ -272,5 +288,108 @@ class Triage < ActiveRecord::Base
     when 3
       self.step3_data = (step3_data || {}).merge(data)
     end
+  end
+  
+  # === Методы для действий по приоритету ===
+  
+  # Начать действия по приоритету
+  def start_actions!
+    return if actions_started_at
+    update(
+      actions_started_at: Time.now,
+      actions_data: {}
+    )
+  end
+  
+  # Отметить действие как выполненное
+  def mark_action!(action_key)
+    self.actions_data ||= {}
+    return if actions_data[action_key]
+    
+    actions_data[action_key] = Time.now.to_i
+    
+    # Если отмечено "Вызвана бригада" — запускаем таймер бригады
+    if action_key == 'brigade_called' && !brigade_called_at
+      self.brigade_called_at = Time.now
+    end
+    
+    save
+  end
+  
+  # Снять отметку с действия
+  def unmark_action!(action_key)
+    self.actions_data ||= {}
+    actions_data.delete(action_key)
+    
+    # Если снята отметка "Вызвана бригада" — сбрасываем таймер
+    if action_key == 'brigade_called'
+      self.brigade_called_at = nil
+    end
+    
+    save
+  end
+  
+  # Проверить, выполнено ли действие
+  def action_completed?(action_key)
+    actions_data && actions_data[action_key].present?
+  end
+  
+  # Проверить, можно ли отметить финальное действие
+  def can_complete_final_action?
+    return false unless actions_data
+    
+    # Все действия кроме финального должны быть выполнены
+    required_actions = priority_actions.reject { |a| a[:final] }
+    required_actions.all? { |a| actions_data[a[:key]].present? }
+  end
+  
+  # Завершить все действия
+  def complete_actions!
+    return unless can_complete_final_action? && action_completed?('delivered_to_or')
+    update(actions_completed_at: Time.now)
+  end
+  
+  # Действия завершены?
+  def actions_completed?
+    actions_completed_at.present?
+  end
+  
+  # Получить список действий для текущего приоритета
+  def priority_actions
+    case priority
+    when 'red' then RED_PRIORITY_ACTIONS
+    else []
+    end
+  end
+  
+  # Оставшееся время на действия (5 минут)
+  def actions_time_remaining
+    return 0 unless actions_started_at
+    elapsed = Time.now - actions_started_at
+    [ACTIONS_TIME_LIMIT - elapsed.to_i, 0].max
+  end
+  
+  # Таймер действий истёк?
+  def actions_time_expired?
+    actions_started_at && actions_time_remaining <= 0
+  end
+  
+  # Время окончания таймера действий (Unix timestamp)
+  def actions_timer_ends_at
+    return nil unless actions_started_at
+    actions_started_at.to_i + ACTIONS_TIME_LIMIT
+  end
+  
+  # Оставшееся время до прибытия бригады (12 минут)
+  def brigade_time_remaining
+    return nil unless brigade_called_at
+    elapsed = Time.now - brigade_called_at
+    [BRIGADE_TIME_LIMIT - elapsed.to_i, 0].max
+  end
+  
+  # Время окончания таймера бригады (Unix timestamp)
+  def brigade_timer_ends_at
+    return nil unless brigade_called_at
+    brigade_called_at.to_i + BRIGADE_TIME_LIMIT
   end
 end

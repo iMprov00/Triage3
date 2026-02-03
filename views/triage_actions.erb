@@ -1,112 +1,404 @@
 <%# Действия по приоритету после завершения триажа %>
-<div class="row">
-  <div class="col-12">
-    <div class="app-card card">
-      <div class="app-card-header card-header d-flex align-items-center justify-content-between">
-        <span class="text-muted small text-uppercase fw-normal">Приоритет</span>
-        <span class="badge <%= case @triage.priority when 'red' then 'bg-danger' when 'yellow' then 'bg-warning' when 'purple' then 'bg-purple' when 'green' then 'bg-success' else 'bg-secondary' end %>"><%= @triage.priority_name %></span>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-4">
-            <div class="app-card card mb-3">
-              <div class="app-card-header card-header">
-                <span class="text-muted small text-uppercase fw-normal">Пациент</span>
-              </div>
-              <div class="card-body">
-                <p><strong>ФИО:</strong> <%= @patient.full_name %></p>
-                <p><strong>Исполнитель:</strong> <%= @patient.performer_name %></p>
-                <p><strong>Приоритет:</strong>
-                
-                <% # Определяем классы для бейджа приоритета %>
-                <% badge_class = case @triage.priority %>
-                <%   when 'red' then 'bg-danger' %>
-                <%   when 'yellow' then 'bg-warning' %>
-                <%   when 'purple' then 'bg-purple' %>
-                <%   when 'green' then 'bg-success' %>
-                <%   else 'bg-secondary' %>
-                <% end %>
-                
-                  <span class="badge <%= badge_class %>">
-                    <%= @triage.priority_name %>
-                  </span>
-                </p>
-                <p><strong>Время завершения:</strong> <%= format_nsk(@triage.completed_at) %></p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="col-md-8">
-            <% # Определяем классы для алерта %>
-            <% alert_class = case @triage.priority %>
-            <%   when 'red' then 'alert-danger' %>
-            <%   when 'yellow' then 'alert-warning' %>
-            <%   when 'purple' then 'alert-purple' %>
-            <%   when 'green' then 'alert-success' %>
-            <%   else 'alert-secondary' %>
-            <% end %>
-            
-            <div class="alert <%= alert_class %>">
-              <h4 class="alert-heading">
-                <% case @triage.priority %>
-                <% when 'red' %>
-                  <i class="bi bi-exclamation-triangle-fill"></i> СРОЧНЫЕ МЕРЫ!
-                <% when 'yellow' %>
-                  <i class="bi bi-exclamation-circle-fill"></i> ТРЕБУЕТ ВНИМАНИЯ
-                <% when 'purple' %>
-                  <i class="bi bi-info-circle-fill"></i> ОСОБЫЙ РЕЖИМ
-                <% when 'green' %>
-                  <i class="bi bi-check-circle-fill"></i> ПЛАНОВЫЙ ПОРЯДОК
-                <% end %>
-              </h4>
-              
-              <% case @triage.priority %>
-              <% when 'red' %>
-                <p>Пациент с критическим состоянием. Необходимо немедленное вмешательство!</p>
-                <ul>
-                  <li>Немедленно вызвать реанимационную бригаду</li>
-                  <li>Подготовить реанимационное оборудование</li>
-                  <li>Обеспечить доступ к венам</li>
-                  <li>Мониторинг жизненных функций каждые 5 минут</li>
-                  <li>Приоритетная транспортировка в отделение реанимации</li>
-                </ul>
-              <% when 'yellow' %>
-                <p>Пациент требует срочного осмотра в течение 30 минут.</p>
-                <ul>
-                  <li>Немедленный осмотр врачом</li>
-                  <li>Проведение необходимых обследований</li>
-                  <li>Мониторинг состояния каждые 15 минут</li>
-                  <li>Подготовка к возможной госпитализации</li>
-                </ul>
-              <% when 'purple' %>
-                <p>Пациент с признаками инфекционного заболевания.</p>
-                <ul>
-                  <li>Изоляция в боксе</li>
-                  <li>Использование средств индивидуальной защиты</li>
-                  <li>Консультация инфекциониста</li>
-                  <li>Взятие анализов на инфекции</li>
-                  <li>Ограничение контактов с другими пациентами</li>
-                </ul>
-              <% when 'green' %>
-                <p>Пациент в стабильном состоянии. Плановый порядок обслуживания.</p>
-                <ul>
-                  <li>Оформление в приемном отделении</li>
-                  <li>Плановый осмотр врачом</li>
-                  <li>Стандартные анализы и обследования</li>
-                  <li>Направление в соответствующее отделение</li>
-                </ul>
-              <% end %>
-            </div>
-            
 
+<% if @triage.priority == 'red' && !@triage.actions_completed? %>
+  <%# === КРАСНЫЙ ПРИОРИТЕТ — АКТИВНЫЕ ДЕЙСТВИЯ === %>
+  
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="page-title mb-1 text-danger">
+        <i class="bi bi-exclamation-triangle-fill"></i> СРОЧНЫЕ МЕРЫ!
+      </h1>
+      <p class="text-muted mb-0"><%= @patient.full_name %> · Приоритет: <span class="badge bg-danger">Красный</span></p>
+    </div>
+  </div>
+
+  <div class="row">
+    <%# Левая колонка — Таймеры %>
+    <div class="col-lg-4 mb-4">
+      <%# Таймер 5 минут на действия %>
+      <div class="app-card card mb-3">
+        <div class="app-card-header card-header">
+          <span class="text-muted small text-uppercase fw-normal">Время на действия</span>
+        </div>
+        <div class="card-body">
+          <div class="timer-box <%= @triage.actions_time_expired? ? 'timer-expired' : 'timer-running' %>" 
+               id="actions-timer"
+               data-timer-ends-at="<%= @triage.actions_timer_ends_at || 0 %>"
+               data-max-time="<%= Triage::ACTIONS_TIME_LIMIT %>">
+            <div class="text-center">
+              <div class="timer-value display-4 fw-bold" id="actions-timer-display">
+                <%= @triage.actions_time_remaining %> сек
+              </div>
+              <small class="text-muted">из 5 минут</small>
+            </div>
+            <div class="progress mt-3">
+              <% percent = (@triage.actions_time_remaining.to_f / Triage::ACTIONS_TIME_LIMIT * 100).to_i %>
+              <div class="progress-bar <%= percent <= 25 ? 'progress-bar-danger' : (percent <= 50 ? 'progress-bar-warning' : 'progress-bar-success') %>" 
+                   id="actions-progress-bar"
+                   style="width: <%= percent %>%"></div>
+            </div>
           </div>
         </div>
-        
-        <div class="mt-4 action-bar justify-content-center">
-          <a href="/patients" class="btn btn-primary">К списку пациентов</a>
-          <a href="/patients/<%= @patient.id %>/triage/view" class="btn btn-secondary">Просмотр данных триажа</a>
+      </div>
+      
+      <%# Таймер 12 минут на бригаду (показывается когда вызвана бригада) %>
+      <div class="app-card card mb-3 <%= @triage.brigade_called_at ? '' : 'd-none' %>" id="brigade-timer-card">
+        <div class="app-card-header card-header bg-warning">
+          <span class="small text-uppercase fw-normal text-dark">
+            <i class="bi bi-truck"></i> Время прибытия бригады
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="timer-box timer-running" 
+               id="brigade-timer"
+               data-timer-ends-at="<%= @triage.brigade_timer_ends_at || 0 %>"
+               data-max-time="<%= Triage::BRIGADE_TIME_LIMIT %>">
+            <div class="text-center">
+              <div class="timer-value display-5 fw-bold" id="brigade-timer-display">
+                <%= @triage.brigade_time_remaining || 0 %> сек
+              </div>
+              <small class="text-muted">из 12 минут</small>
+            </div>
+            <div class="progress mt-3">
+              <% brigade_percent = @triage.brigade_time_remaining ? (@triage.brigade_time_remaining.to_f / Triage::BRIGADE_TIME_LIMIT * 100).to_i : 100 %>
+              <div class="progress-bar progress-bar-warning" 
+                   id="brigade-progress-bar"
+                   style="width: <%= brigade_percent %>%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <%# Информация о пациенте %>
+      <div class="app-card card">
+        <div class="app-card-header card-header">
+          <span class="text-muted small text-uppercase fw-normal">Пациент</span>
+        </div>
+        <div class="card-body small">
+          <p class="mb-2"><strong>ФИО:</strong> <%= @patient.full_name %></p>
+          <p class="mb-2"><strong>ID:</strong> <%= @patient.id %></p>
+          <p class="mb-2"><strong>Исполнитель:</strong> <%= @patient.performer_name %></p>
+          <p class="mb-0"><strong>Триаж завершён:</strong> <%= format_nsk(@triage.completed_at) %></p>
+        </div>
+      </div>
+    </div>
+    
+    <%# Правая колонка — Чекбоксы действий %>
+    <div class="col-lg-8">
+      <div class="app-card card">
+        <div class="app-card-header card-header bg-danger text-white">
+          <span class="small text-uppercase fw-normal">
+            <i class="bi bi-list-check"></i> Обязательные действия
+          </span>
+        </div>
+        <div class="card-body">
+          <form id="actions-form">
+            <% @triage.priority_actions.each_with_index do |action, index| %>
+              <% 
+                is_completed = @triage.action_completed?(action[:key])
+                is_final = action[:final]
+                can_check = is_final ? @triage.can_complete_final_action? : true
+                item_class = is_completed ? 'bg-success-subtle border-success' : (is_final && !can_check ? 'bg-light text-muted' : '')
+              %>
+              <div class="action-item p-3 mb-3 rounded border <%= item_class %>" 
+                   data-action="<%= action[:key] %>"
+                   data-final="<%= is_final %>"
+                   data-starts-timer="<%= action[:starts_timer] %>">
+                <div class="form-check form-check-lg d-flex align-items-center">
+                  <input class="form-check-input action-checkbox me-3" 
+                         type="checkbox" 
+                         id="action_<%= action[:key] %>"
+                         data-action="<%= action[:key] %>"
+                         <%= 'checked' if is_completed %>
+                         <%= 'disabled' if is_final && !can_check %>>
+                  <label class="form-check-label flex-grow-1 <%= is_completed ? 'text-success fw-bold' : '' %>" 
+                         for="action_<%= action[:key] %>"
+                         style="font-size: 1.1rem; cursor: pointer;">
+                    <span class="me-2"><%= index + 1 %>.</span>
+                    <%= action[:text] %>
+                    <% if is_completed %>
+                      <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                    <% end %>
+                    <% if is_final %>
+                      <br><small class="text-muted fw-normal">(доступно после выполнения всех действий выше)</small>
+                    <% end %>
+                    <% if action[:starts_timer] %>
+                      <br><small class="text-warning fw-normal"><i class="bi bi-clock"></i> Запускает таймер 12 минут</small>
+                    <% end %>
+                  </label>
+                </div>
+              </div>
+            <% end %>
+          </form>
+          
+          <hr class="my-4">
+          
+          <div class="action-bar justify-content-center">
+            <button type="button" 
+                    class="btn btn-success btn-lg <%= @triage.can_complete_final_action? && @triage.action_completed?('delivered_to_or') ? '' : 'disabled' %>" 
+                    id="complete-actions-btn"
+                    <%= 'disabled' unless @triage.can_complete_final_action? && @triage.action_completed?('delivered_to_or') %>>
+              <i class="bi bi-check-circle"></i> Завершить действия
+            </button>
+            <a href="/patients" class="btn btn-outline-secondary btn-lg">К списку пациентов</a>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+
+  <script>
+    // Форматирование времени
+    function formatTimerValue(seconds) {
+      var mins = Math.floor(seconds / 60);
+      var secs = seconds % 60;
+      return mins + ':' + secs.toString().padStart(2, '0');
+    }
+    
+    // Обновление таймеров
+    function updateTimers() {
+      var now = Date.now() / 1000;
+      
+      // Таймер действий (5 минут)
+      var actionsTimer = document.getElementById('actions-timer');
+      if (actionsTimer) {
+        var endsAt = parseFloat(actionsTimer.dataset.timerEndsAt) || 0;
+        var maxTime = parseFloat(actionsTimer.dataset.maxTime) || 300;
+        
+        if (endsAt > 0) {
+          var remaining = Math.max(0, Math.floor(endsAt - now));
+          var percent = Math.round((remaining / maxTime) * 100);
+          
+          document.getElementById('actions-timer-display').textContent = formatTimerValue(remaining);
+          
+          var progressBar = document.getElementById('actions-progress-bar');
+          progressBar.style.width = percent + '%';
+          progressBar.className = 'progress-bar ' + (percent <= 25 ? 'progress-bar-danger' : (percent <= 50 ? 'progress-bar-warning' : 'progress-bar-success'));
+          
+          actionsTimer.classList.remove('timer-running', 'timer-expired');
+          actionsTimer.classList.add(remaining <= 0 ? 'timer-expired' : 'timer-running');
+        }
+      }
+      
+      // Таймер бригады (12 минут)
+      var brigadeTimer = document.getElementById('brigade-timer');
+      if (brigadeTimer) {
+        var endsAt = parseFloat(brigadeTimer.dataset.timerEndsAt) || 0;
+        var maxTime = parseFloat(brigadeTimer.dataset.maxTime) || 720;
+        
+        if (endsAt > 0) {
+          var remaining = Math.max(0, Math.floor(endsAt - now));
+          var percent = Math.round((remaining / maxTime) * 100);
+          
+          document.getElementById('brigade-timer-display').textContent = formatTimerValue(remaining);
+          
+          var progressBar = document.getElementById('brigade-progress-bar');
+          progressBar.style.width = percent + '%';
+          progressBar.className = 'progress-bar ' + (percent <= 25 ? 'progress-bar-danger' : (percent <= 50 ? 'progress-bar-warning' : 'progress-bar-warning'));
+          
+          brigadeTimer.classList.remove('timer-running', 'timer-expired');
+          brigadeTimer.classList.add(remaining <= 0 ? 'timer-expired' : 'timer-running');
+        }
+      }
+    }
+    
+    // Обработка чекбоксов
+    document.querySelectorAll('.action-checkbox').forEach(function(checkbox) {
+      checkbox.addEventListener('change', function() {
+        var actionKey = this.dataset.action;
+        var isChecked = this.checked;
+        var actionItem = this.closest('.action-item');
+        var startsBrigadeTimer = actionItem.dataset.startsTimer === 'true';
+        var isFinal = actionItem.dataset.final === 'true';
+        
+        // Отправляем на сервер
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/patients/<%= @patient.id %>/triage/actions/' + (isChecked ? 'mark' : 'unmark'), true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            var response = JSON.parse(xhr.responseText);
+            
+            // Обновляем UI
+            if (isChecked) {
+              actionItem.classList.add('bg-success-subtle', 'border-success');
+              checkbox.nextElementSibling.classList.add('text-success', 'fw-bold');
+              
+              // Добавляем иконку галочки
+              if (!checkbox.nextElementSibling.querySelector('.bi-check-circle-fill')) {
+                var icon = document.createElement('i');
+                icon.className = 'bi bi-check-circle-fill text-success ms-2';
+                checkbox.nextElementSibling.insertBefore(icon, checkbox.nextElementSibling.querySelector('small'));
+              }
+            } else {
+              actionItem.classList.remove('bg-success-subtle', 'border-success');
+              checkbox.nextElementSibling.classList.remove('text-success', 'fw-bold');
+              var icon = checkbox.nextElementSibling.querySelector('.bi-check-circle-fill');
+              if (icon) icon.remove();
+            }
+            
+            // Если включили "Вызвана бригада" — показываем таймер
+            if (startsBrigadeTimer && isChecked) {
+              var brigadeCard = document.getElementById('brigade-timer-card');
+              brigadeCard.classList.remove('d-none');
+              document.getElementById('brigade-timer').dataset.timerEndsAt = response.brigade_timer_ends_at || 0;
+            }
+            
+            // Проверяем можно ли активировать финальный чекбокс
+            updateFinalCheckbox(response.can_complete_final);
+            
+            // Проверяем можно ли завершить
+            updateCompleteButton(response.can_complete);
+          }
+        };
+        
+        xhr.send('action=' + encodeURIComponent(actionKey));
+      });
+    });
+    
+    // Обновление финального чекбокса
+    function updateFinalCheckbox(canComplete) {
+      var finalCheckbox = document.getElementById('action_delivered_to_or');
+      var finalItem = finalCheckbox.closest('.action-item');
+      
+      if (canComplete) {
+        finalCheckbox.disabled = false;
+        finalItem.classList.remove('bg-light', 'text-muted');
+      } else {
+        finalCheckbox.disabled = true;
+        finalCheckbox.checked = false;
+        finalItem.classList.add('bg-light', 'text-muted');
+        finalItem.classList.remove('bg-success-subtle', 'border-success');
+      }
+    }
+    
+    // Обновление кнопки завершения
+    function updateCompleteButton(canComplete) {
+      var btn = document.getElementById('complete-actions-btn');
+      if (canComplete) {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+      } else {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+      }
+    }
+    
+    // Завершение действий
+    document.getElementById('complete-actions-btn').addEventListener('click', function() {
+      if (this.disabled) return;
+      
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/patients/<%= @patient.id %>/triage/actions/complete', true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          window.location.reload();
+        }
+      };
+      
+      xhr.send();
+    });
+    
+    // Запуск таймеров
+    setInterval(updateTimers, 1000);
+    updateTimers();
+  </script>
+
+<% else %>
+  <%# === ДРУГИЕ ПРИОРИТЕТЫ ИЛИ ДЕЙСТВИЯ ЗАВЕРШЕНЫ === %>
+  
+  <div class="row">
+    <div class="col-12">
+      <div class="app-card card">
+        <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+          <span class="text-muted small text-uppercase fw-normal">Приоритет</span>
+          <span class="badge <%= case @triage.priority when 'red' then 'bg-danger' when 'yellow' then 'bg-warning' when 'purple' then 'bg-purple' when 'green' then 'bg-success' else 'bg-secondary' end %>"><%= @triage.priority_name %></span>
+        </div>
+        <div class="card-body">
+          <% if @triage.actions_completed? %>
+            <div class="alert alert-success mb-4">
+              <h4 class="alert-heading"><i class="bi bi-check-circle-fill"></i> Действия завершены</h4>
+              <p class="mb-0">Все действия по приоритету выполнены в <%= format_nsk(@triage.actions_completed_at) %></p>
+            </div>
+          <% end %>
+          
+          <div class="row">
+            <div class="col-md-4">
+              <div class="app-card card mb-3">
+                <div class="app-card-header card-header">
+                  <span class="text-muted small text-uppercase fw-normal">Пациент</span>
+                </div>
+                <div class="card-body">
+                  <p><strong>ФИО:</strong> <%= @patient.full_name %></p>
+                  <p><strong>Исполнитель:</strong> <%= @patient.performer_name %></p>
+                  <p><strong>Приоритет:</strong>
+                    <% badge_class = case @triage.priority when 'red' then 'bg-danger' when 'yellow' then 'bg-warning' when 'purple' then 'bg-purple' when 'green' then 'bg-success' else 'bg-secondary' end %>
+                    <span class="badge <%= badge_class %>"><%= @triage.priority_name %></span>
+                  </p>
+                  <p><strong>Время завершения:</strong> <%= format_nsk(@triage.completed_at) %></p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-8">
+              <% alert_class = case @triage.priority when 'red' then 'alert-danger' when 'yellow' then 'alert-warning' when 'purple' then 'alert-purple' when 'green' then 'alert-success' else 'alert-secondary' end %>
+              
+              <div class="alert <%= alert_class %>">
+                <h4 class="alert-heading">
+                  <% case @triage.priority %>
+                  <% when 'red' %>
+                    <i class="bi bi-exclamation-triangle-fill"></i> СРОЧНЫЕ МЕРЫ!
+                  <% when 'yellow' %>
+                    <i class="bi bi-exclamation-circle-fill"></i> ТРЕБУЕТ ВНИМАНИЯ
+                  <% when 'purple' %>
+                    <i class="bi bi-info-circle-fill"></i> ОСОБЫЙ РЕЖИМ
+                  <% when 'green' %>
+                    <i class="bi bi-check-circle-fill"></i> ПЛАНОВЫЙ ПОРЯДОК
+                  <% end %>
+                </h4>
+                
+                <% case @triage.priority %>
+                <% when 'red' %>
+                  <p>Пациент с критическим состоянием. Необходимо немедленное вмешательство!</p>
+                <% when 'yellow' %>
+                  <p>Пациент требует срочного осмотра в течение 30 минут.</p>
+                  <ul>
+                    <li>Немедленный осмотр врачом</li>
+                    <li>Проведение необходимых обследований</li>
+                    <li>Мониторинг состояния каждые 15 минут</li>
+                    <li>Подготовка к возможной госпитализации</li>
+                  </ul>
+                <% when 'purple' %>
+                  <p>Пациент с признаками инфекционного заболевания.</p>
+                  <ul>
+                    <li>Изоляция в боксе</li>
+                    <li>Использование средств индивидуальной защиты</li>
+                    <li>Консультация инфекциониста</li>
+                    <li>Взятие анализов на инфекции</li>
+                    <li>Ограничение контактов с другими пациентами</li>
+                  </ul>
+                <% when 'green' %>
+                  <p>Пациент в стабильном состоянии. Плановый порядок обслуживания.</p>
+                  <ul>
+                    <li>Оформление в приемном отделении</li>
+                    <li>Плановый осмотр врачом</li>
+                    <li>Стандартные анализы и обследования</li>
+                    <li>Направление в соответствующее отделение</li>
+                  </ul>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4 action-bar justify-content-center">
+            <a href="/patients" class="btn btn-primary">К списку пациентов</a>
+            <a href="/patients/<%= @patient.id %>/triage/view" class="btn btn-secondary">Просмотр данных триажа</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

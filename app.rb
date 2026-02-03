@@ -457,7 +457,7 @@ post '/patients/:id/triage/step3' do
   redirect "/patients/#{patient.id}/triage/actions"
 end
 
-# Заглушка для действий по приоритету
+# Страница действий по приоритету
 get '/patients/:id/triage/actions' do
   @patient = Patient.find(params[:id])
   @triage = @patient.triage
@@ -467,7 +467,81 @@ get '/patients/:id/triage/actions' do
     redirect "/patients/#{@patient.id}/triage"
   end
   
+  # Автоматически начинаем действия для красного приоритета
+  if @triage.priority == 'red' && !@triage.actions_started_at && !@triage.actions_completed?
+    @triage.start_actions!
+  end
+  
   erb :triage_actions
+end
+
+# Отметить действие как выполненное
+post '/patients/:id/triage/actions/mark' do
+  content_type :json
+  
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  if triage.nil?
+    return { error: 'Триаж не найден' }.to_json
+  end
+  
+  action_key = params[:action]
+  triage.mark_action!(action_key)
+  
+  {
+    success: true,
+    action: action_key,
+    can_complete_final: triage.can_complete_final_action?,
+    can_complete: triage.can_complete_final_action? && triage.action_completed?('delivered_to_or'),
+    brigade_timer_ends_at: triage.brigade_timer_ends_at
+  }.to_json
+end
+
+# Снять отметку с действия
+post '/patients/:id/triage/actions/unmark' do
+  content_type :json
+  
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  if triage.nil?
+    return { error: 'Триаж не найден' }.to_json
+  end
+  
+  action_key = params[:action]
+  
+  # Нельзя снять финальное действие
+  if action_key == 'delivered_to_or' && triage.actions_completed?
+    return { error: 'Действия уже завершены' }.to_json
+  end
+  
+  triage.unmark_action!(action_key)
+  
+  {
+    success: true,
+    action: action_key,
+    can_complete_final: triage.can_complete_final_action?,
+    can_complete: false
+  }.to_json
+end
+
+# Завершить все действия
+post '/patients/:id/triage/actions/complete' do
+  content_type :json
+  
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  
+  if triage.nil?
+    return { error: 'Триаж не найден' }.to_json
+  end
+  
+  if triage.complete_actions!
+    { success: true }.to_json
+  else
+    { error: 'Не все действия выполнены' }.to_json
+  end
 end
 
 # Просмотр всех данных триажа
@@ -603,6 +677,9 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
     redirect "/patients"
   end
   
+  # Запоминаем был ли триаж уже завершён
+  was_completed = triage.completed_at.present?
+  
   case step_num
   when 1
     step_data = {
@@ -616,9 +693,17 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
     }
     
     triage.update_step_data(1, step_data)
+    triage.step1_completed_at = Time.now
     
-    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
-    if triage.timer_active && triage.step == 1 && triage.check_step1_priority
+    # Проверяем приоритет после редактирования этапа 1
+    # Если приоритет определён — очищаем последующие этапы и завершаем триаж
+    if triage.check_step1_priority
+      # Очищаем данные этапов 2 и 3
+      triage.step2_data = {}
+      triage.step3_data = {}
+      triage.step2_completed_at = nil
+      triage.step3_completed_at = nil
+      triage.step = 1
       triage.completed_at = Time.now
       triage.timer_active = false
     end
@@ -631,9 +716,15 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
     }
     
     triage.update_step_data(2, step_data)
+    triage.step2_completed_at = Time.now
     
-    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
-    if triage.timer_active && triage.step == 2 && triage.check_step2_priority
+    # Проверяем приоритет после редактирования этапа 2
+    # Если приоритет определён — очищаем этап 3 и завершаем триаж
+    if triage.check_step2_priority
+      # Очищаем данные этапа 3
+      triage.step3_data = {}
+      triage.step3_completed_at = nil
+      triage.step = 2
       triage.completed_at = Time.now
       triage.timer_active = false
     end
@@ -649,21 +740,24 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
     }
     
     triage.update_step_data(3, step_data)
+    triage.step3_completed_at = Time.now
     
-    # Если триаж еще активен и мы редактируем текущий этап, нужно пересчитать приоритет
-    if triage.timer_active && triage.step == 3 && triage.check_step3_priority
-      triage.completed_at = Time.now
-      triage.timer_active = false
-    end
+    # Этап 3 всегда определяет финальный приоритет
+    triage.check_step3_priority
+    triage.completed_at = Time.now
+    triage.timer_active = false
   end
   
   if triage.save
-    flash[:notice] = "Данные этапа #{step_num} обновлены"
-    
-    # Если триаж завершился из-за изменений
-    if triage.completed_at
+    # Определяем сообщение в зависимости от того, что произошло
+    if triage.completed_at && !was_completed
+      flash[:notice] = "Приоритет изменён на: #{triage.priority_name}. Триаж завершён."
+      redirect "/patients/#{patient.id}/triage/actions"
+    elsif triage.completed_at
+      flash[:notice] = "Данные этапа #{step_num} обновлены. Приоритет: #{triage.priority_name}"
       redirect "/patients/#{patient.id}/triage/actions"
     else
+      flash[:notice] = "Данные этапа #{step_num} обновлены"
       redirect "/patients"
     end
   else

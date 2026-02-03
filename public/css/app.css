@@ -564,3 +564,40 @@ body {
   .app-container { padding: 0.75rem; }
   .btn { min-height: 40px; }
 }
+
+/* ========== ДЕЙСТВИЯ ПО ПРИОРИТЕТУ ========== */
+.action-item {
+  transition: all 0.2s ease;
+}
+
+.action-item:hover {
+  background: var(--bg-hover);
+}
+
+.action-item.bg-success-subtle {
+  background: var(--success-light) !important;
+}
+
+.form-check-lg .form-check-input {
+  width: 1.75em;
+  height: 1.75em;
+  margin-top: 0;
+}
+
+.form-check-lg .form-check-input:checked {
+  background-color: var(--success);
+  border-color: var(--success);
+}
+
+.form-check-lg .form-check-input:disabled {
+  opacity: 0.5;
+}
+
+/* Таймер в действиях */
+.timer-box .display-4 {
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.timer-box .display-5 {
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}

@@ -558,6 +558,15 @@
 <script>
 // Глобальные переменные
 var serverDown = false;
+var lastPatientsHash = null; // Для предотвращения лишних перерисовок
+
+// Генерация хэша структуры данных (игнорируя таймеры)
+function getPatientsHash(patients) {
+  return patients.map(function(p) {
+    var t = p.triage;
+    return p.id + ':' + (t ? t.step + ':' + t.priority + ':' + (t.completed_at ? '1' : '0') + ':' + (t.timer_active ? '1' : '0') : 'null');
+  }).join('|');
+}
 
 // Функции для классов
 function stepClass(s) { 
@@ -884,7 +893,25 @@ function fetchPatientsList() {
       
       try {
         var patients = JSON.parse(xhr.responseText);
-        renderPatientsList(patients);
+        var newHash = getPatientsHash(patients);
+        
+        // Перерисовываем только если изменилась структура (добавился/удалился пациент, изменился этап/приоритет)
+        // При первом запросе (lastPatientsHash === null) просто запоминаем хэш без перерисовки
+        if (lastPatientsHash !== null && newHash !== lastPatientsHash) {
+          renderPatientsList(patients);
+        }
+        lastPatientsHash = newHash;
+        
+        // Всегда обновляем timer_ends_at для точного countdown (без перерисовки)
+        patients.forEach(function(p) {
+          if (p.triage && p.triage.timer_active) {
+            var box = document.querySelector('.timer-box[data-patient-id="' + p.id + '"]');
+            if (box) {
+              box.dataset.timerEndsAt = p.triage.timer_ends_at || 0;
+              box.dataset.stepMax = p.triage.max_time || 120;
+            }
+          }
+        });
       } catch(e) {
         console.error('Ошибка парсинга JSON:', e);
       }
@@ -910,69 +937,50 @@ function fetchPatientsList() {
   xhr.send();
 }
 
-// Обновление таймеров
+// Клиентский countdown таймеров (аналогично монитору)
 function updateAllTimers() {
-  if (serverDown) {
-    var timerBoxes = document.querySelectorAll('[data-timer-ends-at]');
-    timerBoxes.forEach(function(box) {
-      var endsAt = parseFloat(box.getAttribute('data-timer-ends-at')) || 0;
-      if (endsAt > 0) {
-        var timerValue = box.querySelector('.timer-value');
-        if (timerValue) {
-          timerValue.textContent = 'Сервер не отвечает';
-        }
-        var progress = box.querySelector('.progress');
-        if (progress) {
-          progress.style.display = 'none';
-        }
-        box.classList.remove('timer-running');
-        box.classList.add('timer-expired');
-      }
-    });
-    return;
-  }
-  
-  var nowSec = Date.now() / 1000;
-  var timerBoxes = document.querySelectorAll('[data-timer-ends-at]');
+  var now = Date.now() / 1000;
+  var timerBoxes = document.querySelectorAll('.timer-box');
   
   timerBoxes.forEach(function(box) {
-    var endsAt = parseFloat(box.getAttribute('data-timer-ends-at')) || 0;
-    var maxTime = parseFloat(box.getAttribute('data-step-max')) || 120;
-    var progress = box.querySelector('.progress');
+    var timerEndsAt = parseFloat(box.dataset.timerEndsAt) || 0;
+    var maxTime = parseFloat(box.dataset.stepMax) || 120;
     
-    if (progress) {
-      progress.style.display = 'block';
-    }
-    
-    if (!endsAt || endsAt <= 0) return;
-    
-    var remaining = Math.max(0, Math.floor(endsAt - nowSec));
     var timerValue = box.querySelector('.timer-value');
-    if (timerValue) {
-      timerValue.textContent = remaining + ' сек';
-    }
+    var progressBar = box.querySelector('.progress-bar');
     
-    box.classList.remove('timer-running', 'timer-expired');
-    if (remaining <= 0) {
+    if (!timerEndsAt || !timerValue) return;
+    
+    // Проверка сервера
+    if (serverDown) {
+      timerValue.textContent = 'Сервер не отвечает';
+      box.classList.remove('timer-running');
       box.classList.add('timer-expired');
-      if (timerValue) {
-        timerValue.textContent = '0 сек';
-      }
-    } else {
-      box.classList.add('timer-running');
+      return;
     }
     
-    var percent = Math.round((remaining / maxTime) * 100);
-    var bar = box.querySelector('.progress-bar');
-    if (bar) {
-      bar.style.width = percent + '%';
-      bar.classList.remove('progress-bar-success', 'progress-bar-warning', 'progress-bar-danger');
+    // Рассчитываем оставшееся время локально
+    var remaining = Math.max(0, Math.floor(timerEndsAt - now));
+    
+    // Обновляем текст таймера
+    timerValue.textContent = remaining + ' сек';
+    
+    // Обновляем классы
+    box.classList.remove('timer-running', 'timer-expired');
+    box.classList.add(remaining <= 0 ? 'timer-expired' : 'timer-running');
+    
+    // Обновляем прогресс-бар
+    if (progressBar) {
+      var percent = Math.max(0, Math.round((remaining / maxTime) * 100));
+      progressBar.style.width = percent + '%';
+      
+      progressBar.classList.remove('progress-bar-success', 'progress-bar-warning', 'progress-bar-danger');
       if (percent <= 25) {
-        bar.classList.add('progress-bar-danger');
+        progressBar.classList.add('progress-bar-danger');
       } else if (percent <= 50) {
-        bar.classList.add('progress-bar-warning');
+        progressBar.classList.add('progress-bar-warning');
       } else {
-        bar.classList.add('progress-bar-success');
+        progressBar.classList.add('progress-bar-success');
       }
     }
   });
@@ -1045,12 +1053,10 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(updateAllTimers, 1000);
   setInterval(fetchPatientsList, 5000);
   
-  // Первоначальная загрузка
-  fetchPatientsList();
+  // Первоначальная инициализация
   updateAllTimers();
   initBootstrapComponents();
 });
 
-// Инициализация Bootstrap компонентов каждую секунду (для динамически созданных элементов)
-setInterval(initBootstrapComponents, 1000);
+// Bootstrap компоненты инициализируются в renderPatientsList после обновления DOM
 </script>
