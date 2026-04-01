@@ -1,0 +1,45 @@
+<div class="mb-4">
+  <h1 class="page-title">Новый пользователь</h1>
+  <p class="text-muted small mb-0">Укажите логин, пароль, ФИО и должность</p>
+</div>
+
+<div class="app-card card" style="max-width: 520px;">
+  <div class="card-body">
+    <% if flash[:error] %>
+      <div class="alert alert-danger"><%= flash[:error] %></div>
+    <% end %>
+    <form method="post" action="/admin/users" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Логин</label>
+        <input type="text" name="login" class="form-control" required value="<%= Rack::Utils.escape_html(@user.login.to_s) %>">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Пароль</label>
+        <input type="password" name="password" class="form-control" required minlength="6" autocomplete="new-password">
+        <small class="text-muted">Не менее 6 символов</small>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Повтор пароля</label>
+        <input type="password" name="password_confirmation" class="form-control" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="col-12">
+        <label class="form-label">ФИО</label>
+        <input type="text" name="full_name" class="form-control" required value="<%= Rack::Utils.escape_html(@user.full_name.to_s) %>">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Должность</label>
+        <select name="job_position_id" class="form-select" required>
+          <option value="">Выберите...</option>
+          <% @job_positions.each do |jp| %>
+            <option value="<%= jp.id %>" <%= 'selected' if @user.job_position_id == jp.id %>><%= Rack::Utils.escape_html(jp.name) %></option>
+          <% end %>
+        </select>
+        <small class="text-muted"><a href="/admin/positions">Управление списком должностей</a></small>
+      </div>
+      <div class="col-12 action-bar">
+        <button type="submit" class="btn btn-primary">Создать</button>
+        <a href="/admin/users" class="btn btn-outline-secondary">Отмена</a>
+      </div>
+    </form>
+  </div>
+</div>

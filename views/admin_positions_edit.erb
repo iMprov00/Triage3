@@ -1,0 +1,31 @@
+<div class="mb-4">
+  <h1 class="page-title">Редактирование должности</h1>
+  <p class="text-muted small mb-0">Пользователи с этой должностью получат обновлённые название и тип прав.</p>
+</div>
+
+<div class="app-card card" style="max-width: 560px;">
+  <div class="card-body">
+    <% if flash[:error] %>
+      <div class="alert alert-danger"><%= flash[:error] %></div>
+    <% end %>
+    <form method="post" action="/admin/positions/<%= @position.id %>" class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Название</label>
+        <input type="text" name="name" class="form-control" required maxlength="120"
+               value="<%= Rack::Utils.escape_html(@position.name) %>">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Тип (права)</label>
+        <select name="kind" class="form-select" required>
+          <% JobPosition::KINDS.each do |k| %>
+            <option value="<%= k %>" <%= 'selected' if @position.kind == k %>><%= Rack::Utils.escape_html(JobPosition::KIND_LABELS[k]) %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-12 action-bar">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="/admin/positions" class="btn btn-outline-secondary">К списку</a>
+      </div>
+    </form>
+  </div>
+</div>

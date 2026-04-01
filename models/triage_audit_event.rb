@@ -91,13 +91,17 @@ class TriageAuditEvent < ActiveRecord::Base
   def self.log_step_submit!(patient, triage, step_num, advance_result, extra = {})
     return if advance_result.blank?
 
+    extra = extra.dup
+    acting_name = extra.delete(:acting_performer_name)
+    performer_display = acting_name.presence || patient.performer_name
+
     triage.reload
     timing = Triage.step_timing_for_step(triage, step_num)
     base = {
       step: step_num,
       advance_result: advance_result,
       priority: triage.priority,
-      performer_name: patient.performer_name
+      performer_name: performer_display
     }.merge(timing).merge(extra)
 
     log!(patient: patient, triage: triage, type: "step#{step_num}_submitted", payload: base)
@@ -105,10 +109,10 @@ class TriageAuditEvent < ActiveRecord::Base
     case advance_result
     when 'priority_assigned'
       log!(patient: patient, triage: triage, type: 'priority_assigned',
-           payload: { priority: triage.priority, step: step_num, performer_name: patient.performer_name })
+           payload: { priority: triage.priority, step: step_num, performer_name: performer_display })
     when 'step_advanced'
       log!(patient: patient, triage: triage, type: 'step_advanced',
-           payload: { from_step: step_num, to_step: step_num + 1, performer_name: patient.performer_name })
+           payload: { from_step: step_num, to_step: step_num + 1, performer_name: performer_display })
     end
   end
 end

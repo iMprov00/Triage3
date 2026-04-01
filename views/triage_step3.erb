@@ -106,6 +106,8 @@
     </div>
   </div>
 
+  <%= erb :step_performer_field, locals: { step_key: 3 } %>
+
   <div class="d-grid gap-2 d-md-flex justify-content-md-between">
     <a href="/patients/<%= @patient.id %>/triage/step2" class="btn btn-secondary btn-lg">
       <i class="bi bi-arrow-left"></i> Назад к шагу 2

@@ -74,8 +74,17 @@
           
           <div class="col-md-4">
             <label class="form-label">Исполнитель*</label>
-            <input type="text" name="performer_name" class="form-control" 
-                   value="<%= @patient.performer_name %>" required>
+            <% selected_pid = @patient.performer_user_id || User.find_by(full_name: @patient.performer_name)&.id || current_user.id %>
+            <% if can_choose_patient_performer? %>
+              <select name="performer_user_id" class="form-select" required>
+                <% performer_users_for_select.each do |u| %>
+                  <option value="<%= u.id %>" <%= 'selected' if u.id == selected_pid %>><%= Rack::Utils.escape_html(u.full_name) %> — <%= u.position_label %></option>
+                <% end %>
+              </select>
+            <% else %>
+              <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><%= Rack::Utils.escape_html(@patient.performer_name) %></p>
+              <small class="text-muted">Сменить исполнителя могут врач или администратор</small>
+            <% end %>
           </div>
           
           <div class="col-md-4">

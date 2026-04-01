@@ -13,8 +13,19 @@
           <input type="text" name="full_name" class="form-control" required placeholder="Фамилия Имя Отчество">
         </div>
         <div class="col-12 col-md-6">
-          <label class="form-label">ФИО исполнителя</label>
-          <input type="text" name="performer_name" class="form-control" required placeholder="Исполнитель">
+          <label class="form-label">Исполнитель по карте</label>
+          <% if can_choose_patient_performer? %>
+            <select name="performer_user_id" class="form-select" required>
+              <% performer_users_for_select.each do |u| %>
+                <option value="<%= u.id %>" <%= 'selected' if u.id == current_user.id %>><%= Rack::Utils.escape_html(u.full_name) %> — <%= u.position_label %></option>
+              <% end %>
+            </select>
+            <small class="text-muted">По умолчанию вы; можно выбрать врача или администратора</small>
+          <% else %>
+            <input type="hidden" name="performer_user_id" value="<%= current_user.id %>">
+            <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><%= Rack::Utils.escape_html(current_user.full_name) %></p>
+            <small class="text-muted">Исполнитель — вы (изменить могут только врач или администратор)</small>
+          <% end %>
         </div>
         <div class="col-6 col-md-3">
           <label class="form-label">Дата поступления</label>

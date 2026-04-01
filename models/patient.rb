@@ -1,7 +1,12 @@
 # models/patient.rb
 class Patient < ActiveRecord::Base
+  belongs_to :created_by_user, class_name: 'User', optional: true
+  belongs_to :performer_user, class_name: 'User', optional: true
+
   has_one :triage, dependent: :destroy
   has_many :triage_audit_events, dependent: :delete_all
+
+  before_validation :sync_performer_name_from_user
 
   validates :full_name, presence: true
   validates :admission_date, presence: true
@@ -88,8 +93,20 @@ class Patient < ActiveRecord::Base
   def admission_time_formatted
     admission_time&.strftime("%H:%M")
   end
-  
+
+  # Исполнитель этапов по умолчанию: кто завёл карту, иначе ответственный по карте
+  def default_step_performer_user_id
+    created_by_user_id || performer_user_id
+  end
+
   private
+
+  def sync_performer_name_from_user
+    return unless performer_user_id.present?
+
+    u = performer_user
+    self.performer_name = u.full_name if u
+  end
 
   def log_patient_registration_audit
     t = triage

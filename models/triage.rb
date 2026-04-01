@@ -3,6 +3,8 @@ class Triage < ActiveRecord::Base
   has_many :triage_audit_events, dependent: :nullify
 
   validates :patient_id, presence: true
+
+  # JSON: ключи "1","2","3","actions" → id пользователя, выполнившего этап
   
   # Этапы триажа
   STEPS = {
@@ -176,6 +178,25 @@ class Triage < ActiveRecord::Base
       seconds_used: actual,
       within_limit: actual.nil? ? nil : (actual <= limit)
     }
+  end
+
+  def step_performers_hash
+    raw = read_attribute(:step_performers)
+    return {} if raw.blank?
+
+    JSON.parse(raw)
+  rescue JSON::ParserError
+    {}
+  end
+
+  def set_step_performer_user!(step_key, user_id)
+    h = step_performers_hash
+    h[step_key.to_s] = user_id.to_i
+    write_attribute(:step_performers, h.to_json)
+  end
+
+  def step_performer_user_id(step_key)
+    step_performers_hash[step_key.to_s]
   end
 
   # Текст действия по ключу (для журнала аудита)

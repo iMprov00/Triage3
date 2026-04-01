@@ -34,6 +34,12 @@
     </div>
   </div>
 
+  <div class="row mb-3">
+    <div class="col-12">
+      <%= erb :step_performer_field, locals: { step_key: 'actions' } %>
+    </div>
+  </div>
+
   <div class="row">
     <%# Левая колонка — Таймеры %>
     <div class="col-lg-4 mb-4">
@@ -183,6 +189,12 @@
       var secs = seconds % 60;
       return mins + ':' + secs.toString().padStart(2, '0');
     }
+
+    function actionsPerformerParam() {
+      var el = document.querySelector('select[name="step_performer_user_id"], input[name="step_performer_user_id"]');
+      if (!el) return '';
+      return 'step_performer_user_id=' + encodeURIComponent(el.value);
+    }
     
     // Обновление таймеров
     function updateTimers() {
@@ -243,7 +255,7 @@
         var xhr = new XMLHttpRequest();
         xhr.open('POST', '/patients/<%= @patient.id %>/triage/actions/' + (isChecked ? 'mark' : 'unmark'), true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        
+
         xhr.onload = function() {
           if (xhr.status === 200) {
             var response = JSON.parse(xhr.responseText);
@@ -294,7 +306,10 @@
           }
         };
         
-        xhr.send('action=' + encodeURIComponent(actionKey));
+        var body = 'action=' + encodeURIComponent(actionKey);
+        var ap = actionsPerformerParam();
+        if (ap) body += '&' + ap;
+        xhr.send(body);
       });
     });
     
@@ -340,14 +355,14 @@
       var xhr = new XMLHttpRequest();
       xhr.open('POST', '/patients/<%= @patient.id %>/triage/actions/complete', true);
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-      
+
       xhr.onload = function() {
         if (xhr.status === 200) {
           window.location.reload();
         }
       };
       
-      xhr.send();
+      xhr.send(actionsPerformerParam() || '');
     });
     
     // Запуск таймеров

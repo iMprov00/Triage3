@@ -26,6 +26,7 @@ end
 configure do
   set :database, {adapter: 'sqlite3', database: 'hospital.db'}
   set :sessions, true
+  set :session_secret, ENV.fetch('SESSION_SECRET') { SecureRandom.hex(32) }
   set :server, :puma
   
   ActiveRecord::Base.logger = Logger.new(STDOUT) if development?
@@ -108,11 +109,228 @@ helpers do
       [label, audit_payload_value(field, ph[field])]
     end
   end
+
+  def current_user
+    @current_user ||= begin
+      session[:user_id].present? ? User.find_by(id: session[:user_id]) : nil
+    end
+  end
+
+  def require_user!
+    return if current_user
+
+    flash[:error] = 'Войдите в систему'
+    q = request.fullpath && request.fullpath != '/' ? "?return_to=#{Rack::Utils.escape_path(request.fullpath)}" : ''
+    redirect "/login#{q}"
+  end
+
+  def public_request?
+    p = request.path_info
+    return true if p == '/login'
+    return true if p == '/monitor' || p == '/monitor_events'
+    return true if p.start_with?('/css/', '/js/')
+    return true if p.start_with?('/assets/')
+    return true if p =~ %r{\A/api/patient_timer/}
+    false
+  end
+
+  def can_choose_patient_performer?
+    current_user&.doctor_or_admin?
+  end
+
+  def can_choose_step_performer?
+    current_user&.doctor_or_admin?
+  end
+
+  def performer_users_for_select
+    u = User.doctor_or_admin.ordered.to_a
+    return Array(current_user).compact if u.empty?
+
+    u
+  end
+
+  def resolve_patient_performer_user_id(params)
+    uid = params[:performer_user_id].to_i
+    if current_user.doctor_or_admin?
+      allowed = User.doctor_or_admin.pluck(:id)
+      return uid if uid.positive? && allowed.include?(uid)
+    end
+    current_user.id
+  end
+
+  def resolve_step_performer_user_id(params, patient)
+    default = patient.default_step_performer_user_id || current_user.id
+    return default unless current_user.doctor_or_admin?
+
+    uid = params[:step_performer_user_id].to_i
+    allowed = User.doctor_or_admin.pluck(:id)
+    uid.positive? && allowed.include?(uid) ? uid : default
+  end
+
+  def acting_performer_name_for_user_id(uid)
+    User.find_by(id: uid)&.full_name
+  end
+
+  def performers_for_filters
+    names = User.doctor_or_admin.pluck(:full_name)
+    legacy = Patient.where.not(performer_name: [nil, '']).distinct.pluck(:performer_name)
+    (names + legacy).compact.uniq.sort
+  end
+end
+
+before do
+  @current_user = nil
+  return if public_request?
+
+  require_user!
+end
+
+before do
+  next unless request.path_info.start_with?('/admin')
+
+  unless current_user&.admin?
+    flash[:error] = 'Нужны права администратора'
+    redirect '/patients'
+  end
 end
 
 # Хранилище для SSE соединений
 TRIAGE_CONNECTIONS = []
 MONITOR_CONNECTIONS = []
+
+# Вход / выход
+get '/login' do
+  redirect '/patients' if current_user
+
+  @return_to = params[:return_to].presence || '/patients'
+  erb :login, layout: false
+end
+
+post '/login' do
+  user = User.find_by(login: params[:login].to_s.strip.downcase)
+  if user&.authenticate(params[:password])
+    session[:user_id] = user.id
+    rt = params[:return_to].to_s
+    redirect((rt.start_with?('/') && !rt.start_with?('//')) ? rt : '/patients')
+  else
+    flash[:error] = 'Неверный логин или пароль'
+    redirect '/login'
+  end
+end
+
+post '/logout' do
+  session.clear
+  flash[:notice] = 'Вы вышли из системы'
+  redirect '/login'
+end
+
+# Администрирование пользователей
+get '/admin/users' do
+  @users = User.order(:login)
+  erb :admin_users_index
+end
+
+get '/admin/users/new' do
+  @user = User.new
+  @job_positions = JobPosition.ordered
+  erb :admin_users_new
+end
+
+post '/admin/users' do
+  @job_positions = JobPosition.ordered
+  @user = User.new(
+    login: params[:login],
+    password: params[:password],
+    password_confirmation: params[:password_confirmation],
+    full_name: params[:full_name],
+    job_position_id: params[:job_position_id]
+  )
+  if @user.save
+    flash[:notice] = "Пользователь «#{@user.login}» создан"
+    redirect '/admin/users'
+  else
+    flash[:error] = @user.errors.full_messages.join(', ')
+    erb :admin_users_new
+  end
+end
+
+get '/admin/users/:id/edit' do
+  @user = User.find(params[:id])
+  @job_positions = JobPosition.ordered
+  erb :admin_users_edit
+end
+
+post '/admin/users/:id' do
+  @user = User.find(params[:id])
+  @job_positions = JobPosition.ordered
+
+  attrs = {
+    login: params[:login],
+    full_name: params[:full_name],
+    job_position_id: params[:job_position_id]
+  }
+  if params[:password].to_s.strip.present?
+    attrs[:password] = params[:password]
+    attrs[:password_confirmation] = params[:password_confirmation]
+  end
+
+  if @user.update(attrs)
+    flash[:notice] = "Данные пользователя «#{@user.login}» сохранены"
+    redirect '/admin/users'
+  else
+    flash[:error] = @user.errors.full_messages.join(', ')
+    erb :admin_users_edit
+  end
+end
+
+# Справочник должностей
+get '/admin/positions' do
+  @positions = JobPosition.includes(:users).ordered
+  erb :admin_positions_index
+end
+
+get '/admin/positions/new' do
+  @position = JobPosition.new
+  erb :admin_positions_new
+end
+
+post '/admin/positions' do
+  @position = JobPosition.new(name: params[:name].to_s.strip, kind: params[:kind])
+  if @position.save
+    flash[:notice] = "Должность «#{@position.name}» добавлена"
+    redirect '/admin/positions'
+  else
+    flash[:error] = @position.errors.full_messages.join(', ')
+    erb :admin_positions_new
+  end
+end
+
+get '/admin/positions/:id/edit' do
+  @position = JobPosition.find(params[:id])
+  erb :admin_positions_edit
+end
+
+post '/admin/positions/:id' do
+  @position = JobPosition.find(params[:id])
+  if @position.update(name: params[:name].to_s.strip, kind: params[:kind])
+    flash[:notice] = 'Должность обновлена'
+    redirect '/admin/positions'
+  else
+    flash[:error] = @position.errors.full_messages.join(', ')
+    erb :admin_positions_edit
+  end
+end
+
+post '/admin/positions/:id/delete' do
+  jp = JobPosition.find(params[:id])
+  if jp.users.exists?
+    flash[:error] = 'Нельзя удалить должность: есть пользователи с этой записью'
+  else
+    jp.destroy!
+    flash[:notice] = 'Должность удалена'
+  end
+  redirect '/admin/positions'
+end
 
 # Главная страница
 get '/' do
@@ -129,7 +347,7 @@ end
 get '/statistics' do
   params[:admission_date] ||= Date.today.to_s
   @patients = build_merged_patients_list(params)
-  @performers = Patient.distinct.pluck(:performer_name).compact.sort
+  @performers = performers_for_filters
 
   @selected_patient = nil
   @triage = nil
@@ -166,7 +384,7 @@ get '/patients' do
   @patients = build_merged_patients_list(params)
   @patients_list_js = true
 
-  @performers = Patient.distinct.pluck(:performer_name).compact.sort
+  @performers = performers_for_filters
   erb :patients_index
 end
 
@@ -274,14 +492,16 @@ end
 post '/patients' do
     puts "=== СОЗДАНИЕ ПАЦИЕНТА ==="
   puts "params: #{params.inspect}"
+  p_uid = resolve_patient_performer_user_id(params)
   patient_params = {
     full_name: params[:full_name],
     admission_date: params[:admission_date],
     admission_time: params[:admission_time],
     birth_date: params[:birth_date],
-    performer_name: params[:performer_name],
     appeal_type: params[:appeal_type],
-    pregnancy_unknown: params[:pregnancy_unknown] == '1'
+    pregnancy_unknown: params[:pregnancy_unknown] == '1',
+    created_by_user_id: current_user.id,
+    performer_user_id: p_uid
   }
   
   # Обработка срока беременности
@@ -512,11 +732,17 @@ post '/patients/:id/triage/step1' do
   }
   
   triage.update_step_data(1, step_data)
-  
+  step_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!(1, step_uid)
+  triage.save!
+
   # Проверяем приоритет и переходим на следующий этап
   result = triage.advance_step
   triage.reload
-  TriageAuditEvent.log_step_submit!(patient, triage, 1, result, timer_expired: params[:timer_expired] == '1')
+  acting_name = acting_performer_name_for_user_id(step_uid)
+  TriageAuditEvent.log_step_submit!(patient, triage, 1, result,
+                                    timer_expired: params[:timer_expired] == '1',
+                                    acting_performer_name: acting_name)
 
   if result == 'priority_assigned'
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
@@ -552,11 +778,17 @@ post '/patients/:id/triage/step2' do
   }
   
   triage.update_step_data(2, step_data)
-  
+  step_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!(2, step_uid)
+  triage.save!
+
   # Проверяем приоритет и переходим на следующий этап
   result = triage.advance_step
   triage.reload
-  TriageAuditEvent.log_step_submit!(patient, triage, 2, result, timer_expired: params[:timer_expired] == '1')
+  acting_name = acting_performer_name_for_user_id(step_uid)
+  TriageAuditEvent.log_step_submit!(patient, triage, 2, result,
+                                    timer_expired: params[:timer_expired] == '1',
+                                    acting_performer_name: acting_name)
 
   if result == 'priority_assigned'
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
@@ -595,11 +827,17 @@ post '/patients/:id/triage/step3' do
   }
   
   triage.update_step_data(3, step_data)
-  
+  step_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!(3, step_uid)
+  triage.save!
+
   # Проверяем приоритет
   result = triage.advance_step
   triage.reload
-  TriageAuditEvent.log_step_submit!(patient, triage, 3, result, timer_expired: params[:timer_expired] == '1')
+  acting_name = acting_performer_name_for_user_id(step_uid)
+  TriageAuditEvent.log_step_submit!(patient, triage, 3, result,
+                                    timer_expired: params[:timer_expired] == '1',
+                                    acting_performer_name: acting_name)
 
   flash[:notice] = "Триаж завершен. Приоритет: #{triage.priority_name}"
   redirect "/patients/#{patient.id}/triage/actions"
@@ -635,10 +873,13 @@ post '/patients/:id/triage/actions/mark' do
   end
   
   action_key = params[:action]
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
   triage.mark_action!(action_key)
   triage.reload
+  pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
   TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_marked',
-                        payload: { action: action_key, performer_name: patient.performer_name })
+                        payload: { action: action_key, performer_name: pname })
 
   final_action = triage.final_action
   can_complete = triage.can_complete_final_action? && final_action && triage.action_completed?(final_action[:key])
@@ -671,10 +912,13 @@ post '/patients/:id/triage/actions/unmark' do
     return { error: 'Действия уже завершены' }.to_json
   end
   
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
   triage.unmark_action!(action_key)
   triage.reload
+  pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
   TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_unmarked',
-                        payload: { action: action_key, performer_name: patient.performer_name })
+                        payload: { action: action_key, performer_name: pname })
 
   {
     success: true,
@@ -695,10 +939,13 @@ post '/patients/:id/triage/actions/complete' do
     return { error: 'Триаж не найден' }.to_json
   end
   
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
   if triage.complete_actions!
     triage.reload
+    pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
     TriageAuditEvent.log!(patient: patient, triage: triage, type: 'actions_completed',
-                          payload: { performer_name: patient.performer_name, priority: triage.priority })
+                          payload: { performer_name: pname, priority: triage.priority })
     { success: true }.to_json
   else
     { error: 'Не все действия выполнены' }.to_json
@@ -775,10 +1022,12 @@ post '/patients/:id/edit' do
     admission_date: params[:admission_date],
     admission_time: params[:admission_time],
     birth_date: params[:birth_date],
-    performer_name: params[:performer_name],
     appeal_type: params[:appeal_type],
     pregnancy_unknown: params[:pregnancy_unknown] == '1'
   }
+  if current_user.doctor_or_admin?
+    patient_params[:performer_user_id] = resolve_patient_performer_user_id(params)
+  end
   
   if params[:pregnancy_unknown] != '1' && params[:pregnancy_weeks].present?
     patient_params[:pregnancy_weeks] = params[:pregnancy_weeks].to_f

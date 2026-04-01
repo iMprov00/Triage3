@@ -12,12 +12,24 @@
   <%# Верхняя полоса: навигация %>
   <header class="app-header">
     <div class="app-container container d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
         <a href="/patients" class="app-logo">Триаж</a>
         <a href="/patients" class="app-nav-btn"><i class="bi bi-people"></i> К списку пациентов</a>
         <a href="/statistics" class="app-nav-btn"><i class="bi bi-graph-up-arrow"></i> Статистика</a>
+        <% if current_user&.admin? %>
+          <a href="/admin/users" class="app-nav-btn"><i class="bi bi-people"></i> Пользователи</a>
+          <a href="/admin/positions" class="app-nav-btn"><i class="bi bi-card-list"></i> Должности</a>
+        <% end %>
       </div>
-      <a href="/monitor" target="_blank" class="app-nav-btn"><i class="bi bi-tv"></i> Монитор ТВ</a>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <% if current_user %>
+          <span class="text-muted small d-none d-md-inline"><%= Rack::Utils.escape_html(current_user.full_name) %></span>
+          <form method="post" action="/logout" class="d-inline m-0">
+            <button type="submit" class="app-nav-btn btn btn-link p-0 border-0 text-decoration-none"><i class="bi bi-box-arrow-right"></i> Выход</button>
+          </form>
+        <% end %>
+        <a href="/monitor" target="_blank" class="app-nav-btn"><i class="bi bi-tv"></i> Монитор ТВ</a>
+      </div>
     </div>
   </header>
 

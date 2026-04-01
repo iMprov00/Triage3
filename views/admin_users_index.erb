@@ -1,0 +1,40 @@
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-0">Пользователи</h1>
+    <p class="text-muted small mb-0">Администрирование учётных записей</p>
+  </div>
+  <div class="action-bar">
+    <a href="/admin/users/new" class="btn btn-primary"><i class="bi bi-person-plus"></i> Новый пользователь</a>
+    <a href="/admin/positions" class="btn btn-outline-primary"><i class="bi bi-card-list"></i> Должности</a>
+    <a href="/patients" class="btn btn-outline-secondary">К списку пациентов</a>
+  </div>
+</div>
+
+<div class="app-card card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th>Логин</th>
+            <th>ФИО</th>
+            <th>Должность</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @users.each do |u| %>
+            <tr>
+              <td><code><%= Rack::Utils.escape_html(u.login) %></code></td>
+              <td><%= Rack::Utils.escape_html(u.full_name) %></td>
+              <td><%= Rack::Utils.escape_html(u.position_label) %></td>
+              <td class="text-end">
+                <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-outline-primary">Изменить</a>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
