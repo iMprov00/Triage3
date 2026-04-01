@@ -23,7 +23,7 @@ class Patient < ActiveRecord::Base
   def self.search(query)
     if query.present?
       where(
-        "full_name LIKE ? OR performer_name LIKE ? OR CAST(id AS TEXT) LIKE ?",
+        "patients.full_name LIKE ? OR patients.performer_name LIKE ? OR CAST(patients.id AS TEXT) LIKE ?",
         "%#{query}%", "%#{query}%", "%#{query}%"
       )
     else
@@ -95,5 +95,6 @@ class Patient < ActiveRecord::Base
       start_time: Time.now,
       timer_active: true
     )
+    puts "Создан триаж для пациента #{self.id}: #{triage.inspect}"
   end
 end

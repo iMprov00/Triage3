@@ -2,6 +2,11 @@
  * Монитор триажа — для телевизоров
  * Самостоятельное представление без layout
  * Цветовая схема с приоритетами: 1-красный, 2-желтый, 3-фиолетовый, 4-зеленый
+ *
+ * Сценарии экрана:
+ * - 1920×1080 (Full HD) — основная цель, читаемость с 2–4 м
+ * - 1366×768 / 1600×900 — уменьшенные токены через max-width внизу файла
+ * - 2560×1440 / 3840×2160 (4K) — блок @media (min-width: 2560px): крупнее типографика
  */
 
 :root {
@@ -25,7 +30,7 @@
   --m-text-muted: #94a3b8;
   --m-text-light: #e2e8f0;
   
-  /* Размеры для ТВ */
+  /* Размеры для ТВ (масштаб относительно 1080p) */
   --m-font-size-base: 1.2rem;
   --m-font-size-large: 1.8rem;
   --m-font-size-xlarge: 2.5rem;
@@ -33,6 +38,8 @@
   --m-card-padding: 1.5rem;
   --m-gap: 1rem;
   --m-border-radius: 12px;
+  /* Минимальная ширина колонки сетки карточек */
+  --m-grid-min: 450px;
 }
 
 /* Сброс и база */
@@ -182,7 +189,7 @@ body {
 /* ========== ОСНОВНОЙ КОНТЕНТ ========== */
 .patients-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--m-grid-min), 1fr));
   gap: var(--m-gap);
   margin-bottom: 1.5rem;
 }
@@ -425,6 +432,28 @@ body {
   }
   .monitor-meta {
     justify-content: center;
+  }
+}
+
+/* 4K и широкие панели: крупнее шрифт и плитки */
+@media (min-width: 2560px) {
+  :root {
+    --m-font-size-base: 1.35rem;
+    --m-font-size-large: 2rem;
+    --m-font-size-xlarge: 2.75rem;
+    --m-font-size-xxlarge: 4rem;
+    --m-grid-min: 520px;
+    --m-card-padding: 1.75rem;
+    --m-gap: 1.25rem;
+  }
+  .patient-name {
+    font-size: 1.85rem;
+  }
+  .timer-display {
+    font-size: 3.2rem;
+  }
+  .timers-row .timer-display {
+    font-size: 2.35rem;
   }
 }
 

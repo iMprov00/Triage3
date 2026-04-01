@@ -28,6 +28,8 @@ configure do
   set :sessions, true
   set :server, :puma
   
+  ActiveRecord::Base.logger = Logger.new(STDOUT) if development?
+
   # Автоматическая загрузка моделей
   Dir[File.join(File.dirname(__FILE__), 'models', '*.rb')].each do |file|
     require file
@@ -67,104 +69,120 @@ end
 # API списка пациентов (JSON, для обновления в реальном времени)
 get '/api/patients_list' do
   content_type :json
-  base = Patient.includes(:triage)
-  base = base.search(params[:search]) if params[:search].present?
-  base = apply_filters(base, params)
-  active_in_triage = base.joins(:triage).where(triages: { timer_active: true })
-                         .order(admission_date: :desc, admission_time: :desc)
-  ids_active = active_in_triage.pluck(:id)
-  rest = base.where.not(id: ids_active).order(admission_date: :desc, admission_time: :desc).limit(100)
-  patients = active_in_triage.to_a + rest.to_a
-  patients.map do |p|
-    t = p.triage
-    max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120
-    {
-      id: p.id,
-      full_name: p.full_name,
-      admission_date: p.admission_date.to_s,
-      admission_time: p.admission_time_formatted,
-      performer_name: p.performer_name,
-      appeal_type: p.appeal_type,
-      pregnancy_display: p.pregnancy_display,
-      created_at: format_time_nsk(p.created_at, "%d.%m.%Y %H:%M"),
-      triage: t ? {
-        step: t.step,
-        priority: t.priority,
-        priority_name: t.priority_name,
-        completed_at: t.completed_at,
-        actions_completed_at: t.actions_completed_at,
-        timer_active: t.timer_active,
-        time_remaining: t.time_remaining,
-        timer_ends_at: t.timer_ends_at,
-        expired: t.expired?,
-        max_time: max_time,
-        step1_data: t.step1_data || {},
-        step2_data: t.step2_data || {},
-        step3_data: t.step3_data || {}
-      } : nil
-    }
-  end.to_json
+  build_merged_patients_list(params).map { |p| patient_to_list_hash(p) }.to_json
 end
 
 # Список пациентов
 get '/patients' do
-  base = Patient.includes(:triage)
-  
+    puts "=== ЗАПРОС СПИСКА ==="
+  puts "params: #{params.inspect}"
+  puts "admission_date: #{params[:admission_date]}"
+  puts "search: #{params[:search]}"
+  puts "only_active: #{params[:only_active]}"
   # Автоматически устанавливаем текущую дату, если не указана
   params[:admission_date] ||= Date.today.to_s
-  
-  base = base.search(params[:search]) if params[:search].present?
-  base = apply_filters(base, params)
 
-  # Активные в триаже (на мониторе) — всегда сверху, независимо от даты
-  active_in_triage = base.joins(:triage).where(triages: { timer_active: true })
-                         .order(admission_date: :desc, admission_time: :desc)
-  ids_active = active_in_triage.pluck(:id)
-
-  # Остальные по дате поступления (новые сверху), лимит для компактного списка
-  rest = base.where.not(id: ids_active).order(admission_date: :desc, admission_time: :desc).limit(100)
-  @patients = active_in_triage.to_a + rest.to_a
+  @patients = build_merged_patients_list(params)
+  @patients_list_js = true
 
   @performers = Patient.distinct.pluck(:performer_name).compact.sort
   erb :patients_index
 end
 
-# Вспомогательный метод для фильтрации
-def apply_filters(patients, params)
-  # Фильтр по дате поступления (обязательный)
+# Как на мониторе: этап триажа с таймером или этап действий по приоритету (без фильтра по дате).
+def monitor_active_patients_scope(patients, params)
+  rel = patients
+  rel = rel.search(params[:search]) if params[:search].present?
+  rel.joins(:triage).where(
+    "triages.timer_active = :t OR (triages.completed_at IS NOT NULL AND triages.actions_completed_at IS NULL)",
+    t: true
+  )
+end
+
+def apply_admission_date_filter(patients, params)
   admission_date = params[:admission_date].presence || Date.today.to_s
-  patients = patients.where(admission_date: admission_date)
-  
-  # Фильтр по виду обращения
+  patients.where(patients: { admission_date: admission_date })
+end
+
+def apply_secondary_filters(patients, params)
   if params[:appeal_type].present? && params[:appeal_type] != 'all'
-    patients = patients.where(appeal_type: params[:appeal_type])
+    patients = patients.where(patients: { appeal_type: params[:appeal_type] })
   end
-  
-  # Фильтр по сроку беременности
+
   if params[:pregnancy_condition].present?
     case params[:pregnancy_condition]
     when 'unknown'
-      patients = patients.where(pregnancy_unknown: true)
+      patients = patients.where(patients: { pregnancy_unknown: true })
     when 'less_12'
-      patients = patients.where("pregnancy_weeks < 12 AND pregnancy_unknown = ?", false)
+      patients = patients.where("patients.pregnancy_weeks < 12 AND patients.pregnancy_unknown = ?", false)
     when '12_28'
-      patients = patients.where("pregnancy_weeks >= 12 AND pregnancy_weeks <= 28 AND pregnancy_unknown = ?", false)
+      patients = patients.where("patients.pregnancy_weeks >= 12 AND patients.pregnancy_weeks <= 28 AND patients.pregnancy_unknown = ?", false)
     when 'more_28'
-      patients = patients.where("pregnancy_weeks > 28 AND pregnancy_unknown = ?", false)
+      patients = patients.where("patients.pregnancy_weeks > 28 AND patients.pregnancy_unknown = ?", false)
     end
   end
-  
-  # Фильтр по исполнителю
+
   if params[:performer_filter].present?
-    patients = patients.where("performer_name LIKE ?", "%#{params[:performer_filter]}%")
+    patients = patients.where("patients.performer_name LIKE ?", "%#{params[:performer_filter]}%")
   end
-  
-  # НОВЫЙ ФИЛЬТР: только незавершенные триажи
+
   if params[:only_active] == '1'
     patients = patients.joins(:triage).where(triages: { completed_at: nil })
   end
-  
+
   patients
+end
+
+def apply_filters(patients, params)
+  patients = apply_admission_date_filter(patients, params)
+  apply_secondary_filters(patients, params)
+end
+
+def build_merged_patients_list(params)
+  active_list = monitor_active_patients_scope(Patient.includes(:triage), params)
+                  .order(admission_date: :desc, admission_time: :desc)
+                  .to_a
+  ids_active = active_list.map(&:id)
+
+  rest_base = Patient.includes(:triage)
+  rest_base = rest_base.search(params[:search]) if params[:search].present?
+  rest_base = apply_filters(rest_base, params)
+  rest_list = rest_base.where.not(id: ids_active)
+                .order(admission_date: :desc, admission_time: :desc)
+                .limit(100)
+                .to_a
+
+  active_list + rest_list
+end
+
+def patient_to_list_hash(p)
+  t = p.triage
+  max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120
+  {
+    id: p.id,
+    full_name: p.full_name,
+    admission_date: p.admission_date.to_s,
+    admission_time: p.admission_time_formatted,
+    performer_name: p.performer_name,
+    appeal_type: p.appeal_type,
+    pregnancy_display: p.pregnancy_display,
+    created_at: format_time_nsk(p.created_at, "%d.%m.%Y %H:%M"),
+    triage: t ? {
+      step: t.step,
+      priority: t.priority,
+      priority_name: t.priority_name,
+      completed_at: t.completed_at,
+      actions_completed_at: t.actions_completed_at,
+      timer_active: t.timer_active,
+      time_remaining: t.time_remaining,
+      timer_ends_at: t.timer_ends_at,
+      expired: t.expired?,
+      max_time: max_time,
+      step1_data: t.step1_data || {},
+      step2_data: t.step2_data || {},
+      step3_data: t.step3_data || {}
+    } : nil
+  }
 end
 
 # Создание нового пациента
@@ -173,6 +191,8 @@ get '/patients/new' do
 end
 
 post '/patients' do
+    puts "=== СОЗДАНИЕ ПАЦИЕНТА ==="
+  puts "params: #{params.inspect}"
   patient_params = {
     full_name: params[:full_name],
     admission_date: params[:admission_date],
@@ -191,10 +211,12 @@ post '/patients' do
   patient = Patient.create(patient_params)
   
   if patient.persisted?
+      puts "Пациент сохранён: id=#{patient.id}, admission_date=#{patient.admission_date}, full_name=#{patient.full_name}"
     flash[:notice] = "Пациент создан. Переход к триажу."
     redirect "/patients/#{patient.id}/triage"
   else
     flash[:error] = "Ошибка при создании пациента: #{patient.errors.full_messages.join(', ')}"
+    puts "Ошибка сохранения: #{patient.errors.full_messages}"
     redirect '/patients/new'
   end
 end
@@ -848,3 +870,6 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
     redirect "/patients/#{patient.id}/triage/edit_step/#{step_num}"
   end
 end
+
+
+

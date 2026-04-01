@@ -2,6 +2,14 @@
  * Триаж — чистая, аккуратная цветовая схема
  * Основной цвет: #54c654 (зеленый)
  * Приоритеты: 1-красный, 2-желтый, 3-фиолетовый, 4-зеленый
+ *
+ * Брейкпоинты и сценарии (адаптив):
+ * - до 575.98px — телефон, одна колонка карточек
+ * - 576–767.98px — планшет портрет
+ * - 768–1023.98px — планшет ландшафт / небольшой экран
+ * - 1024px+ — десктоп
+ * Минимальная зона касания: --touch (44px). Полноценный SPA (React/Vue) не требуется
+ * для улучшения UX — см. стратегию фронтенда проекта при росте сложности.
  */
 
 /* ========== Палитра ========== */
@@ -82,6 +90,19 @@
   
   /* Размеры для касаний */
   --touch: 44px;
+
+  /* Шкала типографики (база для планшета/десктопа) */
+  --font-size-body: 15px;
+  --font-size-title: 1.5rem;
+  --font-size-title-md: 1.75rem;
+
+  /* Согласование с Bootstrap 5 (тема без полного bootstrap build) */
+  --bs-primary: var(--primary);
+  --bs-primary-rgb: 84, 198, 84;
+  --bs-body-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --bs-border-radius: var(--radius-sm);
+  --bs-body-bg: var(--bg-secondary);
+  --bs-body-color: var(--text-primary);
 }
 
 /* ========== Сброс и база ========== */
@@ -89,8 +110,8 @@ body {
   margin: 0;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 15px;
+  font-family: var(--bs-body-font-family);
+  font-size: var(--font-size-body);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -149,9 +170,20 @@ body {
   .app-container { padding: 2rem; }
 }
 
+/* Планшет ландшафт: часто так держат устройство в стационаре */
+@media (min-width: 768px) and (max-width: 1199.98px) and (orientation: landscape) {
+  .app-container {
+    padding: 1.25rem 1.75rem;
+    max-width: 100%;
+  }
+  .patient-list .col-card {
+    margin-bottom: 1.25rem;
+  }
+}
+
 /* ========== ТИПОГРАФИКА ========== */
 .page-title {
-  font-size: 1.5rem;
+  font-size: var(--font-size-title);
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 1.5rem 0;
@@ -160,8 +192,8 @@ body {
 }
 
 @media (min-width: 768px) {
-  .page-title { 
-    font-size: 1.75rem;
+  .page-title {
+    font-size: var(--font-size-title-md);
     margin-bottom: 2rem;
   }
 }

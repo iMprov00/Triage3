@@ -14,3 +14,4 @@ gem 'tzinfo'
 gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw]
 gem 'sprockets' # для ассетов
 gem 'sprockets-helpers'
+gem 'eventmachine'
