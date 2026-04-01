@@ -118,13 +118,13 @@ function renderPatientsList(patients) {
     if (t) {
       html += '<div class="mb-4">';
 
-      // Этап и приоритет
+      // Шаг и приоритет
       html += '<div class="d-flex justify-content-between align-items-center mb-3">';
       html += '<div class="d-flex gap-1">';
 
-      // Этап
+      // Шаг
       html += '<span class="badge ' + stepClass(t.step) + '">';
-      html += '<i class="bi bi-' + (t.step || 1) + '-circle"></i> Этап ' + (t.step || 1);
+      html += '<i class="bi bi-' + (t.step || 1) + '-circle"></i> Шаг ' + (t.step || 1);
       html += '</span>';
 
       // Приоритет
@@ -151,7 +151,7 @@ function renderPatientsList(patients) {
 
         html += '<div class="timer-box ' + timerBoxClass + '" data-timer-ends-at="' + endsAt + '" data-step-max="' + maxTime + '" data-patient-id="' + p.id + '">';
         html += '<div class="d-flex justify-content-between align-items-center mb-2">';
-        html += '<span class="text-secondary small">Таймер этапа</span>';
+        html += '<span class="text-secondary small">Таймер шага</span>';
         html += '<span class="timer-value fw-bold">' + timeRemaining + ' сек</span>';
         html += '</div>';
 
@@ -181,9 +181,9 @@ function renderPatientsList(patients) {
         var btnCls = step === 1 ? 'btn-primary' :
                      step === 2 ? 'btn-warning' :
                      'btn-success';
-        var btnText = step === 1 ? 'Этап 1 — Уровень сознания' :
-                      step === 2 ? 'Этап 2 — Общая оценка' :
-                      'Этап 3 — Витальные функции';
+        var btnText = step === 1 ? 'Шаг 1 — Уровень сознания' :
+                      step === 2 ? 'Шаг 2 — Общая оценка' :
+                      'Шаг 3 — Витальные функции';
 
         html += '<a href="' + link + '" class="btn ' + btnCls + ' btn-sm w-100 mb-2">';
         html += '<i class="bi bi-clipboard-pulse"></i> ' + btnText;
@@ -207,25 +207,25 @@ function renderPatientsList(patients) {
       html += '<i class="bi bi-pencil"></i>';
       html += '</a>';
 
-      // Кнопки редактирования этапов (пока действия не завершены)
+      // Кнопки редактирования шагов (пока действия не завершены)
       if (t && !t.actions_completed_at) {
-        // Проверяем наличие данных для этапов
+        // Проверяем наличие данных для шагов
         var hasStep1 = t.step1_data && Object.keys(t.step1_data).length > 0;
         var hasStep2 = t.step2_data && Object.keys(t.step2_data).length > 0;
         var hasStep3 = t.step3_data && Object.keys(t.step3_data).length > 0;
 
         if (hasStep1) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-sm btn-outline-info" title="Редактировать этап 1">';
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-sm btn-outline-info" title="Редактировать шаг 1">';
           html += '<i class="bi bi-1-circle"></i>';
           html += '</a>';
         }
         if (hasStep2) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-sm btn-outline-info" title="Редактировать этап 2">';
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-sm btn-outline-info" title="Редактировать шаг 2">';
           html += '<i class="bi bi-2-circle"></i>';
           html += '</a>';
         }
         if (hasStep3) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-sm btn-outline-info" title="Редактировать этап 3">';
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-sm btn-outline-info" title="Редактировать шаг 3">';
           html += '<i class="bi bi-3-circle"></i>';
           html += '</a>';
         }
@@ -280,7 +280,7 @@ function renderPatientsList(patients) {
       if (t.completed_at) {
         html += 'Завершен (' + escapeHtml(t.priority_name || '') + ')';
       } else {
-        html += 'Активен (этап ' + (t.step || 1) + ')';
+        html += 'Активен (шаг ' + (t.step || 1) + ')';
       }
       html += '</div></div>';
     }
@@ -341,7 +341,7 @@ function fetchPatientsList() {
         var patients = JSON.parse(xhr.responseText);
         var newHash = getPatientsHash(patients);
 
-        // Перерисовываем только если изменилась структура (добавился/удалился пациент, изменился этап/приоритет)
+        // Перерисовываем только если изменилась структура (добавился/удалился пациент, изменился шаг/приоритет)
         // При первом запросе (lastPatientsHash === null) просто запоминаем хэш без перерисовки
         if (lastPatientsHash !== null && newHash !== lastPatientsHash) {
           renderPatientsList(patients);

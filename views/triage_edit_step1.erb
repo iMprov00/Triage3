@@ -1,15 +1,22 @@
-<%# Редактирование этапа 1 %>
-<div class="row align-items-start">
+<%# Редактирование шага 1 %>
+<% s1 = @triage.step1_data || {} %>
+<% breathing_default_yes = s1['breathing'] != false %>
+<% heartbeat_default_yes = s1['heartbeat'] != false %>
+<div class="row align-items-start mb-2">
   <div class="col-12 col-md-8">
-    <h1 class="page-title">Редактирование этапа 1 — <%= @patient.full_name %></h1>
+    <h1 class="page-title">Редактирование шага 1 — <%= @patient.full_name %></h1>
     <p class="text-muted small mb-0">Уровень сознания</p>
   </div>
   <div class="col-12 col-md-4 mb-3 mb-md-0">
-    <div class="alert alert-info">
+    <div class="alert alert-info mb-3">
       <i class="bi bi-info-circle"></i> Режим редактирования
       <% if @triage.completed_at %>
         <div class="small">Триаж завершен</div>
       <% end %>
+    </div>
+    <div id="consciousness-score-panel" class="alert triage-score-panel <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-success' %> mb-0 d-none d-md-block">
+      <strong class="d-block">Сумма баллов: <span id="total-score"><%= @triage.total_consciousness_score %></span></strong>
+      <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
     </div>
   </div>
 </div>
@@ -23,45 +30,44 @@
       <div class="row g-3">
         <div class="col-md-4">
           <label class="form-label">Открывание глаз</label>
-          <select name="eye_opening" class="form-select" required>
+          <select name="eye_opening" class="form-select triage-score-field" required>
             <option value="">Выберите...</option>
             <% Triage::EYE_OPENING_SCORES.each do |text, score| %>
-              <option value="<%= text %>" <%= 'selected' if @triage.step1_data['eye_opening'] == text %>>
+              <option value="<%= text %>" <%= 'selected' if s1['eye_opening'] == text %>>
                 <%= text %> (<%= score %> баллов)
               </option>
             <% end %>
           </select>
         </div>
-        
+
         <div class="col-md-4">
           <label class="form-label">Речевые реакции</label>
-          <select name="verbal_response" class="form-select" required>
+          <select name="verbal_response" class="form-select triage-score-field" required>
             <option value="">Выберите...</option>
             <% Triage::VERBAL_SCORES.each do |text, score| %>
-              <option value="<%= text %>" <%= 'selected' if @triage.step1_data['verbal_response'] == text %>>
+              <option value="<%= text %>" <%= 'selected' if s1['verbal_response'] == text %>>
                 <%= text %> (<%= score %> баллов)
               </option>
             <% end %>
           </select>
         </div>
-        
+
         <div class="col-md-4">
           <label class="form-label">Двигательные реакции</label>
-          <select name="motor_response" class="form-select" required>
+          <select name="motor_response" class="form-select triage-score-field" required>
             <option value="">Выберите...</option>
             <% Triage::MOTOR_SCORES.each do |text, score| %>
-              <option value="<%= text %>" <%= 'selected' if @triage.step1_data['motor_response'] == text %>>
+              <option value="<%= text %>" <%= 'selected' if s1['motor_response'] == text %>>
                 <%= text %> (<%= score %> баллов)
               </option>
             <% end %>
           </select>
         </div>
       </div>
-      
-      <div class="mt-3 text-center">
-        <div class="alert <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-secondary' %>">
-          <strong>Сумма баллов: <span id="total-score"><%= @triage.total_consciousness_score %></span></strong>
-          <div class="small text-muted">Если сумма ≤ 8 баллов - приоритет Красный</div>
+      <div class="d-md-none mt-3">
+        <div id="consciousness-score-panel-mobile" class="alert triage-score-panel <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-success' %> mb-0">
+          <strong class="d-block">Сумма баллов: <span id="total-score-mobile"><%= @triage.total_consciousness_score %></span></strong>
+          <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
         </div>
       </div>
     </div>
@@ -72,47 +78,57 @@
       <span class="text-muted small text-uppercase fw-normal">Витальные функции и кровотечение</span>
     </div>
     <div class="card-body">
-      <div class="row">
-        <div class="col-md-3">
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="breathing" value="true" 
-                   id="breathing" <%= 'checked' if @triage.step1_data['breathing'] %>>
-            <label class="form-check-label" for="breathing">
-              Дыхание
-            </label>
+      <div class="row g-4 align-items-start">
+        <div class="col-12 col-md-6 triage-step1-split-left pb-3 pb-md-0 border-bottom border-md-0">
+          <div class="text-muted small text-uppercase fw-semibold mb-3">Витальные функции</div>
+          <div class="triage-step1-vitals">
+            <div class="mb-3">
+              <label class="form-label d-block">Дыхание</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="breathing" id="breathing_yes" value="true" autocomplete="off" <%= 'checked' if breathing_default_yes %>>
+                <label class="btn btn-outline-secondary triage-vitals-yes" for="breathing_yes">Да</label>
+                <input type="radio" class="btn-check" name="breathing" id="breathing_no" value="false" autocomplete="off" <%= 'checked' unless breathing_default_yes %>>
+                <label class="btn btn-outline-secondary triage-vitals-no" for="breathing_no">Нет</label>
+              </div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label d-block">Сердцебиение</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="heartbeat" id="heartbeat_yes" value="true" autocomplete="off" <%= 'checked' if heartbeat_default_yes %>>
+                <label class="btn btn-outline-secondary triage-vitals-yes" for="heartbeat_yes">Да</label>
+                <input type="radio" class="btn-check" name="heartbeat" id="heartbeat_no" value="false" autocomplete="off" <%= 'checked' unless heartbeat_default_yes %>>
+                <label class="btn btn-outline-secondary triage-vitals-no" for="heartbeat_no">Нет</label>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="col-md-3">
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="heartbeat" value="true" 
-                   id="heartbeat" <%= 'checked' if @triage.step1_data['heartbeat'] %>>
-            <label class="form-check-label" for="heartbeat">
-              Сердцебиение
-            </label>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="seizures" value="true" 
-                   id="seizures" <%= 'checked' if @triage.step1_data['seizures'] %>>
-            <label class="form-check-label" for="seizures">
-              Судороги
-            </label>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="active_bleeding" value="true" 
-                   id="active_bleeding" <%= 'checked' if @triage.step1_data['active_bleeding'] %>>
-            <label class="form-check-label" for="active_bleeding">
-              Активное кровотечение
-            </label>
+        <div class="col-12 col-md-6 ps-md-3">
+          <div class="text-muted small text-uppercase fw-semibold mb-3">Кровотечение и судороги</div>
+          <div class="triage-step1-bleed">
+            <div class="mb-3">
+              <label class="form-label d-block">Судороги</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="seizures" id="seizures_yes" value="true" autocomplete="off" <%= 'checked' if s1['seizures'] == true %>>
+                <label class="btn btn-outline-secondary triage-bleed-yes" for="seizures_yes">Да</label>
+                <input type="radio" class="btn-check" name="seizures" id="seizures_no" value="false" autocomplete="off" <%= 'checked' if s1['seizures'] != true %>>
+                <label class="btn btn-outline-secondary triage-bleed-no" for="seizures_no">Нет</label>
+              </div>
+            </div>
+            <div class="mb-0">
+              <label class="form-label d-block">Активное кровотечение</label>
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="active_bleeding" id="active_bleeding_yes" value="true" autocomplete="off" <%= 'checked' if s1['active_bleeding'] == true %>>
+                <label class="btn btn-outline-secondary triage-bleed-yes" for="active_bleeding_yes">Да</label>
+                <input type="radio" class="btn-check" name="active_bleeding" id="active_bleeding_no" value="false" autocomplete="off" <%= 'checked' if s1['active_bleeding'] != true %>>
+                <label class="btn btn-outline-secondary triage-bleed-no" for="active_bleeding_no">Нет</label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
+
   <div class="d-grid gap-2 d-md-flex justify-content-md-end">
     <button type="submit" class="btn btn-success btn-lg">
       <i class="bi bi-save"></i> Сохранить изменения
@@ -124,40 +140,42 @@
 </form>
 
 <script>
-// Расчет суммы баллов
-function calculateTotalScore() {
-  const eyeSelect = $('select[name="eye_opening"]');
-  const verbalSelect = $('select[name="verbal_response"]');
-  const motorSelect = $('select[name="motor_response"]');
-  
-  const eyeText = eyeSelect.val();
-  const verbalText = verbalSelect.val();
-  const motorText = motorSelect.val();
-  
-  const scores = {
+(function() {
+  var SCORES = {
     eye: <%= Triage::EYE_OPENING_SCORES.to_json %>,
     verbal: <%= Triage::VERBAL_SCORES.to_json %>,
     motor: <%= Triage::MOTOR_SCORES.to_json %>
   };
-  
-  let total = 0;
-  if (eyeText && scores.eye[eyeText]) total += scores.eye[eyeText];
-  if (verbalText && scores.verbal[verbalText]) total += scores.verbal[verbalText];
-  if (motorText && scores.motor[motorText]) total += scores.motor[motorText];
-  
-  $('#total-score').text(total);
-  
-  // Подсветка если сумма ≤ 8
-  if (total <= 8) {
-    $('#total-score').closest('.alert').removeClass('alert-secondary').addClass('alert-danger');
-  } else {
-    $('#total-score').closest('.alert').removeClass('alert-danger').addClass('alert-secondary');
+
+  function calculateTotalScore() {
+    var eyeSel = document.querySelector('select[name="eye_opening"]');
+    var verbalSel = document.querySelector('select[name="verbal_response"]');
+    var motorSel = document.querySelector('select[name="motor_response"]');
+    var eyeText = eyeSel ? eyeSel.value : '';
+    var verbalText = verbalSel ? verbalSel.value : '';
+    var motorText = motorSel ? motorSel.value : '';
+
+    var total = 0;
+    if (eyeText && SCORES.eye[eyeText]) total += SCORES.eye[eyeText];
+    if (verbalText && SCORES.verbal[verbalText]) total += SCORES.verbal[verbalText];
+    if (motorText && SCORES.motor[motorText]) total += SCORES.motor[motorText];
+
+    document.querySelectorAll('#total-score, #total-score-mobile').forEach(function(el) {
+      el.textContent = total;
+    });
+
+    document.querySelectorAll('#consciousness-score-panel, #consciousness-score-panel-mobile').forEach(function(panel) {
+      if (!panel) return;
+      panel.classList.remove('alert-danger', 'alert-success');
+      panel.classList.add(total <= 8 ? 'alert-danger' : 'alert-success');
+    });
   }
-}
 
-// Слушаем изменения в селектах
-$('select[name="eye_opening"], select[name="verbal_response"], select[name="motor_response"]').change(calculateTotalScore);
+  document.querySelectorAll('.triage-score-field').forEach(function(sel) {
+    sel.addEventListener('change', calculateTotalScore);
+    sel.addEventListener('input', calculateTotalScore);
+  });
 
-// Инициализация
-calculateTotalScore();
+  calculateTotalScore();
+})();
 </script>

@@ -1,4 +1,4 @@
-<%# Просмотр данных триажа — все этапы %>
+<%# Просмотр данных триажа — все шаги %>
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
   <div>
     <h1 class="page-title mb-1">Данные триажа</h1>
@@ -52,8 +52,8 @@
   <div class="card-body">
     <div class="row">
       <div class="col-6 col-md-3 mb-2">
-        <strong>Текущий этап:</strong><br>
-        Этап <%= @triage.step %>
+        <strong>Текущий шаг:</strong><br>
+        Шаг <%= @triage.step %>
       </div>
       <div class="col-6 col-md-3 mb-2">
         <strong>Приоритет:</strong><br>
@@ -80,11 +80,11 @@
   </div>
 </div>
 
-<%# Этап 1: Уровень сознания %>
+<%# Шаг 1: Уровень сознания %>
 <% step1 = @triage.step_data(1) || {} %>
 <div class="app-card card mb-4">
   <div class="app-card-header card-header d-flex align-items-center justify-content-between">
-    <span class="text-muted small text-uppercase fw-normal">Этап 1 — Уровень сознания</span>
+    <span class="text-muted small text-uppercase fw-normal">Шаг 1 — Уровень сознания</span>
     <div>
       <% if @triage.step1_completed_at %>
         <span class="text-muted small me-2"><%= format_nsk(@triage.step1_completed_at) %></span>
@@ -140,16 +140,16 @@
         </div>
       </div>
     <% else %>
-      <p class="text-muted mb-0">Данные этапа 1 отсутствуют</p>
+      <p class="text-muted mb-0">Данные шага 1 отсутствуют</p>
     <% end %>
   </div>
 </div>
 
-<%# Этап 2: Двигательные функции и опрос %>
+<%# Шаг 2: Двигательные функции и опрос %>
 <% step2 = @triage.step_data(2) || {} %>
 <div class="app-card card mb-4">
   <div class="app-card-header card-header d-flex align-items-center justify-content-between">
-    <span class="text-muted small text-uppercase fw-normal">Этап 2 — Двигательные функции и опрос</span>
+    <span class="text-muted small text-uppercase fw-normal">Шаг 2 — Двигательные функции и опрос</span>
     <div>
       <% if @triage.step2_completed_at %>
         <span class="text-muted small me-2"><%= format_nsk(@triage.step2_completed_at) %></span>
@@ -198,16 +198,16 @@
         <% end %>
       </div>
     <% else %>
-      <p class="text-muted mb-0">Данные этапа 2 отсутствуют</p>
+      <p class="text-muted mb-0">Данные шага 2 отсутствуют</p>
     <% end %>
   </div>
 </div>
 
-<%# Этап 3: Витальные функции %>
+<%# Шаг 3: Витальные функции %>
 <% step3 = @triage.step_data(3) || {} %>
 <div class="app-card card mb-4">
   <div class="app-card-header card-header d-flex align-items-center justify-content-between">
-    <span class="text-muted small text-uppercase fw-normal">Этап 3 — Витальные функции</span>
+    <span class="text-muted small text-uppercase fw-normal">Шаг 3 — Витальные функции</span>
     <div>
       <% if @triage.step3_completed_at %>
         <span class="text-muted small me-2"><%= format_nsk(@triage.step3_completed_at) %></span>
@@ -248,7 +248,7 @@
         </div>
       </div>
     <% else %>
-      <p class="text-muted mb-0">Данные этапа 3 отсутствуют</p>
+      <p class="text-muted mb-0">Данные шага 3 отсутствуют</p>
     <% end %>
   </div>
 </div>

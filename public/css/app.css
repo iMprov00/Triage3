@@ -408,6 +408,63 @@ body {
 .badge-step-2 { background: var(--step-2); color: #1f2937; }
 .badge-step-3 { background: var(--step-3); color: white; }
 
+/* ========== Шаг 1: сумма баллов (зелёный фон при норме) ========== */
+.triage-score-panel.alert-success {
+  background-color: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.triage-score-panel.alert-success .text-muted {
+  color: var(--text-secondary) !important;
+}
+
+.triage-score-panel.alert-danger {
+  background-color: var(--danger-light) !important;
+  border-color: var(--danger) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Шаг 1: две колонки (слева витальные, справа кровотечение) */
+@media (min-width: 768px) {
+  .triage-step1-split-left {
+    border-right: 1px solid var(--border-light);
+    padding-right: 1.25rem;
+  }
+}
+
+/* Витальные: «Да» — зелёный, «Нет» — красный (перебиваем Bootstrap .btn-check + .btn-outline-*) */
+.triage-step1-vitals .btn-group .btn-check:checked + .btn-outline-secondary.triage-vitals-yes,
+.triage-step1-vitals .btn-group .btn-check:checked + label.btn.triage-vitals-yes {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.triage-step1-vitals .btn-group .btn-check:checked + .btn-outline-secondary.triage-vitals-no,
+.triage-step1-vitals .btn-group .btn-check:checked + label.btn.triage-vitals-no {
+  background-color: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+/* Судороги и кровотечение: «Да» — красный, «Нет» — зелёный */
+.triage-step1-bleed .btn-group .btn-check:checked + .btn-outline-secondary.triage-bleed-yes,
+.triage-step1-bleed .btn-group .btn-check:checked + label.btn.triage-bleed-yes {
+  background-color: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.triage-step1-bleed .btn-group .btn-check:checked + .btn-outline-secondary.triage-bleed-no,
+.triage-step1-bleed .btn-group .btn-check:checked + label.btn.triage-bleed-no {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
 /* ========== ТАЙМЕР ========== */
 .timer-box {
   background: var(--bg-primary);

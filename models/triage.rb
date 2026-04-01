@@ -41,7 +41,7 @@ class Triage < ActiveRecord::Base
     { key: 'nurse_called', text: 'Вызвана младшая медсестра триажной палаты', starts_timer: true, timer_minutes: 12 },
     { key: 'delivered_to_triage', text: 'Пациентка доставлена в триажную палату', final: true }
   ].freeze
-  
+
   # Действия для фиолетового приоритета
   PURPLE_PRIORITY_ACTIONS = [
     { key: 'nurse_called', text: 'Вызвана младшая медсестра боксированных палат', starts_timer: true, timer_minutes: 15 },
@@ -49,7 +49,7 @@ class Triage < ActiveRecord::Base
     { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
     { key: 'delivered_to_box', text: 'Пациентка доставлена в боксированную палату', final: true }
   ].freeze
-  
+
   # Действия для зеленого приоритета
   GREEN_PRIORITY_ACTIONS = [
     { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
@@ -148,7 +148,7 @@ class Triage < ActiveRecord::Base
   end
   
   def step_name
-    STEPS[step] ? STEPS[step][:name] : "Этап #{step}"
+    STEPS[step] ? STEPS[step][:name] : "Шаг #{step}"
   end
   
   def step_duration

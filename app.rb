@@ -439,7 +439,7 @@ post '/patients/:id/triage/step1' do
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
     redirect "/patients/#{patient.id}/triage/actions"
   else
-    flash[:notice] = "Переходим ко второму этапу"
+    flash[:notice] = "Переходим ко второму шагу"
     redirect "/patients/#{patient.id}/triage/step2"
   end
 end
@@ -477,7 +477,7 @@ post '/patients/:id/triage/step2' do
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
     redirect "/patients/#{patient.id}/triage/actions"
   else
-    flash[:notice] = "Переходим к третьему этапу"
+    flash[:notice] = "Переходим к третьему шагу"
     redirect "/patients/#{patient.id}/triage/step3"
   end
 end
@@ -718,13 +718,13 @@ get '/patients/:id/triage/edit_step/:step' do |id, step|
   
   # Проверяем, что этап существует
   if @step < 1 || @step > 3
-    flash[:error] = "Неверный номер этапа"
+    flash[:error] = "Неверный номер шага"
     redirect "/patients"
   end
   
   # Проверяем, что данные для этого этапа есть
   if @step > @triage.step && !@triage.completed_at
-    flash[:error] = "Этот этап еще не был пройден"
+    flash[:error] = "Этот шаг еще не был пройден"
     redirect "/patients"
   end
   
@@ -862,7 +862,7 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
       redirect "/patients/#{patient.id}/triage/actions"
     else
       # Триаж продолжается
-      flash[:notice] = "Данные этапа #{step_num} обновлены. Переход к этапу #{triage.step}."
+      flash[:notice] = "Данные шага #{step_num} обновлены. Переход к шагу #{triage.step}."
       redirect "/patients/#{patient.id}/triage/step#{triage.step}"
     end
   else
