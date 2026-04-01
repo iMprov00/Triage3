@@ -757,3 +757,37 @@ body {
 .timer-box .display-5 {
   font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
+
+/* ========== СТРАНИЦА СТАТИСТИКИ / ЖУРНАЛ АУДИТА ========== */
+.audit-timeline {
+  position: relative;
+  padding-left: 0.5rem;
+}
+
+.audit-timeline-item {
+  position: relative;
+  border-left: 2px solid var(--border-medium);
+  padding-left: 1rem;
+  margin-left: 0.35rem;
+}
+
+.audit-timeline-item:last-child {
+  border-left-color: transparent;
+}
+
+.audit-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -0.4rem;
+  top: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 0 1px var(--border-medium);
+}
+
+.audit-payload-dl {
+  border-color: var(--primary-light) !important;
+}

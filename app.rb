@@ -55,6 +55,59 @@ helpers do
     return nil unless time
     (time.utc + NOVOSIBIRSK_OFFSET).strftime(format)
   end
+
+  def format_duration_sec(sec)
+    return '—' if sec.nil?
+
+    m = sec.to_i / 60
+    s = sec.to_i % 60
+    format('%d:%02d', m, s)
+  end
+
+  def audit_event_label(type)
+    TriageAuditEvent::EVENT_LABELS[type] || type.to_s
+  end
+
+  def audit_payload_value(key, raw)
+    k = key.to_s
+    case k
+    when 'within_limit'
+      return '—' if raw.nil?
+
+      raw ? 'да' : 'нет'
+    when 'timer_expired'
+      return '—' if raw.nil?
+
+      raw ? 'да (автосохранение по таймеру)' : 'нет'
+    when 'advance_result'
+      TriageAuditEvent::ADVANCE_RESULT_LABELS[raw.to_s] || raw.to_s
+    when 'priority'
+      Triage.priority_label_ru(raw)
+    when 'limit_seconds', 'seconds_used'
+      return '—' if raw.nil?
+
+      sec = raw.to_i
+      "#{format_duration_sec(sec)} (#{sec} с)"
+    when 'action'
+      Triage.action_text_for_key(raw)
+    else
+      raw.nil? ? '—' : raw.to_s
+    end
+  end
+
+  def audit_event_payload_rows(ev)
+    ph = ev.payload_hash
+    return [] if ph.blank?
+
+    ph = ph.transform_keys(&:to_s)
+    order = TriageAuditEvent::PAYLOAD_DISPLAY_KEY_ORDER
+    keys_ordered = order.select { |x| ph.key?(x) } + (ph.keys - order).sort
+
+    keys_ordered.map do |field|
+      label = TriageAuditEvent::PAYLOAD_KEY_LABELS[field] || "Параметр (#{field})"
+      [label, audit_payload_value(field, ph[field])]
+    end
+  end
 end
 
 # Хранилище для SSE соединений
@@ -70,6 +123,34 @@ end
 get '/api/patients_list' do
   content_type :json
   build_merged_patients_list(params).map { |p| patient_to_list_hash(p) }.to_json
+end
+
+# Подробная статистика по пациенту (журнал событий и метрики времени)
+get '/statistics' do
+  params[:admission_date] ||= Date.today.to_s
+  @patients = build_merged_patients_list(params)
+  @performers = Patient.distinct.pluck(:performer_name).compact.sort
+
+  @selected_patient = nil
+  @triage = nil
+  @audit_events = []
+
+  if params[:patient_id].present?
+    @selected_patient = Patient.find_by(id: params[:patient_id])
+    if @selected_patient
+      @triage = @selected_patient.triage
+      @audit_events = @selected_patient.triage_audit_events.includes(:triage).order(:occurred_at)
+    end
+  end
+
+  @patients_for_select =
+    if @selected_patient && @patients.none? { |p| p.id == @selected_patient.id }
+      [@selected_patient] + @patients
+    else
+      @patients
+    end
+
+  erb :statistics
 end
 
 # Список пациентов
@@ -434,7 +515,9 @@ post '/patients/:id/triage/step1' do
   
   # Проверяем приоритет и переходим на следующий этап
   result = triage.advance_step
-  
+  triage.reload
+  TriageAuditEvent.log_step_submit!(patient, triage, 1, result, timer_expired: params[:timer_expired] == '1')
+
   if result == 'priority_assigned'
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
     redirect "/patients/#{patient.id}/triage/actions"
@@ -472,7 +555,9 @@ post '/patients/:id/triage/step2' do
   
   # Проверяем приоритет и переходим на следующий этап
   result = triage.advance_step
-  
+  triage.reload
+  TriageAuditEvent.log_step_submit!(patient, triage, 2, result, timer_expired: params[:timer_expired] == '1')
+
   if result == 'priority_assigned'
     flash[:notice] = "Приоритет определен: #{triage.priority_name}"
     redirect "/patients/#{patient.id}/triage/actions"
@@ -512,8 +597,10 @@ post '/patients/:id/triage/step3' do
   triage.update_step_data(3, step_data)
   
   # Проверяем приоритет
-  triage.advance_step
-  
+  result = triage.advance_step
+  triage.reload
+  TriageAuditEvent.log_step_submit!(patient, triage, 3, result, timer_expired: params[:timer_expired] == '1')
+
   flash[:notice] = "Триаж завершен. Приоритет: #{triage.priority_name}"
   redirect "/patients/#{patient.id}/triage/actions"
 end
@@ -549,7 +636,10 @@ post '/patients/:id/triage/actions/mark' do
   
   action_key = params[:action]
   triage.mark_action!(action_key)
-  
+  triage.reload
+  TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_marked',
+                        payload: { action: action_key, performer_name: patient.performer_name })
+
   final_action = triage.final_action
   can_complete = triage.can_complete_final_action? && final_action && triage.action_completed?(final_action[:key])
   
@@ -582,7 +672,10 @@ post '/patients/:id/triage/actions/unmark' do
   end
   
   triage.unmark_action!(action_key)
-  
+  triage.reload
+  TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_unmarked',
+                        payload: { action: action_key, performer_name: patient.performer_name })
+
   {
     success: true,
     action: action_key,
@@ -603,6 +696,9 @@ post '/patients/:id/triage/actions/complete' do
   end
   
   if triage.complete_actions!
+    triage.reload
+    TriageAuditEvent.log!(patient: patient, triage: triage, type: 'actions_completed',
+                          payload: { performer_name: patient.performer_name, priority: triage.priority })
     { success: true }.to_json
   else
     { error: 'Не все действия выполнены' }.to_json
@@ -691,6 +787,8 @@ post '/patients/:id/edit' do
   end
   
   if patient.update(patient_params)
+    TriageAuditEvent.log!(patient: patient, triage: patient.triage, type: 'patient_edited',
+                          payload: { performer_name: patient.performer_name })
     flash[:notice] = "Данные пациента обновлены"
     redirect "/patients"
   else
@@ -786,6 +884,10 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
   triage.apply_update_step!(step_num, params)
 
   if triage.save
+    triage.reload
+    TriageAuditEvent.log!(patient: patient, triage: triage, type: 'triage_edit_saved',
+                          payload: { step: step_num, priority: triage.priority, performer_name: patient.performer_name })
+
     # Определяем куда перенаправить и какое сообщение показать
     if triage.completed_at
       # Триаж завершён

@@ -250,7 +250,14 @@
       var any = form.querySelectorAll('.vital-input');
       var filled = false;
       any.forEach(function(inp) { if (inp.value !== '') filled = true; });
-      if (filled) form.submit();
+      if (filled) {
+        var h = document.createElement('input');
+        h.type = 'hidden';
+        h.name = 'timer_expired';
+        h.value = '1';
+        form.appendChild(h);
+        form.submit();
+      }
     }
   };
   window.addEventListener('beforeunload', function() {

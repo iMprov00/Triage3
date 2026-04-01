@@ -5,8 +5,11 @@
     <a href="/patients/new" class="btn btn-primary">
       <i class="bi bi-plus-lg"></i> Новый пациент
     </a>
+    <a href="/statistics<%= '?' + request.query_string if request.query_string.present? %>" class="btn btn-outline-primary">
+      <i class="bi bi-graph-up-arrow"></i> Подробная статистика
+    </a>
     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#statsModal">
-      <i class="bi bi-bar-chart"></i> Статистика
+      <i class="bi bi-bar-chart"></i> Быстрая статистика
     </button>
   </div>
 </div>
@@ -454,7 +457,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="statsModalLabel">
-          <i class="bi bi-graph-up me-2"></i>Статистика триажа
+          <i class="bi bi-graph-up me-2"></i>Быстрая статистика
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>

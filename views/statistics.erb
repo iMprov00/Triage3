@@ -1,0 +1,257 @@
+<%# Подробная статистика по пациенту %>
+<div class="row align-items-start mb-4">
+  <div class="col">
+    <h1 class="page-title">Статистика</h1>
+    <p class="text-muted small mb-0">Журнал действий и время по шагам триажа</p>
+  </div>
+  <div class="col-auto">
+    <a href="/patients" class="btn btn-outline-secondary"><i class="bi bi-people"></i> К списку пациентов</a>
+  </div>
+</div>
+
+<div class="app-card card mb-4">
+  <div class="app-card-header card-header">
+    <span class="text-muted small text-uppercase fw-normal">Фильтры и выбор пациента</span>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/statistics" class="row g-3">
+      <div class="col-lg-4">
+        <label class="form-label">Поиск</label>
+        <div class="input-group">
+          <input type="text" name="search" class="form-control"
+                 placeholder="ФИО, ID, исполнитель..."
+                 value="<%= params[:search] %>">
+          <button class="btn btn-outline-secondary" type="submit" title="Найти">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label">Дата поступления</label>
+        <input type="date" name="admission_date" class="form-control"
+               value="<%= params[:admission_date] || Date.today.to_s %>"
+               required>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label">Вид обращения</label>
+        <select name="appeal_type" class="form-select">
+          <option value="all">Все виды</option>
+          <% Patient::APPEAL_TYPES.each do |type| %>
+            <option value="<%= type %>" <%= 'selected' if params[:appeal_type] == type %>>
+              <%= type %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="col-lg-2">
+        <label class="form-label">Статус триажа</label>
+        <select name="only_active" class="form-select">
+          <option value="">Все</option>
+          <option value="1" <%= 'selected' if params[:only_active] == '1' %>>
+            Только активные
+          </option>
+        </select>
+      </div>
+
+      <div class="col-lg-4">
+        <label class="form-label">Исполнитель</label>
+        <select name="performer_filter" class="form-select">
+          <option value="">Все исполнители</option>
+          <% @performers.each do |performer| %>
+            <option value="<%= performer %>" <%= 'selected' if params[:performer_filter] == performer %>>
+              <%= performer %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="col-lg-4">
+        <label class="form-label">Срок беременности</label>
+        <select name="pregnancy_condition" class="form-select">
+          <option value="">Все</option>
+          <option value="unknown" <%= 'selected' if params[:pregnancy_condition] == 'unknown' %>>
+            Неизвестно
+          </option>
+          <option value="less_12" <%= 'selected' if params[:pregnancy_condition] == 'less_12' %>>
+            Менее 12 недель
+          </option>
+          <option value="12_28" <%= 'selected' if params[:pregnancy_condition] == '12_28' %>>
+            12-28 недель
+          </option>
+          <option value="more_28" <%= 'selected' if params[:pregnancy_condition] == 'more_28' %>>
+            Более 28 недель
+          </option>
+        </select>
+      </div>
+
+      <div class="col-lg-4">
+        <label class="form-label" for="stat-patient-select">Пациент</label>
+        <select name="patient_id" id="stat-patient-select" class="form-select" onchange="this.form.submit()">
+          <option value="">— Выберите пациента —</option>
+          <% @patients_for_select.each do |p| %>
+            <option value="<%= p.id %>" <%= 'selected' if @selected_patient&.id == p.id %>>
+              <%= p.full_name %> · ID <%= p.id %> · <%= p.admission_date&.strftime('%d.%m.%Y') %>
+              <% unless @patients.any? { |x| x.id == p.id } %> (вне фильтра)<% end %>
+            </option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="col-12 action-bar mt-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-funnel"></i> Применить и показать
+        </button>
+        <a href="/statistics" class="btn btn-outline-secondary">
+          <i class="bi bi-x-lg"></i> Сбросить
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if params[:patient_id].present? && @selected_patient.nil? %>
+  <div class="alert alert-warning">Пациент не найден.</div>
+<% elsif @selected_patient && @triage.nil? %>
+  <div class="alert alert-warning">У выбранного пациента нет записи триажа.</div>
+<% elsif @selected_patient && @triage %>
+
+  <% t = @triage %>
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-4">
+      <div class="app-card card h-100">
+        <div class="app-card-header card-header py-2">
+          <span class="text-muted small text-uppercase fw-normal">Пациент</span>
+        </div>
+        <div class="card-body small">
+          <p class="mb-1"><strong>ФИО:</strong> <%= @selected_patient.full_name %></p>
+          <p class="mb-1"><strong>Исполнитель:</strong> <%= @selected_patient.performer_name %></p>
+          <p class="mb-1"><strong>Поступление:</strong> <%= @selected_patient.admission_date&.strftime('%d.%m.%Y') %> <%= @selected_patient.admission_time_formatted %></p>
+          <p class="mb-0"><strong>Приоритет:</strong>
+            <% if t.priority.present? && t.priority != 'pending' %>
+              <span class="badge bg-secondary"><%= t.priority_name %></span>
+            <% else %>
+              <span class="text-muted">не определён</span>
+            <% end %>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-4">
+      <div class="app-card card h-100">
+        <div class="app-card-header card-header py-2">
+          <span class="text-muted small text-uppercase fw-normal">Время триажа</span>
+        </div>
+        <div class="card-body small">
+          <% total = t.statistics_total_triage_seconds %>
+          <p class="mb-1"><strong>От создания триажа до завершения:</strong> <%= total ? "#{format_duration_sec(total)} (#{total} с)" : '—' %></p>
+          <p class="mb-0"><strong>Триаж завершён:</strong> <%= t.completed_at ? format_nsk(t.completed_at) : '—' %></p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-12 col-lg-4">
+      <div class="app-card card h-100">
+        <div class="app-card-header card-header py-2">
+          <span class="text-muted small text-uppercase fw-normal">Действия по приоритету (лимит <%= Triage::ACTIONS_TIME_LIMIT / 60 %> мин)</span>
+        </div>
+        <div class="card-body small">
+          <% aph = t.statistics_actions_phase %>
+          <% if aph %>
+            <p class="mb-1"><strong>Фактически:</strong> <%= format_duration_sec(aph[:seconds_used]) %> (<%= aph[:seconds_used] %> с)</p>
+            <p class="mb-1"><strong>Статус:</strong>
+              <% if aph[:completed] && !aph[:within_limit].nil? %>
+                <% if aph[:within_limit] %>
+                  <span class="badge bg-success">в срок</span>
+                <% else %>
+                  <span class="badge bg-warning text-dark">превышен лимит</span>
+                <% end %>
+              <% elsif !aph[:completed] %>
+                <span class="badge bg-info text-dark">в процессе</span>
+              <% else %>
+                —
+              <% end %>
+            </p>
+            <p class="mb-0"><strong>Завершено:</strong> <%= t.actions_completed_at ? format_nsk(t.actions_completed_at) : '—' %></p>
+          <% else %>
+            <p class="mb-0 text-muted">Действия не начинались или триаж не завершён.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header">
+      <span class="text-muted small text-uppercase fw-normal">Время по шагам триажа</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>Шаг</th>
+              <th>Название</th>
+              <th>Лимит</th>
+              <th>Факт</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% t.statistics_step_rows.each do |row| %>
+              <tr>
+                <td><%= row[:step] %></td>
+                <td><%= row[:name] %></td>
+                <td><%= format_duration_sec(row[:limit_seconds]) %> (<%= row[:limit_seconds] %> с)</td>
+                <td><%= row[:seconds_used] ? "#{format_duration_sec(row[:seconds_used])} (#{row[:seconds_used]} с)" : '—' %></td>
+                <td>
+                  <% if row[:within_limit].nil? %>
+                    <span class="text-muted">—</span>
+                  <% elsif row[:within_limit] %>
+                    <span class="badge bg-success">в срок</span>
+                  <% else %>
+                    <span class="badge bg-warning text-dark">превышен лимит</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-card card mb-4">
+    <div class="app-card-header card-header d-flex align-items-center justify-content-between">
+      <span class="text-muted small text-uppercase fw-normal">Журнал событий</span>
+      <span class="badge bg-secondary"><%= @audit_events.size %></span>
+    </div>
+    <div class="card-body">
+      <% if @audit_events.empty? %>
+        <p class="text-muted mb-0">Событий пока нет (журнал ведётся с момента внедрения). Метрики по шагам выше рассчитываются по данным триажа, если они заполнены.</p>
+      <% else %>
+        <ul class="list-unstyled audit-timeline mb-0">
+          <% @audit_events.each do |ev| %>
+            <li class="audit-timeline-item pb-3">
+              <div class="d-flex flex-wrap gap-2 align-items-baseline">
+                <span class="text-muted small text-nowrap"><%= format_nsk(ev.occurred_at) %></span>
+                <span class="badge bg-light text-dark border"><%= audit_event_label(ev.event_type) %></span>
+              </div>
+              <% rows = audit_event_payload_rows(ev) %>
+              <% if rows.any? %>
+                <dl class="row small mb-0 mt-2 ms-1 border-start border-2 ps-3 audit-payload-dl">
+                  <% rows.each do |label, value| %>
+                    <dt class="col-sm-4 col-md-3 text-muted"><%= Rack::Utils.escape_html(label) %></dt>
+                    <dd class="col-sm-8 col-md-9 mb-1"><%= Rack::Utils.escape_html(value) %></dd>
+                  <% end %>
+                </dl>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  </div>
+
+<% end %>

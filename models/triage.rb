@@ -1,6 +1,7 @@
 class Triage < ActiveRecord::Base
   belongs_to :patient
-  
+  has_many :triage_audit_events, dependent: :nullify
+
   validates :patient_id, presence: true
   
   # Этапы триажа
@@ -145,6 +146,96 @@ class Triage < ActiveRecord::Base
   
   def step_duration
     STEPS[step] ? STEPS[step][:duration] : 120
+  end
+
+  # Длительность прохождения шага N по меткам completed_at (секунды), nil если данных нет
+  def seconds_elapsed_for_step(step_num)
+    case step_num
+    when 1
+      return nil unless step1_completed_at && created_at
+
+      (step1_completed_at - created_at).to_i
+    when 2
+      return nil unless step2_completed_at && step1_completed_at
+
+      (step2_completed_at - step1_completed_at).to_i
+    when 3
+      return nil unless step3_completed_at && step2_completed_at
+
+      (step3_completed_at - step2_completed_at).to_i
+    else
+      nil
+    end
+  end
+
+  def self.step_timing_for_step(triage, step_num)
+    limit = STEPS[step_num][:duration]
+    actual = triage.seconds_elapsed_for_step(step_num)
+    {
+      limit_seconds: limit,
+      seconds_used: actual,
+      within_limit: actual.nil? ? nil : (actual <= limit)
+    }
+  end
+
+  # Текст действия по ключу (для журнала аудита)
+  def self.action_text_for_key(key)
+    return '' if key.blank?
+
+    [RED_PRIORITY_ACTIONS, YELLOW_PRIORITY_ACTIONS, PURPLE_PRIORITY_ACTIONS, GREEN_PRIORITY_ACTIONS].each do |arr|
+      arr.each do |a|
+        return a[:text] if a[:key] == key.to_s
+      end
+    end
+    key.to_s
+  end
+
+  def self.priority_label_ru(code)
+    return '—' if code.blank?
+    return 'не определён' if code.to_s == 'pending'
+
+    PRIORITIES[code.to_s] ? PRIORITIES[code.to_s][:name] : code.to_s
+  end
+
+  # Строки для страницы статистики: шаги 1–3
+  def statistics_step_rows
+    (1..3).map do |n|
+      lim = STEPS[n][:duration]
+      sec = seconds_elapsed_for_step(n)
+      {
+        step: n,
+        name: STEPS[n][:name],
+        limit_seconds: lim,
+        seconds_used: sec,
+        within_limit: sec.nil? ? nil : (sec <= lim)
+      }
+    end
+  end
+
+  # Блок «действия по приоритету» (5 минут)
+  def statistics_actions_phase
+    return nil unless actions_started_at
+
+    lim = ACTIONS_TIME_LIMIT
+    fin = actions_completed_at
+    elapsed = if fin
+                (fin - actions_started_at).to_i
+              else
+                (Time.current - actions_started_at).to_i
+              end
+    {
+      limit_seconds: lim,
+      seconds_used: elapsed,
+      within_limit: fin ? (elapsed <= lim) : nil,
+      completed: fin.present?
+    }
+  end
+
+  # Общее время от создания триажа до завершения (сек)
+  def statistics_total_triage_seconds
+    return nil unless completed_at && created_at
+
+    (completed_at - created_at).to_i
   end
   
   def priority_name

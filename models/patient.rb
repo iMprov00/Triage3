@@ -1,7 +1,8 @@
 # models/patient.rb
 class Patient < ActiveRecord::Base
-  has_one :triage
-  
+  has_one :triage, dependent: :destroy
+  has_many :triage_audit_events, dependent: :delete_all
+
   validates :full_name, presence: true
   validates :admission_date, presence: true
   validates :admission_time, presence: true
@@ -18,7 +19,8 @@ class Patient < ActiveRecord::Base
   ].freeze
   
   after_create :create_triage_entry
-  
+  after_create :log_patient_registration_audit
+
   # Метод для поиска по всем полям
   def self.search(query)
     if query.present?
@@ -88,6 +90,24 @@ class Patient < ActiveRecord::Base
   end
   
   private
+
+  def log_patient_registration_audit
+    t = triage
+    return unless t
+
+    TriageAuditEvent.log!(
+      patient: self,
+      triage: t,
+      type: 'patient_registered',
+      payload: { full_name: full_name, performer_name: performer_name }
+    )
+    TriageAuditEvent.log!(
+      patient: self,
+      triage: t,
+      type: 'triage_started',
+      payload: { performer_name: performer_name }
+    )
+  end
   
   def create_triage_entry
     Triage.create(

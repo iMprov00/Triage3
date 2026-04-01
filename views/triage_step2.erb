@@ -232,6 +232,11 @@
     }
     if (data.expired && warning) warning.classList.remove('d-none');
     if (data.expired && form && form.querySelector('input[name="position"]:checked')) {
+      var h = document.createElement('input');
+      h.type = 'hidden';
+      h.name = 'timer_expired';
+      h.value = '1';
+      form.appendChild(h);
       form.submit();
     }
   };
