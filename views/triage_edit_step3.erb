@@ -14,56 +14,60 @@
   </div>
 </div>
 
-<form action="/patients/<%= @patient.id %>/triage/update_step/3" method="post" class="mt-4">
+<form id="triage-edit-step3-form" action="/patients/<%= @patient.id %>/triage/update_step/3" method="post" class="mt-4">
+  <div id="step3-priority-preview" class="alert triage-preview-banner triage-preview-banner--neutral" role="status" aria-live="polite">
+    <i class="bi bi-flag"></i> <span id="step3-priority-preview-text">Введите показатели — здесь будет показан ожидаемый приоритет по правилам шага 3.</span>
+  </div>
+
   <div class="app-card card mb-4">
     <div class="app-card-header card-header">
       <span class="text-muted small text-uppercase fw-normal">Витальные показатели</span>
     </div>
     <div class="card-body">
       <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">Частота дыхания (дыханий/мин)*</label>
-          <input type="number" name="respiratory_rate" class="form-control" 
+        <div class="col-md-4 vital-field-wrap vital-preview-empty" data-vital="respiratory_rate">
+          <label class="form-label" for="respiratory_rate">Частота дыхания (дыханий/мин)*</label>
+          <input type="number" name="respiratory_rate" id="respiratory_rate" class="form-control vital-input"
                  min="0" max="60" step="1"
                  value="<%= @triage.step3_data['respiratory_rate'] %>" required>
           <div class="form-text">Норма: 16-24 дыханий/мин</div>
         </div>
-        
-        <div class="col-md-4">
-          <label class="form-label">Сатурация (SpO₂, %)*</label>
-          <input type="number" name="saturation" class="form-control" 
+
+        <div class="col-md-4 vital-field-wrap vital-preview-empty" data-vital="saturation">
+          <label class="form-label" for="saturation">Сатурация (SpO₂, %)*</label>
+          <input type="number" name="saturation" id="saturation" class="form-control vital-input"
                  min="0" max="100" step="1"
                  value="<%= @triage.step3_data['saturation'] %>" required>
           <div class="form-text">Норма: ≥ 95%</div>
         </div>
-        
-        <div class="col-md-4">
-          <label class="form-label">Температура тела (°C)*</label>
-          <input type="number" name="temperature" class="form-control" 
+
+        <div class="col-md-4 vital-field-wrap vital-preview-empty" data-vital="temperature">
+          <label class="form-label" for="temperature">Температура тела (°C)*</label>
+          <input type="number" name="temperature" id="temperature" class="form-control vital-input"
                  min="34" max="42" step="0.1"
                  value="<%= @triage.step3_data['temperature'] %>" required>
           <div class="form-text">Норма: 36.0-37.2°C</div>
         </div>
-        
-        <div class="col-md-3">
-          <label class="form-label">АД систолическое (мм рт. ст.)*</label>
-          <input type="number" name="systolic_bp" class="form-control" 
+
+        <div class="col-md-3 vital-field-wrap vital-preview-empty" data-vital="systolic_bp">
+          <label class="form-label" for="systolic_bp">АД систолическое (мм рт. ст.)*</label>
+          <input type="number" name="systolic_bp" id="systolic_bp" class="form-control vital-input"
                  min="0" max="300" step="1"
                  value="<%= @triage.step3_data['systolic_bp'] %>" required>
           <div class="form-text">Норма: 90-139</div>
         </div>
-        
-        <div class="col-md-3">
-          <label class="form-label">АД диастолическое (мм рт. ст.)*</label>
-          <input type="number" name="diastolic_bp" class="form-control" 
+
+        <div class="col-md-3 vital-field-wrap vital-preview-empty" data-vital="diastolic_bp">
+          <label class="form-label" for="diastolic_bp">АД диастолическое (мм рт. ст.)*</label>
+          <input type="number" name="diastolic_bp" id="diastolic_bp" class="form-control vital-input"
                  min="0" max="200" step="1"
                  value="<%= @triage.step3_data['diastolic_bp'] %>" required>
           <div class="form-text">Норма: 60-89</div>
         </div>
-        
-        <div class="col-md-3">
-          <label class="form-label">Частота сердечных сокращений (уд/мин)*</label>
-          <input type="number" name="heart_rate" class="form-control" 
+
+        <div class="col-md-3 vital-field-wrap vital-preview-empty" data-vital="heart_rate">
+          <label class="form-label" for="heart_rate">Частота сердечных сокращений (уд/мин)*</label>
+          <input type="number" name="heart_rate" id="heart_rate" class="form-control vital-input"
                  min="0" max="200" step="1"
                  value="<%= @triage.step3_data['heart_rate'] %>" required>
           <div class="form-text">Норма: 60-100 уд/мин</div>
@@ -81,3 +85,122 @@
     </a>
   </div>
 </form>
+
+<script>
+(function() {
+  var PREVIEW = ['vital-preview-empty', 'vital-preview-yellow', 'vital-preview-purple', 'vital-preview-green'];
+
+  function getStep3Form() {
+    return document.getElementById('triage-form') || document.getElementById('triage-edit-step3-form');
+  }
+
+  function parseVitals(form) {
+    var rr = form.querySelector('#respiratory_rate');
+    var sat = form.querySelector('#saturation');
+    var sys = form.querySelector('#systolic_bp');
+    var dia = form.querySelector('#diastolic_bp');
+    var hr = form.querySelector('#heart_rate');
+    var temp = form.querySelector('#temperature');
+    function num(el, asFloat) {
+      if (!el || el.value === '' || el.value === null) return null;
+      return asFloat ? parseFloat(el.value) : parseInt(el.value, 10);
+    }
+    return {
+      respiratory_rate: num(rr, false),
+      saturation: num(sat, false),
+      systolic_bp: num(sys, false),
+      diastolic_bp: num(dia, false),
+      heart_rate: num(hr, false),
+      temperature: num(temp, true)
+    };
+  }
+
+  function setWrapPreview(wrap, kind) {
+    if (!wrap) return;
+    PREVIEW.forEach(function(c) { wrap.classList.remove(c); });
+    wrap.classList.add(kind);
+  }
+
+  function fieldPreviewClass(key, v) {
+    if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return 'vital-preview-empty';
+    if (key === 'temperature') {
+      return v >= 37.5 ? 'vital-preview-purple' : 'vital-preview-green';
+    }
+    if (key === 'respiratory_rate') {
+      return (v < 16 || v > 24) ? 'vital-preview-yellow' : 'vital-preview-green';
+    }
+    if (key === 'saturation') {
+      return v < 93 ? 'vital-preview-yellow' : 'vital-preview-green';
+    }
+    if (key === 'systolic_bp') {
+      return v >= 140 ? 'vital-preview-yellow' : 'vital-preview-green';
+    }
+    if (key === 'diastolic_bp') {
+      return v >= 90 ? 'vital-preview-yellow' : 'vital-preview-green';
+    }
+    if (key === 'heart_rate') {
+      return (v < 50 || v > 110) ? 'vital-preview-yellow' : 'vital-preview-green';
+    }
+    return 'vital-preview-empty';
+  }
+
+  function yellowKeysFromVitals(v) {
+    var keys = [];
+    if (v.respiratory_rate != null && !isNaN(v.respiratory_rate) && (v.respiratory_rate < 16 || v.respiratory_rate > 24)) keys.push('respiratory_rate');
+    if (v.saturation != null && !isNaN(v.saturation) && v.saturation < 93) keys.push('saturation');
+    if (v.systolic_bp != null && !isNaN(v.systolic_bp) && v.systolic_bp >= 140) keys.push('systolic_bp');
+    if (v.diastolic_bp != null && !isNaN(v.diastolic_bp) && v.diastolic_bp >= 90) keys.push('diastolic_bp');
+    if (v.heart_rate != null && !isNaN(v.heart_rate) && (v.heart_rate < 50 || v.heart_rate > 110)) keys.push('heart_rate');
+    return keys;
+  }
+
+  function updateStep3VitalsPreview() {
+    var form = getStep3Form();
+    var banner = document.getElementById('step3-priority-preview');
+    var textEl = document.getElementById('step3-priority-preview-text');
+    if (!form || !banner || !textEl) return;
+
+    var v = parseVitals(form);
+    form.querySelectorAll('.vital-field-wrap').forEach(function(wrap) {
+      var key = wrap.getAttribute('data-vital');
+      var cls = fieldPreviewClass(key, v[key]);
+      setWrapPreview(wrap, cls);
+    });
+
+    var yellowKeys = yellowKeysFromVitals(v);
+    banner.classList.remove('triage-preview-banner--neutral', 'triage-preview-banner--yellow', 'triage-preview-banner--purple', 'triage-preview-banner--green');
+
+    if (yellowKeys.length > 0) {
+      banner.classList.add('triage-preview-banner--yellow');
+      textEl.textContent = 'После сохранения: жёлтый приоритет (неотложная помощь) — по витальным показателям.';
+      return;
+    }
+    if (v.temperature != null && !isNaN(v.temperature) && v.temperature >= 37.5) {
+      banner.classList.add('triage-preview-banner--purple');
+      textEl.textContent = 'После сохранения: фиолетовый приоритет (инфекционная изоляция) — температура ≥ 37,5 °C.';
+      return;
+    }
+
+    var allFilled = v.respiratory_rate != null && v.saturation != null && v.systolic_bp != null &&
+      v.diastolic_bp != null && v.heart_rate != null && v.temperature != null &&
+      [v.respiratory_rate, v.saturation, v.systolic_bp, v.diastolic_bp, v.heart_rate, v.temperature].every(function(x) { return !isNaN(x); });
+
+    if (allFilled) {
+      banner.classList.add('triage-preview-banner--green');
+      textEl.textContent = 'После сохранения: зелёный приоритет (плановая помощь).';
+    } else {
+      banner.classList.add('triage-preview-banner--neutral');
+      textEl.textContent = 'Введите показатели — здесь будет показан ожидаемый приоритет по правилам шага 3.';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = getStep3Form();
+    if (form) {
+      form.addEventListener('input', updateStep3VitalsPreview);
+      form.addEventListener('change', updateStep3VitalsPreview);
+      updateStep3VitalsPreview();
+    }
+  });
+})();
+</script>

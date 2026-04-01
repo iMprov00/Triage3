@@ -14,7 +14,12 @@
   </div>
 </div>
 
-<form action="/patients/<%= @patient.id %>/triage/update_step/2" method="post" class="mt-4">
+<form id="triage-edit-step2-form" action="/patients/<%= @patient.id %>/triage/update_step/2" method="post" class="mt-4">
+  <script type="application/json" id="triage-step2-config"><%= { active_position: Triage::POSITIONS.first }.to_json %></script>
+  <div id="step2-priority-preview" class="alert triage-preview-banner triage-preview-banner--neutral" role="status" aria-live="polite">
+    <i class="bi bi-flag"></i> <span id="step2-priority-preview-text">Выберите положение — здесь будет показан ожидаемый приоритет после сохранения.</span>
+  </div>
+
   <div class="app-card card mb-4">
     <div class="app-card-header card-header">
       <span class="text-muted small text-uppercase fw-normal">Положение пациента</span>
@@ -23,7 +28,7 @@
       <div class="mb-3">
         <label class="form-label">Положение пациента*</label>
         <% Triage::POSITIONS.each do |position| %>
-          <div class="form-check">
+          <div class="form-check step2-position">
             <input class="form-check-input" type="radio" name="position" 
                    value="<%= position %>" id="position_<%= position.gsub(/[^a-zA-Z0-9]/, '_') %>"
                    <%= 'checked' if @triage.step2_data['position'] == position %> required>
@@ -44,7 +49,7 @@
       <div class="row">
         <% Triage::URGENCY_CRITERIA.each_with_index do |criterion, index| %>
           <div class="col-md-6">
-            <div class="form-check mb-3">
+            <div class="form-check mb-3 step2-urgency">
               <input class="form-check-input" type="checkbox" 
                      name="urgency_criteria[]" value="true" 
                      id="urgency_<%= index %>"
@@ -67,7 +72,7 @@
       <div class="row">
         <% Triage::INFECTION_SIGNS.each_with_index do |sign, index| %>
           <div class="col-md-6">
-            <div class="form-check mb-3">
+            <div class="form-check mb-3 step2-infection">
               <input class="form-check-input" type="checkbox" 
                      name="infection_signs[]" value="true" 
                      id="infection_<%= index %>"
@@ -91,3 +96,85 @@
     </a>
   </div>
 </form>
+
+<script>
+(function() {
+  var cfgEl = document.getElementById('triage-step2-config');
+  var ACTIVE = cfgEl ? JSON.parse(cfgEl.textContent).active_position : 'активное положение, свободное перемещение';
+
+  function clearStep2Highlights(form) {
+    form.querySelectorAll('.triage-step2-hit-yellow, .triage-step2-hit-purple, .triage-step2-hit-step3').forEach(function(el) {
+      el.classList.remove('triage-step2-hit-yellow', 'triage-step2-hit-purple', 'triage-step2-hit-step3');
+    });
+  }
+
+  function getStep2Form() {
+    return document.getElementById('triage-form') || document.getElementById('triage-edit-step2-form');
+  }
+
+  function updateStep2PriorityPreview() {
+    var form = getStep2Form();
+    var banner = document.getElementById('step2-priority-preview');
+    var textEl = document.getElementById('step2-priority-preview-text');
+    if (!form || !banner || !textEl) return;
+
+    var posInput = form.querySelector('input[name="position"]:checked');
+    var position = posInput ? posInput.value : '';
+    var hasPosition = !!position;
+    var urgencyChecked = form.querySelectorAll('input[name="urgency_criteria[]"]:checked').length > 0;
+    var infectionChecked = form.querySelectorAll('input[name="infection_signs[]"]:checked').length > 0;
+
+    clearStep2Highlights(form);
+
+    banner.classList.remove('triage-preview-banner--neutral', 'triage-preview-banner--yellow', 'triage-preview-banner--purple', 'triage-preview-banner--step3');
+
+    if (!hasPosition) {
+      banner.classList.add('triage-preview-banner--neutral');
+      textEl.textContent = 'Выберите положение — здесь будет показан ожидаемый приоритет после сохранения.';
+      return;
+    }
+
+    var isYellow = urgencyChecked || position !== ACTIVE;
+    var isPurple = !isYellow && position === ACTIVE && infectionChecked;
+
+    if (isYellow) {
+      banner.classList.add('triage-preview-banner--yellow');
+      textEl.textContent = 'После сохранения: жёлтый приоритет (неотложная помощь).';
+      if (position !== ACTIVE) {
+        form.querySelectorAll('.step2-position').forEach(function(wrap) {
+          var inp = wrap.querySelector('input[name="position"]');
+          if (inp && inp.checked) wrap.classList.add('triage-step2-hit-yellow');
+        });
+      }
+      if (urgencyChecked) {
+        form.querySelectorAll('.step2-urgency input:checked').forEach(function(inp) {
+          var wrap = inp.closest('.step2-urgency');
+          if (wrap) wrap.classList.add('triage-step2-hit-yellow');
+        });
+      }
+    } else if (isPurple) {
+      banner.classList.add('triage-preview-banner--purple');
+      textEl.textContent = 'После сохранения: фиолетовый приоритет (инфекционная изоляция).';
+      form.querySelectorAll('.step2-infection input:checked').forEach(function(inp) {
+        var wrap = inp.closest('.step2-infection');
+        if (wrap) wrap.classList.add('triage-step2-hit-purple');
+      });
+    } else {
+      banner.classList.add('triage-preview-banner--step3');
+      textEl.textContent = 'После сохранения: переход на шаг 3 — приоритет будет определён по витальным показателям.';
+      form.querySelectorAll('.step2-position').forEach(function(wrap) {
+        var inp = wrap.querySelector('input[name="position"]');
+        if (inp && inp.checked) wrap.classList.add('triage-step2-hit-step3');
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = getStep2Form();
+    if (form) {
+      form.addEventListener('change', updateStep2PriorityPreview);
+      updateStep2PriorityPreview();
+    }
+  });
+})();
+</script>

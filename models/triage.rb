@@ -55,7 +55,7 @@ class Triage < ActiveRecord::Base
     { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
     { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
     { key: 'clothes_accepted', text: 'Принята верхняя одежда и оформлена вещевая квитанция' },
-    { key: 'route_explained', text: 'Объяснен дальнейший маршрут по "зеленому потоку"', starts_timer: true, timer_minutes: 15 },
+    { key: 'route_explained', text: 'Направляет пациента по маршруту «зеленого потока»', starts_timer: true, timer_minutes: 15 },
     { key: 'in_triage_room', text: 'Пациентка находится в триажной палате', final: true }
   ].freeze
   
