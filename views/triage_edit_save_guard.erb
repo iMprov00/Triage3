@@ -1,0 +1,87 @@
+<div class="modal fade" id="triageEditSaveModal" tabindex="-1" aria-labelledby="triageEditSaveModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="triageEditSaveModalTitle">Подтверждение сохранения</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body" id="triageEditSaveModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <button type="button" class="btn btn-primary" id="triageEditSaveModalConfirm">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var modalEl = document.getElementById('triageEditSaveModal');
+  if (!modalEl) return;
+  var modal = typeof bootstrap !== 'undefined' ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  var titleEl = document.getElementById('triageEditSaveModalTitle');
+  var bodyEl = document.getElementById('triageEditSaveModalBody');
+  var confirmBtn = document.getElementById('triageEditSaveModalConfirm');
+
+  function escapeHtml(s) {
+    if (s == null || s === '') return '';
+    var div = document.createElement('div');
+    div.textContent = String(s);
+    return div.innerHTML;
+  }
+
+  document.querySelectorAll('form.triage-edit-step-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      if (form.getAttribute('data-triage-save-confirmed') === '1') {
+        form.removeAttribute('data-triage-save-confirmed');
+        return;
+      }
+      e.preventDefault();
+      var patientId = form.getAttribute('data-patient-id');
+      var step = form.getAttribute('data-triage-edit-step');
+      if (!patientId || !step) return;
+      var url = '/patients/' + encodeURIComponent(patientId) + '/triage/preview_step_update/' + encodeURIComponent(step);
+
+      fetch(url, {
+        method: 'POST',
+        body: new FormData(form),
+        credentials: 'same-origin'
+      })
+        .then(function(r) {
+          return r.json().then(function(data) {
+            return { status: r.status, data: data };
+          });
+        })
+        .then(function(result) {
+          var data = result.data;
+          if (!data.ok) {
+            alert(data.error || 'Не удалось проверить изменения');
+            return;
+          }
+          if (data.priority_changed) {
+            titleEl.textContent = 'Внимание — изменение приоритета';
+            bodyEl.innerHTML = '<p class="mb-0"><strong>ВНИМАНИЕ!</strong> Внесённые изменения расходятся с текущим приоритетом (сейчас: <strong>' +
+              escapeHtml(data.current_priority_label) + '</strong>). При сохранении все последующие шаги и действия приоритета будут удалены и заменены на новый приоритет (<strong>' +
+              escapeHtml(data.new_priority_label) + '</strong>). Вы уверены, что хотите сохранить изменения?</p>';
+          } else {
+            titleEl.textContent = 'Подтверждение сохранения';
+            bodyEl.innerHTML = '<p class="mb-0">Вы уверены, что хотите сохранить изменения?</p>';
+          }
+          confirmBtn.onclick = function() {
+            if (modal) modal.hide();
+            form.setAttribute('data-triage-save-confirmed', '1');
+            if (typeof form.requestSubmit === 'function') {
+              form.requestSubmit();
+            } else {
+              form.submit();
+            }
+          };
+          if (modal) modal.show();
+        })
+        .catch(function() {
+          alert('Ошибка сети. Попробуйте ещё раз.');
+        });
+    });
+  });
+})();
+</script>

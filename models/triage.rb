@@ -35,28 +35,20 @@ class Triage < ActiveRecord::Base
   
   # Действия для желтого приоритета
   YELLOW_PRIORITY_ACTIONS = [
-    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
-    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
-    { key: 'clothes_accepted', text: 'Принята верхняя одежда и оформлена вещевая квитанция' },
     { key: 'nurse_called', text: 'Вызвана младшая медсестра триажной палаты', starts_timer: true, timer_minutes: 12 },
-    { key: 'delivered_to_triage', text: 'Пациентка доставлена в триажную палату', final: true }
+    { key: 'delivered_to_triage', text: 'Пациентка доставлена в триажную палату', final: true, final_always_available: true }
   ].freeze
 
   # Действия для фиолетового приоритета
   PURPLE_PRIORITY_ACTIONS = [
     { key: 'nurse_called', text: 'Вызвана младшая медсестра боксированных палат', starts_timer: true, timer_minutes: 15 },
-    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
-    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
-    { key: 'delivered_to_box', text: 'Пациентка доставлена в боксированную палату', final: true }
+    { key: 'delivered_to_box', text: 'Пациентка доставлена в боксированную палату', final: true, final_always_available: true }
   ].freeze
 
   # Действия для зеленого приоритета
   GREEN_PRIORITY_ACTIONS = [
-    { key: 'pd_consent', text: 'Оформлено согласие на обработку ПД' },
-    { key: 'case_opened', text: 'Открыт случай в ПК "Здравоохранение"' },
-    { key: 'clothes_accepted', text: 'Принята верхняя одежда и оформлена вещевая квитанция' },
     { key: 'route_explained', text: 'Направляет пациента по маршруту «зеленого потока»', starts_timer: true, timer_minutes: 15 },
-    { key: 'in_triage_room', text: 'Пациентка находится в триажной палате', final: true }
+    { key: 'in_triage_room', text: 'Пациентка находится в триажной палате', final: true, final_always_available: true }
   ].freeze
   
   # Время на выполнение действий (5 минут)
@@ -178,13 +170,44 @@ class Triage < ActiveRecord::Base
     eye_score + verbal_score + motor_score
   end
   
+  def truthy_step1_flag?(value)
+    value == true || value.to_s == 'true'
+  end
+
+  # Судороги и/или активное кровотечение → красный независимо от суммы баллов
+  def step1_red_from_seizures_or_bleeding?
+    s1 = step1_data || {}
+    truthy_step1_flag?(s1['seizures']) || truthy_step1_flag?(s1['active_bleeding'])
+  end
+
   def check_step1_priority
-    # Правила для этапа 1: баллы сознания <= 8 -> красный приоритет
+    if step1_red_from_seizures_or_bleeding?
+      self.priority = 'red'
+      return true
+    end
+    # Баллы сознания <= 8 -> красный приоритет
     if total_consciousness_score <= 8
       self.priority = 'red'
       return true
     end
     false
+  end
+
+  # Шаг 2: отмеченные чекбоксы хранятся как индексы (строки "0".."n"); legacy — массив "true"
+  def any_urgency_criteria_selected?(arr)
+    return false unless arr.is_a?(Array)
+
+    arr.any? do |c|
+      c == 'true' || (c.to_s =~ /^\d+$/ && (0...URGENCY_CRITERIA.size).cover?(c.to_i))
+    end
+  end
+
+  def any_infection_signs_selected?(arr)
+    return false unless arr.is_a?(Array)
+
+    arr.any? do |c|
+      c == 'true' || (c.to_s =~ /^\d+$/ && (0...INFECTION_SIGNS.size).cover?(c.to_i))
+    end
   end
   
   def check_step2_priority
@@ -193,16 +216,16 @@ class Triage < ActiveRecord::Base
     infection_signs = step2_data['infection_signs'] || []
     
     # Если не активное положение ИЛИ есть критерии неотложности -> желтый
-    if position != 'активное положение, свободное перемещение' || 
-       (urgency_criteria.is_a?(Array) && urgency_criteria.any? { |c| c == 'true' })
+    if position != 'активное положение, свободное перемещение' ||
+       any_urgency_criteria_selected?(urgency_criteria)
       self.priority = 'yellow'
       return true
     end
     
     # Если активное положение, нет критериев неотложности, но есть признаки инфекции -> фиолетовый
     if position == 'активное положение, свободное перемещение' &&
-       (!urgency_criteria.is_a?(Array) || urgency_criteria.all? { |c| c != 'true' }) &&
-       infection_signs.is_a?(Array) && infection_signs.any? { |c| c == 'true' }
+       !any_urgency_criteria_selected?(urgency_criteria) &&
+       any_infection_signs_selected?(infection_signs)
       self.priority = 'purple'
       return true
     end
@@ -363,8 +386,10 @@ class Triage < ActiveRecord::Base
   # Проверить, можно ли отметить финальное действие
   def can_complete_final_action?
     return false unless actions_data
-    
-    # Все действия кроме финального должны быть выполнены
+
+    final_def = priority_actions.find { |a| a[:final] }
+    return true if final_def && final_def[:final_always_available]
+
     required_actions = priority_actions.reject { |a| a[:final] }
     required_actions.all? { |a| actions_data[a[:key]].present? }
   end
@@ -454,5 +479,147 @@ class Triage < ActiveRecord::Base
     when 'green' then "Время ожидания (#{minutes} мин)"
     else "Таймер (#{minutes} мин)"
     end
+  end
+
+  # Копия для расчёта предпросмотра без сохранения в БД
+  def duplicate_for_preview
+    d = dup
+    %w[step1_data step2_data step3_data actions_data].each do |col|
+      val = send(col)
+      next if val.nil?
+
+      d.send("#{col}=", Marshal.load(Marshal.dump(val)))
+    end
+    d
+  end
+
+  # Та же логика, что в post /triage/update_step/:step (без save)
+  def apply_update_step!(step_num, params)
+    old_p = normalized_priority_key(priority)
+    old_start_time = start_time
+    old_actions_started_at = actions_started_at
+    old_brigade_called_at = brigade_called_at
+
+    p = params
+    case step_num
+    when 1
+      step_data = {
+        'eye_opening' => p[:eye_opening] || p['eye_opening'],
+        'verbal_response' => p[:verbal_response] || p['verbal_response'],
+        'motor_response' => p[:motor_response] || p['motor_response'],
+        'breathing' => (p[:breathing] || p['breathing']) == 'true',
+        'heartbeat' => (p[:heartbeat] || p['heartbeat']) == 'true',
+        'seizures' => (p[:seizures] || p['seizures']) == 'true',
+        'active_bleeding' => (p[:active_bleeding] || p['active_bleeding']) == 'true'
+      }
+
+      update_step_data(1, step_data)
+      self.step1_completed_at = Time.now
+
+      if check_step1_priority
+        self.step2_data = {}
+        self.step3_data = {}
+        self.step2_completed_at = nil
+        self.step3_completed_at = nil
+        self.step = 1
+        self.completed_at = Time.now
+        self.timer_active = false
+        self.actions_started_at = Time.now
+      else
+        self.step = 2
+        self.priority = 'pending'
+        self.completed_at = nil
+        self.timer_active = true
+        self.start_time = Time.now
+        self.actions_started_at = nil
+        self.actions_data = nil
+        self.brigade_called_at = nil
+        self.actions_completed_at = nil
+      end
+
+    when 2
+      uc = p[:urgency_criteria] || p['urgency_criteria']
+      inf = p[:infection_signs] || p['infection_signs']
+      step_data = {
+        'position' => p[:position] || p['position'],
+        'urgency_criteria' => uc.nil? ? [] : Array(uc),
+        'infection_signs' => inf.nil? ? [] : Array(inf)
+      }
+
+      update_step_data(2, step_data)
+      self.step2_completed_at = Time.now
+
+      if check_step2_priority
+        self.step3_data = {}
+        self.step3_completed_at = nil
+        self.step = 2
+        self.completed_at = Time.now
+        self.timer_active = false
+        self.actions_started_at = Time.now
+      else
+        self.step = 3
+        self.priority = 'pending'
+        self.completed_at = nil
+        self.timer_active = true
+        self.start_time = Time.now
+        self.actions_started_at = nil
+        self.actions_data = nil
+        self.brigade_called_at = nil
+        self.actions_completed_at = nil
+      end
+
+    when 3
+      step_data = {
+        'respiratory_rate' => p[:respiratory_rate] || p['respiratory_rate'],
+        'saturation' => p[:saturation] || p['saturation'],
+        'systolic_bp' => p[:systolic_bp] || p['systolic_bp'],
+        'diastolic_bp' => p[:diastolic_bp] || p['diastolic_bp'],
+        'heart_rate' => p[:heart_rate] || p['heart_rate'],
+        'temperature' => p[:temperature] || p['temperature']
+      }
+
+      update_step_data(3, step_data)
+      self.step3_completed_at = Time.now
+      check_step3_priority
+      self.completed_at = Time.now
+      self.timer_active = false
+      self.actions_started_at = Time.now
+    end
+
+    # При неизменном приоритете не сбрасываем таймеры шага и действий (и таймер вызова бригады/медсестры)
+    if old_p == normalized_priority_key(priority)
+      self.start_time = old_start_time
+      self.actions_started_at = old_actions_started_at
+      self.brigade_called_at = old_brigade_called_at
+    end
+
+    self
+  end
+
+  def normalized_priority_key(value)
+    s = value.to_s.strip
+    s.empty? ? 'pending' : s
+  end
+
+  def preview_priority_label(p)
+    PRIORITIES[p] ? PRIORITIES[p][:name] : 'не определён'
+  end
+
+  # Результат для модального окна перед сохранением правок шага
+  def preview_step_update(step_num, params)
+    t = duplicate_for_preview
+    old_priority = priority
+    old_label = preview_priority_label(old_priority)
+    t.apply_update_step!(step_num, params)
+    new_priority = t.priority
+    new_label = preview_priority_label(new_priority)
+    priority_changed = old_priority.to_s != new_priority.to_s
+    {
+      priority_changed: priority_changed,
+      current_priority: old_priority,
+      current_priority_label: old_label,
+      new_priority: new_priority,
+      new_priority_label: new_label
+    }
   end
 end

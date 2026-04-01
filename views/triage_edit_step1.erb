@@ -14,14 +14,15 @@
         <div class="small">Триаж завершен</div>
       <% end %>
     </div>
-    <div id="consciousness-score-panel" class="alert triage-score-panel <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-success' %> mb-0 d-none d-md-block">
+    <% step1_red_hint = @triage.total_consciousness_score <= 8 || s1['seizures'] == true || s1['active_bleeding'] == true %>
+    <div id="consciousness-score-panel" class="alert triage-score-panel <%= step1_red_hint ? 'alert-danger' : 'alert-success' %> mb-0 d-none d-md-block">
       <strong class="d-block">Сумма баллов: <span id="total-score"><%= @triage.total_consciousness_score %></span></strong>
-      <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
+      <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
     </div>
   </div>
 </div>
 
-<form action="/patients/<%= @patient.id %>/triage/update_step/1" method="post" class="mt-4">
+<form action="/patients/<%= @patient.id %>/triage/update_step/1" method="post" class="mt-4 triage-edit-step-form" data-patient-id="<%= @patient.id %>" data-triage-edit-step="1">
   <div class="app-card card mb-4">
     <div class="app-card-header card-header">
       <span class="text-muted small text-uppercase fw-normal">Уровень сознания</span>
@@ -65,9 +66,9 @@
         </div>
       </div>
       <div class="d-md-none mt-3">
-        <div id="consciousness-score-panel-mobile" class="alert triage-score-panel <%= @triage.total_consciousness_score <= 8 ? 'alert-danger' : 'alert-success' %> mb-0">
+        <div id="consciousness-score-panel-mobile" class="alert triage-score-panel <%= step1_red_hint ? 'alert-danger' : 'alert-success' %> mb-0">
           <strong class="d-block">Сумма баллов: <span id="total-score-mobile"><%= @triage.total_consciousness_score %></span></strong>
-          <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
+          <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
         </div>
       </div>
     </div>
@@ -147,6 +148,12 @@
     motor: <%= Triage::MOTOR_SCORES.to_json %>
   };
 
+  function isSeizuresOrBleedingRed() {
+    var s = document.querySelector('input[name="seizures"]:checked');
+    var b = document.querySelector('input[name="active_bleeding"]:checked');
+    return (s && s.value === 'true') || (b && b.value === 'true');
+  }
+
   function calculateTotalScore() {
     var eyeSel = document.querySelector('select[name="eye_opening"]');
     var verbalSel = document.querySelector('select[name="verbal_response"]');
@@ -160,6 +167,8 @@
     if (verbalText && SCORES.verbal[verbalText]) total += SCORES.verbal[verbalText];
     if (motorText && SCORES.motor[motorText]) total += SCORES.motor[motorText];
 
+    var red = total <= 8 || isSeizuresOrBleedingRed();
+
     document.querySelectorAll('#total-score, #total-score-mobile').forEach(function(el) {
       el.textContent = total;
     });
@@ -167,13 +176,16 @@
     document.querySelectorAll('#consciousness-score-panel, #consciousness-score-panel-mobile').forEach(function(panel) {
       if (!panel) return;
       panel.classList.remove('alert-danger', 'alert-success');
-      panel.classList.add(total <= 8 ? 'alert-danger' : 'alert-success');
+      panel.classList.add(red ? 'alert-danger' : 'alert-success');
     });
   }
 
   document.querySelectorAll('.triage-score-field').forEach(function(sel) {
     sel.addEventListener('change', calculateTotalScore);
     sel.addEventListener('input', calculateTotalScore);
+  });
+  document.querySelectorAll('input[name="seizures"], input[name="active_bleeding"]').forEach(function(r) {
+    r.addEventListener('change', calculateTotalScore);
   });
 
   calculateTotalScore();

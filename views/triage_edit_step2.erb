@@ -14,7 +14,7 @@
   </div>
 </div>
 
-<form id="triage-edit-step2-form" action="/patients/<%= @patient.id %>/triage/update_step/2" method="post" class="mt-4">
+<form id="triage-edit-step2-form" action="/patients/<%= @patient.id %>/triage/update_step/2" method="post" class="mt-4 triage-edit-step-form" data-patient-id="<%= @patient.id %>" data-triage-edit-step="2">
   <script type="application/json" id="triage-step2-config"><%= { active_position: Triage::POSITIONS.first }.to_json %></script>
   <div id="step2-priority-preview" class="alert triage-preview-banner triage-preview-banner--neutral" role="status" aria-live="polite">
     <i class="bi bi-flag"></i> <span id="step2-priority-preview-text">Выберите положение — здесь будет показан ожидаемый приоритет после сохранения.</span>
@@ -51,9 +51,9 @@
           <div class="col-md-6">
             <div class="form-check mb-3 step2-urgency">
               <input class="form-check-input" type="checkbox" 
-                     name="urgency_criteria[]" value="true" 
+                     name="urgency_criteria[]" value="<%= index %>" 
                      id="urgency_<%= index %>"
-                     <%= 'checked' if @triage.step2_data['urgency_criteria']&.include?('true') %>>
+                     <%= 'checked' if Array(@triage.step2_data['urgency_criteria']).map(&:to_s).include?(index.to_s) %>>
               <label class="form-check-label" for="urgency_<%= index %>">
                 <%= criterion %>
               </label>
@@ -74,9 +74,9 @@
           <div class="col-md-6">
             <div class="form-check mb-3 step2-infection">
               <input class="form-check-input" type="checkbox" 
-                     name="infection_signs[]" value="true" 
+                     name="infection_signs[]" value="<%= index %>" 
                      id="infection_<%= index %>"
-                     <%= 'checked' if @triage.step2_data['infection_signs']&.include?('true') %>>
+                     <%= 'checked' if Array(@triage.step2_data['infection_signs']).map(&:to_s).include?(index.to_s) %>>
               <label class="form-check-label" for="infection_<%= index %>">
                 <%= sign %>
               </label>

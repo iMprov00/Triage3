@@ -16,7 +16,7 @@
     </div>
     <div id="consciousness-score-panel" class="alert triage-score-panel alert-success mb-0 d-none d-md-block">
       <strong class="d-block">Сумма баллов: <span id="total-score">0</span></strong>
-      <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
+      <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
     </div>
   </div>
 </div>
@@ -66,7 +66,7 @@
       <div class="d-md-none mt-3">
         <div id="consciousness-score-panel-mobile" class="alert triage-score-panel alert-success mb-0">
           <strong class="d-block">Сумма баллов: <span id="total-score-mobile">0</span></strong>
-          <div class="small text-muted mt-1">Если сумма ≤ 8 баллов — приоритет красный</div>
+          <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
         </div>
       </div>
     </div>
@@ -143,6 +143,12 @@
     motor: <%= Triage::MOTOR_SCORES.to_json %>
   };
 
+  function isSeizuresOrBleedingRed() {
+    var s = document.querySelector('input[name="seizures"]:checked');
+    var b = document.querySelector('input[name="active_bleeding"]:checked');
+    return (s && s.value === 'true') || (b && b.value === 'true');
+  }
+
   function calculateTotalScore() {
     var eyeSel = document.querySelector('select[name="eye_opening"]');
     var verbalSel = document.querySelector('select[name="verbal_response"]');
@@ -156,6 +162,7 @@
     if (verbalText && SCORES.verbal[verbalText]) total += SCORES.verbal[verbalText];
     if (motorText && SCORES.motor[motorText]) total += SCORES.motor[motorText];
 
+    var red = total <= 8 || isSeizuresOrBleedingRed();
     var panels = document.querySelectorAll('#consciousness-score-panel, #consciousness-score-panel-mobile');
     var scoreEls = document.querySelectorAll('#total-score, #total-score-mobile');
     scoreEls.forEach(function(el) { el.textContent = total; });
@@ -163,13 +170,16 @@
     panels.forEach(function(panel) {
       if (!panel) return;
       panel.classList.remove('alert-danger', 'alert-success');
-      panel.classList.add(total <= 8 ? 'alert-danger' : 'alert-success');
+      panel.classList.add(red ? 'alert-danger' : 'alert-success');
     });
   }
 
   document.querySelectorAll('.triage-score-field').forEach(function(sel) {
     sel.addEventListener('change', calculateTotalScore);
     sel.addEventListener('input', calculateTotalScore);
+  });
+  document.querySelectorAll('input[name="seizures"], input[name="active_bleeding"]').forEach(function(r) {
+    r.addEventListener('change', calculateTotalScore);
   });
 
   calculateTotalScore();

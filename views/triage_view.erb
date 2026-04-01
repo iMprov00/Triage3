@@ -169,30 +169,36 @@
       </div>
       
       <% urgency = step2['urgency_criteria'] || [] %>
-      <% urgency_active = urgency.is_a?(Array) ? urgency.each_with_index.select { |v, i| v == 'true' }.map { |v, i| Triage::URGENCY_CRITERIA[i] }.compact : [] %>
+      <% urgency_indices = urgency.is_a?(Array) ? urgency.map(&:to_s).select { |x| x =~ /^\d+$/ }.map(&:to_i).select { |i| i >= 0 && i < Triage::URGENCY_CRITERIA.size } : [] %>
+      <% urgency_legacy = urgency.is_a?(Array) && urgency.any? { |v| v == 'true' } %>
       <div class="mb-3">
         <strong>Критерии неотложности:</strong><br>
-        <% if urgency_active.any? %>
+        <% if urgency_indices.any? %>
           <ul class="mb-0">
-            <% urgency_active.each do |item| %>
-              <li><%= item %></li>
+            <% urgency_indices.each do |i| %>
+              <li><%= Triage::URGENCY_CRITERIA[i] %></li>
             <% end %>
           </ul>
+        <% elsif urgency_legacy %>
+          <span class="text-muted small">Отмечено пунктов: <%= urgency.count { |v| v == 'true' } %> (ранее сохранено без привязки к пунктам)</span>
         <% else %>
           <span class="text-muted">Нет</span>
         <% end %>
       </div>
       
       <% infection = step2['infection_signs'] || [] %>
-      <% infection_active = infection.is_a?(Array) ? infection.each_with_index.select { |v, i| v == 'true' }.map { |v, i| Triage::INFECTION_SIGNS[i] }.compact : [] %>
+      <% infection_indices = infection.is_a?(Array) ? infection.map(&:to_s).select { |x| x =~ /^\d+$/ }.map(&:to_i).select { |i| i >= 0 && i < Triage::INFECTION_SIGNS.size } : [] %>
+      <% infection_legacy = infection.is_a?(Array) && infection.any? { |v| v == 'true' } %>
       <div class="mb-0">
         <strong>Признаки инфекционных заболеваний:</strong><br>
-        <% if infection_active.any? %>
+        <% if infection_indices.any? %>
           <ul class="mb-0">
-            <% infection_active.each do |item| %>
-              <li><%= item %></li>
+            <% infection_indices.each do |i| %>
+              <li><%= Triage::INFECTION_SIGNS[i] %></li>
             <% end %>
           </ul>
+        <% elsif infection_legacy %>
+          <span class="text-muted small">Отмечено пунктов: <%= infection.count { |v| v == 'true' } %> (ранее сохранено без привязки к пунктам)</span>
         <% else %>
           <span class="text-muted">Нет</span>
         <% end %>

@@ -14,7 +14,7 @@
   </div>
 </div>
 
-<form id="triage-edit-step3-form" action="/patients/<%= @patient.id %>/triage/update_step/3" method="post" class="mt-4">
+<form id="triage-edit-step3-form" action="/patients/<%= @patient.id %>/triage/update_step/3" method="post" class="mt-4 triage-edit-step-form" data-patient-id="<%= @patient.id %>" data-triage-edit-step="3">
   <div id="step3-priority-preview" class="alert triage-preview-banner triage-preview-banner--neutral" role="status" aria-live="polite">
     <i class="bi bi-flag"></i> <span id="step3-priority-preview-text">Введите показатели — здесь будет показан ожидаемый приоритет по правилам шага 3.</span>
   </div>

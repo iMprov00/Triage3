@@ -60,5 +60,8 @@
       });
     });
   </script>
+  <% if @triage_edit_with_save_guard %>
+  <%= erb :triage_edit_save_guard, layout: false %>
+  <% end %>
 </body>
 </html>

@@ -143,7 +143,7 @@
                     <% if is_completed %>
                       <i class="bi bi-check-circle-fill text-success ms-2"></i>
                     <% end %>
-                    <% if is_final %>
+                    <% if is_final && !action[:final_always_available] %>
                       <br><small class="text-muted fw-normal">(доступно после выполнения всех действий выше)</small>
                     <% end %>
                     <% if action[:starts_timer] %>

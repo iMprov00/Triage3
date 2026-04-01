@@ -727,6 +727,8 @@ get '/patients/:id/triage/edit_step/:step' do |id, step|
     flash[:error] = "Этот шаг еще не был пройден"
     redirect "/patients"
   end
+
+  @triage_edit_with_save_guard = true
   
   case @step
   when 1
@@ -736,6 +738,30 @@ get '/patients/:id/triage/edit_step/:step' do |id, step|
   when 3
     erb :triage_edit_step3
   end
+end
+
+# Предпросмотр приоритета после сохранения правок (для модального окна)
+post '/patients/:id/triage/preview_step_update/:step' do |id, step|
+  content_type :json
+  patient = Patient.find(id)
+  triage = patient.triage
+  step_num = step.to_i
+
+  if triage.nil?
+    halt 404, { ok: false, error: 'Триаж не найден' }.to_json
+  end
+
+  if triage.actions_completed?
+    halt 403, { ok: false, error: 'Действия по приоритету завершены. Редактирование недоступно.' }.to_json
+  end
+
+  if step_num < 1 || step_num > 3
+    halt 400, { ok: false, error: 'Неверный шаг' }.to_json
+  end
+
+  triage.preview_step_update(step_num, params).merge(ok: true).to_json
+rescue ActiveRecord::RecordNotFound
+  halt 404, { ok: false, error: 'Не найдено' }.to_json
 end
 
 post '/patients/:id/triage/update_step/:step' do |id, step|
@@ -756,100 +782,9 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
   
   # Запоминаем был ли триаж уже завершён
   was_completed = triage.completed_at.present?
-  
-  case step_num
-  when 1
-    step_data = {
-      'eye_opening' => params[:eye_opening],
-      'verbal_response' => params[:verbal_response],
-      'motor_response' => params[:motor_response],
-      'breathing' => params[:breathing] == 'true',
-      'heartbeat' => params[:heartbeat] == 'true',
-      'seizures' => params[:seizures] == 'true',
-      'active_bleeding' => params[:active_bleeding] == 'true'
-    }
-    
-    triage.update_step_data(1, step_data)
-    triage.step1_completed_at = Time.now
-    
-    # Проверяем приоритет после редактирования этапа 1
-    if triage.check_step1_priority
-      # Приоритет определён → завершаем триаж, очищаем последующие этапы
-      triage.step2_data = {}
-      triage.step3_data = {}
-      triage.step2_completed_at = nil
-      triage.step3_completed_at = nil
-      triage.step = 1
-      triage.completed_at = Time.now
-      triage.timer_active = false
-      triage.actions_started_at = Time.now  # Автостарт действий
-    else
-      # Приоритет НЕ определён → продолжаем к этапу 2
-      triage.step = 2
-      triage.priority = 'pending'
-      triage.completed_at = nil
-      triage.timer_active = true
-      triage.start_time = Time.now
-      # Сбрасываем данные действий
-      triage.actions_started_at = nil
-      triage.actions_data = nil
-      triage.brigade_called_at = nil
-      triage.actions_completed_at = nil
-    end
-    
-  when 2
-    step_data = {
-      'position' => params[:position],
-      'urgency_criteria' => params[:urgency_criteria] || [],
-      'infection_signs' => params[:infection_signs] || []
-    }
-    
-    triage.update_step_data(2, step_data)
-    triage.step2_completed_at = Time.now
-    
-    # Проверяем приоритет после редактирования этапа 2
-    if triage.check_step2_priority
-      # Приоритет определён → завершаем триаж, очищаем этап 3
-      triage.step3_data = {}
-      triage.step3_completed_at = nil
-      triage.step = 2
-      triage.completed_at = Time.now
-      triage.timer_active = false
-      triage.actions_started_at = Time.now  # Автостарт действий
-    else
-      # Приоритет НЕ определён → продолжаем к этапу 3
-      triage.step = 3
-      triage.priority = 'pending'
-      triage.completed_at = nil
-      triage.timer_active = true
-      triage.start_time = Time.now
-      # Сбрасываем данные действий
-      triage.actions_started_at = nil
-      triage.actions_data = nil
-      triage.brigade_called_at = nil
-      triage.actions_completed_at = nil
-    end
-    
-  when 3
-    step_data = {
-      'respiratory_rate' => params[:respiratory_rate],
-      'saturation' => params[:saturation],
-      'systolic_bp' => params[:systolic_bp],
-      'diastolic_bp' => params[:diastolic_bp],
-      'heart_rate' => params[:heart_rate],
-      'temperature' => params[:temperature]
-    }
-    
-    triage.update_step_data(3, step_data)
-    triage.step3_completed_at = Time.now
-    
-    # Этап 3 всегда определяет финальный приоритет и завершает триаж
-    triage.check_step3_priority
-    triage.completed_at = Time.now
-    triage.timer_active = false
-    triage.actions_started_at = Time.now  # Автостарт действий
-  end
-  
+
+  triage.apply_update_step!(step_num, params)
+
   if triage.save
     # Определяем куда перенаправить и какое сообщение показать
     if triage.completed_at

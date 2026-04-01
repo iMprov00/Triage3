@@ -91,7 +91,7 @@
               <input class="form-check-input" type="checkbox" 
                      name="urgency_criteria[]" 
                      id="urgency_<%= index %>" 
-                     value="true">
+                     value="<%= index %>">
               <label class="form-check-label" for="urgency_<%= index %>">
                 <%= criterion %>
               </label>
@@ -116,7 +116,7 @@
               <input class="form-check-input" type="checkbox" 
                      name="infection_signs[]" 
                      id="infection_<%= index %>" 
-                     value="true">
+                     value="<%= index %>">
               <label class="form-check-label" for="infection_<%= index %>">
                 <%= sign %>
               </label>
