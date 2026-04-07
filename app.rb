@@ -130,6 +130,9 @@ helpers do
     p = request.path_info
     return true if p == '/login'
     return true if p == '/monitor' || p == '/monitor_events'
+    return true if p == '/manifest.json'
+    return true if p == '/sw.js'
+    return true if p.start_with?('/icons/')
     return true if p.start_with?('/css/', '/js/')
     return true if p.start_with?('/assets/')
     return true if p =~ %r{\A/api/patient_timer/}
