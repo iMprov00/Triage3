@@ -14,10 +14,10 @@
         <div class="small">Триаж завершен</div>
       <% end %>
     </div>
-    <% step1_red_hint = @triage.total_consciousness_score <= 8 || s1['seizures'] == true || s1['active_bleeding'] == true %>
+    <% step1_red_hint = Triage.step1_data_implies_red_priority?(s1) %>
     <div id="consciousness-score-panel" class="alert triage-score-panel <%= step1_red_hint ? 'alert-danger' : 'alert-success' %> mb-0 d-none d-md-block">
       <strong class="d-block">Сумма баллов: <span id="total-score"><%= @triage.total_consciousness_score %></span></strong>
-      <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
+      <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов; нет дыхания и/или сердцебиения; судороги или активное кровотечение</div>
     </div>
   </div>
 </div>
@@ -68,7 +68,7 @@
       <div class="d-md-none mt-3">
         <div id="consciousness-score-panel-mobile" class="alert triage-score-panel <%= step1_red_hint ? 'alert-danger' : 'alert-success' %> mb-0">
           <strong class="d-block">Сумма баллов: <span id="total-score-mobile"><%= @triage.total_consciousness_score %></span></strong>
-          <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов, судороги или активное кровотечение</div>
+          <div class="small text-muted mt-1">Красный приоритет: сумма ≤ 8 баллов; нет дыхания и/или сердцебиения; судороги или активное кровотечение</div>
         </div>
       </div>
     </div>
@@ -154,6 +154,12 @@
     return (s && s.value === 'true') || (b && b.value === 'true');
   }
 
+  function isVitalsAbsentRed() {
+    var br = document.querySelector('input[name="breathing"]:checked');
+    var hb = document.querySelector('input[name="heartbeat"]:checked');
+    return (br && br.value === 'false') || (hb && hb.value === 'false');
+  }
+
   function calculateTotalScore() {
     var eyeSel = document.querySelector('select[name="eye_opening"]');
     var verbalSel = document.querySelector('select[name="verbal_response"]');
@@ -167,7 +173,7 @@
     if (verbalText && SCORES.verbal[verbalText]) total += SCORES.verbal[verbalText];
     if (motorText && SCORES.motor[motorText]) total += SCORES.motor[motorText];
 
-    var red = total <= 8 || isSeizuresOrBleedingRed();
+    var red = total <= 8 || isSeizuresOrBleedingRed() || isVitalsAbsentRed();
 
     document.querySelectorAll('#total-score, #total-score-mobile').forEach(function(el) {
       el.textContent = total;
@@ -184,7 +190,7 @@
     sel.addEventListener('change', calculateTotalScore);
     sel.addEventListener('input', calculateTotalScore);
   });
-  document.querySelectorAll('input[name="seizures"], input[name="active_bleeding"]').forEach(function(r) {
+  document.querySelectorAll('input[name="seizures"], input[name="active_bleeding"], input[name="breathing"], input[name="heartbeat"]').forEach(function(r) {
     r.addEventListener('change', calculateTotalScore);
   });
 

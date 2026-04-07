@@ -1,6 +1,8 @@
 <%# Действия по приоритету после завершения триажа %>
 
-<% if @triage.priority_actions.any? && !@triage.actions_completed? %>
+<% if @triage.red_arrest_actions_flow? && !@triage.actions_completed? %>
+  <%= erb :triage_actions_red_arrest %>
+<% elsif @triage.priority_actions.any? && !@triage.actions_completed? %>
   <%# === АКТИВНЫЕ ДЕЙСТВИЯ ПО ПРИОРИТЕТУ === %>
   
   <% 
@@ -431,7 +433,52 @@
                 <p>Триаж завершён. Приоритет: <strong><%= @triage.priority_name %></strong></p>
               </div>
               
-              <% if @triage.actions_completed? && @triage.priority_actions.any? %>
+              <% if @triage.actions_completed? && @triage.red_arrest_actions_flow? %>
+                <% ra = @triage.red_arrest_data %>
+                <div class="app-card card">
+                  <div class="app-card-header card-header">
+                    <span class="text-muted small text-uppercase fw-normal">Сценарий остановки (нет дыхания / нет сердцебиения)</span>
+                  </div>
+                  <div class="card-body small">
+                    <% if @triage.brigade_called_at %>
+                      <p class="mb-2"><strong>Бригада вызвана:</strong> <%= format_nsk(@triage.brigade_called_at) %></p>
+                    <% end %>
+                    <p class="fw-semibold mb-1">Бригада</p>
+                    <ul class="mb-3">
+                      <% Triage::RED_ARREST_TEAM.each do |e| %>
+                        <% ts = ra.dig('team', e[:key]) %>
+                        <% if ts %>
+                          <li><%= e[:label] %> — <%= format_nsk(Time.at(ts.to_i)) %></li>
+                        <% end %>
+                      <% end %>
+                    </ul>
+                    <p class="fw-semibold mb-1">Манипуляции</p>
+                    <ul class="mb-3">
+                      <% Triage::RED_ARREST_MANIPS.each do |e| %>
+                        <% ts = ra.dig('manip', e[:key]) %>
+                        <% if ts %>
+                          <li><%= e[:label] %> — <%= format_nsk(Time.at(ts.to_i)) %></li>
+                        <% end %>
+                      <% end %>
+                      <% if ra.dig('manip', 'urgent_cesarean') %>
+                        <li>Назначено срочное кесарево сечение — <%= format_nsk(Time.at(ra.dig('manip', 'urgent_cesarean').to_i)) %></li>
+                      <% end %>
+                      <% if ra.dig('manip', 'slr_complete') %>
+                        <li>Завершить СЛР — <%= format_nsk(Time.at(ra.dig('manip', 'slr_complete').to_i)) %></li>
+                      <% end %>
+                    </ul>
+                    <p class="fw-semibold mb-1">Показатели</p>
+                    <ul class="mb-0">
+                      <% Triage::RED_ARREST_VITALS.each do |v| %>
+                        <% d = ra.dig('vitals', v[:key]) %>
+                        <% if d.is_a?(Hash) && d['value'].present? %>
+                          <li><%= v[:label] %>: <%= d['value'] %> (<%= format_nsk(Time.at(d['at'].to_i)) %>)</li>
+                        <% end %>
+                      <% end %>
+                    </ul>
+                  </div>
+                </div>
+              <% elsif @triage.actions_completed? && @triage.priority_actions.any? %>
                 <div class="app-card card">
                   <div class="app-card-header card-header">
                     <span class="text-muted small text-uppercase fw-normal">Выполненные действия</span>

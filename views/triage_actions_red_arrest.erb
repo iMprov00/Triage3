@@ -1,0 +1,342 @@
+<%# Красный приоритет: нет дыхания / нет сердцебиения — двухколоночный сценарий %>
+<% priority_config = { color: 'danger', title: 'СРОЧНЫЕ МЕРЫ (остановка)', icon: 'exclamation-triangle-fill', bg: 'bg-danger' } %>
+<% ra = @triage.red_arrest_data %>
+<% timer_action = @triage.timer_action %>
+<% brigade_ok = @triage.brigade_called_at.present? %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="page-title mb-1 text-<%= priority_config[:color] %>">
+      <i class="bi bi-<%= priority_config[:icon] %>"></i> <%= priority_config[:title] %>
+    </h1>
+    <p class="text-muted mb-0">
+      <%= @patient.full_name %> · Приоритет:
+      <span class="badge <%= priority_config[:bg] %>"><%= @triage.priority_name %></span>
+      <span class="text-muted small ms-2">Нет дыхания и/или нет сердцебиения на шаге 1</span>
+    </p>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-12">
+    <%= erb :step_performer_field, locals: { step_key: 'actions' } %>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-lg-6 mb-3">
+    <div class="app-card card h-100">
+      <div class="app-card-header card-header">
+        <span class="text-muted small text-uppercase fw-normal">Время на действия</span>
+      </div>
+      <div class="card-body">
+        <div class="timer-box <%= @triage.actions_time_expired? ? 'timer-expired' : 'timer-running' %>"
+             id="actions-timer"
+             data-timer-ends-at="<%= @triage.actions_timer_ends_at || 0 %>"
+             data-max-time="<%= Triage::ACTIONS_TIME_LIMIT %>">
+          <div class="text-center">
+            <div class="timer-value display-4 fw-bold" id="actions-timer-display">
+              <%= @triage.actions_time_remaining %> сек
+            </div>
+            <small class="text-muted">из 5 минут</small>
+          </div>
+          <div class="progress mt-3">
+            <% percent = (@triage.actions_time_remaining.to_f / Triage::ACTIONS_TIME_LIMIT * 100).to_i %>
+            <div class="progress-bar <%= percent <= 25 ? 'progress-bar-danger' : (percent <= 50 ? 'progress-bar-warning' : 'progress-bar-success') %>"
+                 id="actions-progress-bar"
+                 style="width: <%= [percent, 100].min %>%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <div class="app-card card h-100 <%= brigade_ok ? '' : 'd-none' %>" id="brigade-timer-card">
+      <div class="app-card-header card-header <%= priority_config[:bg] %>">
+        <span class="small text-uppercase fw-normal text-white">
+          <i class="bi bi-truck"></i> <%= @triage.brigade_timer_label %>
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="timer-box timer-running"
+             id="brigade-timer"
+             data-timer-ends-at="<%= @triage.brigade_timer_ends_at || 0 %>"
+             data-max-time="<%= @triage.brigade_time_limit %>">
+          <div class="text-center">
+            <div class="timer-value display-5 fw-bold" id="brigade-timer-display">
+              <%= @triage.brigade_time_remaining || 0 %> сек
+            </div>
+            <small class="text-muted">из <%= timer_action ? timer_action[:timer_minutes] : 12 %> минут</small>
+          </div>
+          <div class="progress mt-3">
+            <% brigade_percent = @triage.brigade_time_remaining ? (@triage.brigade_time_remaining.to_f / @triage.brigade_time_limit * 100).to_i : 100 %>
+            <div class="progress-bar progress-bar-warning"
+                 id="brigade-progress-bar"
+                 style="width: <%= [brigade_percent, 100].min %>%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <%# Слева — манипуляции %>
+  <div class="col-lg-6">
+    <div class="app-card card h-100">
+      <div class="app-card-header card-header bg-danger text-white">
+        <span class="small text-uppercase fw-normal"><i class="bi bi-tools"></i> Манипуляции</span>
+      </div>
+      <div class="card-body">
+        <% Triage::RED_ARREST_MANIPS.each do |item| %>
+          <% k = item[:key] %>
+          <% ts = ra.dig('manip', k) %>
+          <% done = ts.present? %>
+          <div class="form-check mb-3 red-arrest-item <%= done ? 'bg-success-subtle border border-success rounded px-2 py-2' : '' %>"
+               data-group="manip" data-key="<%= k %>">
+            <input class="form-check-input ra-toggle" type="checkbox" id="ra_manip_<%= k %>"
+                   data-group="manip" data-key="<%= k %>"
+                   <%= 'checked' if done %>
+                   <%= 'disabled' if @triage.actions_completed? %>>
+            <label class="form-check-label" for="ra_manip_<%= k %>"><%= item[:label] %></label>
+            <% if ts %>
+              <div class="small text-muted ms-4"><%= format_nsk(Time.at(ts.to_i)) %></div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <hr class="my-3">
+        <p class="small text-muted text-uppercase mb-2">Показатели (фиксируется время ввода)</p>
+        <% Triage::RED_ARREST_VITALS.each do |v| %>
+          <% vk = v[:key] %>
+          <% vd = ra.dig('vitals', vk) %>
+          <% vval = vd.is_a?(Hash) ? vd['value'].to_s : '' %>
+          <% vat = vd.is_a?(Hash) ? vd['at'] : nil %>
+          <div class="mb-3">
+            <label class="form-label mb-0" for="ra_vital_<%= vk %>"><%= v[:label] %></label>
+            <input type="text" class="form-control ra-vital" id="ra_vital_<%= vk %>"
+                   data-key="<%= vk %>"
+                   data-last-sent="<%= Rack::Utils.escape_html(vval) %>"
+                   value="<%= Rack::Utils.escape_html(vval) %>"
+                   placeholder="Введите значение"
+                   <%= 'disabled' if @triage.actions_completed? %>>
+            <% if vat %>
+              <div class="small text-muted mt-1">Зафиксировано: <%= format_nsk(Time.at(vat.to_i)) %></div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <hr class="my-3">
+        <% ts = ra.dig('manip', 'urgent_cesarean') %>
+        <% done = ts.present? %>
+        <div class="form-check mb-3 red-arrest-item <%= done ? 'bg-success-subtle border border-success rounded px-2 py-2' : '' %>"
+             data-group="manip" data-key="urgent_cesarean">
+          <input class="form-check-input ra-toggle" type="checkbox" id="ra_manip_urgent_cesarean"
+                 data-group="manip" data-key="urgent_cesarean"
+                 <%= 'checked' if done %>
+                 <%= 'disabled' if @triage.actions_completed? %>>
+          <label class="form-check-label fw-semibold" for="ra_manip_urgent_cesarean">Назначено срочное кесарево сечение</label>
+          <% if ts %>
+            <div class="small text-muted ms-4"><%= format_nsk(Time.at(ts.to_i)) %></div>
+          <% end %>
+        </div>
+
+        <button type="button" class="btn btn-outline-danger w-100 mb-2" id="ra-btn-slr-complete"
+                <%= 'disabled' if @triage.actions_completed? || ra.dig('manip', 'slr_complete').present? %>>
+          Завершить СЛР
+        </button>
+        <% if ra.dig('manip', 'slr_complete') %>
+          <p class="small text-muted mb-0">Отметка «завершить СЛР»: <%= format_nsk(Time.at(ra.dig('manip', 'slr_complete').to_i)) %></p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# Справа — вызов бригады %>
+  <div class="col-lg-6">
+    <div class="app-card card h-100">
+      <div class="app-card-header card-header bg-danger text-white">
+        <span class="small text-uppercase fw-normal"><i class="bi bi-telephone-fill"></i> Вызов бригады оказания помощи</span>
+      </div>
+      <div class="card-body">
+        <% unless brigade_ok %>
+          <button type="button" class="btn btn-danger btn-lg w-100 mb-4" id="ra-btn-brigade" <%= 'disabled' if @triage.actions_completed? %>>
+            Бригада вызвана
+          </button>
+        <% else %>
+          <div class="alert alert-success py-2 mb-4">
+            <i class="bi bi-check-circle-fill"></i> Бригада вызвана — <%= format_nsk(@triage.brigade_called_at) %>
+          </div>
+        <% end %>
+
+        <div id="ra-team-block" class="<%= brigade_ok ? '' : 'd-none' %>">
+          <p class="small text-muted mb-2">Специалисты (отметка и время фиксируются в журнале)</p>
+          <% Triage::RED_ARREST_TEAM.each do |item| %>
+            <% k = item[:key] %>
+            <% ts = ra.dig('team', k) %>
+            <% done = ts.present? %>
+            <div class="form-check mb-2 red-arrest-item <%= done ? 'bg-success-subtle border border-success rounded px-2 py-2' : '' %>"
+                 data-group="team" data-key="<%= k %>">
+              <input class="form-check-input ra-toggle" type="checkbox" id="ra_team_<%= k %>"
+                     data-group="team" data-key="<%= k %>"
+                     <%= 'checked' if done %>
+                     <%= 'disabled' if @triage.actions_completed? || !brigade_ok %>>
+              <label class="form-check-label" for="ra_team_<%= k %>"><%= item[:label] %></label>
+              <% if ts %>
+                <div class="small text-muted ms-4"><%= format_nsk(Time.at(ts.to_i)) %></div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="action-bar justify-content-center flex-wrap gap-2">
+      <button type="button" class="btn btn-success btn-lg" id="ra-complete-btn"
+              <%= 'disabled' unless @triage.can_complete_red_arrest? %>
+              <%= 'disabled' if @triage.actions_completed? %>>
+        <i class="bi bi-check-circle"></i> Завершить действия
+      </button>
+      <a href="/patients" class="btn btn-outline-secondary btn-lg">К списку пациентов</a>
+    </div>
+    <% unless @triage.can_complete_red_arrest? %>
+      <p class="text-center text-muted small mt-2 mb-0">
+        Чтобы завершить: нажмите «Бригада вызвана», затем отметьте «Назначено срочное кесарево сечение» и/или «Завершить СЛР».
+      </p>
+    <% end %>
+  </div>
+</div>
+
+<script>
+(function() {
+  var patientId = <%= @patient.id %>;
+
+  function actionsPerformerParam() {
+    var el = document.querySelector('select[name="step_performer_user_id"], input[name="step_performer_user_id"]');
+    if (!el) return '';
+    return 'step_performer_user_id=' + encodeURIComponent(el.value);
+  }
+
+  function formatTimerValue(seconds) {
+    var mins = Math.floor(seconds / 60);
+    var secs = seconds % 60;
+    return mins + ':' + secs.toString().padStart(2, '0');
+  }
+
+  function updateTimers() {
+    var now = Date.now() / 1000;
+    var actionsTimer = document.getElementById('actions-timer');
+    if (actionsTimer) {
+      var endsAt = parseFloat(actionsTimer.dataset.timerEndsAt) || 0;
+      var maxTime = parseFloat(actionsTimer.dataset.maxTime) || 300;
+      if (endsAt > 0) {
+        var remaining = Math.max(0, Math.floor(endsAt - now));
+        var percent = Math.round((remaining / maxTime) * 100);
+        var el = document.getElementById('actions-timer-display');
+        if (el) el.textContent = formatTimerValue(remaining);
+        var progressBar = document.getElementById('actions-progress-bar');
+        if (progressBar) {
+          progressBar.style.width = percent + '%';
+          progressBar.className = 'progress-bar ' + (percent <= 25 ? 'progress-bar-danger' : (percent <= 50 ? 'progress-bar-warning' : 'progress-bar-success'));
+        }
+        actionsTimer.classList.remove('timer-running', 'timer-expired');
+        actionsTimer.classList.add(remaining <= 0 ? 'timer-expired' : 'timer-running');
+      }
+    }
+    var brigadeTimer = document.getElementById('brigade-timer');
+    if (brigadeTimer && brigadeTimer.dataset.timerEndsAt && parseFloat(brigadeTimer.dataset.timerEndsAt) > 0) {
+      var endsAt2 = parseFloat(brigadeTimer.dataset.timerEndsAt) || 0;
+      var maxTime2 = parseFloat(brigadeTimer.dataset.maxTime) || 720;
+      var remaining2 = Math.max(0, Math.floor(endsAt2 - now));
+      var percent2 = Math.round((remaining2 / maxTime2) * 100);
+      var el2 = document.getElementById('brigade-timer-display');
+      if (el2) el2.textContent = formatTimerValue(remaining2);
+      var pb = document.getElementById('brigade-progress-bar');
+      if (pb) pb.style.width = percent2 + '%';
+    }
+  }
+
+  function postForm(url, body, onOk) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try {
+          var response = JSON.parse(xhr.responseText);
+          if (response.error) return;
+          if (onOk) onOk(response);
+        } catch (e) {}
+      }
+    };
+    var ap = actionsPerformerParam();
+    if (ap) body = body ? (body + '&' + ap) : ap;
+    xhr.send(body || '');
+  }
+
+  document.getElementById('ra-btn-brigade') && document.getElementById('ra-btn-brigade').addEventListener('click', function() {
+    if (this.disabled) return;
+    postForm('/patients/' + patientId + '/triage/actions/red_arrest/brigade', '', function(response) {
+      location.reload();
+    });
+  });
+
+  document.querySelectorAll('.ra-toggle').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      if (this.disabled) return;
+      var group = this.dataset.group;
+      var key = this.dataset.key;
+      var checked = this.checked;
+      var body = 'group=' + encodeURIComponent(group) + '&key=' + encodeURIComponent(key) + '&checked=' + (checked ? 'true' : 'false');
+      postForm('/patients/' + patientId + '/triage/actions/red_arrest/toggle', body, function(response) {
+        var btn = document.getElementById('ra-complete-btn');
+        if (btn && response.can_complete) { btn.disabled = false; }
+        location.reload();
+      });
+    });
+  });
+
+  document.querySelectorAll('.ra-vital').forEach(function(inp) {
+    inp.addEventListener('blur', function() {
+      if (this.disabled) return;
+      var key = this.dataset.key;
+      var value = this.value.trim();
+      var last = (this.getAttribute('data-last-sent') || '').trim();
+      if (value === last) return;
+      var body = 'key=' + encodeURIComponent(key) + '&value=' + encodeURIComponent(value);
+      var self = this;
+      postForm('/patients/' + patientId + '/triage/actions/red_arrest/vital', body, function() {
+        self.setAttribute('data-last-sent', value);
+        location.reload();
+      });
+    });
+  });
+
+  document.getElementById('ra-btn-slr-complete') && document.getElementById('ra-btn-slr-complete').addEventListener('click', function() {
+    if (this.disabled) return;
+    var body = 'group=manip&key=slr_complete&checked=true';
+    postForm('/patients/' + patientId + '/triage/actions/red_arrest/toggle', body, function() {
+      location.reload();
+    });
+  });
+
+  document.getElementById('ra-complete-btn') && document.getElementById('ra-complete-btn').addEventListener('click', function() {
+    if (this.disabled) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/patients/' + patientId + '/triage/actions/complete', true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = function() {
+      if (xhr.status === 200) location.reload();
+    };
+    var ap = actionsPerformerParam();
+    xhr.send(ap || '');
+  });
+
+  setInterval(updateTimers, 1000);
+  updateTimers();
+})();
+</script>

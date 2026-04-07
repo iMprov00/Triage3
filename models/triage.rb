@@ -27,13 +27,41 @@ class Triage < ActiveRecord::Base
   serialize :step3_data
   serialize :actions_data
   
-  # Действия для красного приоритета (в порядке выполнения)
+  # Действия для красного приоритета (в порядке выполнения) — классический сценарий
   RED_PRIORITY_ACTIONS = [
     { key: 'emergency_button', text: 'Нажата кнопка экстренного вызова' },
     { key: 'brigade_called', text: 'Вызвана бригада экстренной помощи', starts_timer: true, timer_minutes: 12 },
     { key: 'patient_prepared', text: 'Пациентка уложена на каталку, твердую поверхность и снята верхняя одежда' },
     { key: 'help_provided', text: 'Оказана помощь по алгоритму до прибытия бригады' },
     { key: 'delivered_to_or', text: 'Пациентка доставлена в операционную', final: true }
+  ].freeze
+
+  # Красный приоритет: нет дыхания и/или нет сердцебиения на шаге 1 — отдельный сценарий (двухколоночный экран)
+  RED_ARREST_TEAM = [
+    { key: 'midwife_triage', label: 'Акушерка триажного поста' },
+    { key: 'procedural_nurse', label: 'Процедурная медсестра' },
+    { key: 'obgyn_1', label: 'Акушер-гинеколог' },
+    { key: 'obgyn_2', label: '2-й акушер-гинеколог' },
+    { key: 'nurse_anesthetist', label: 'Медицинская сестра-анестезист' },
+    { key: 'anesthesiologist', label: 'Анестезиолог-реаниматолог' },
+    { key: 'pediatric_resus', label: 'Детская реанимация' }
+  ].freeze
+
+  RED_ARREST_MANIPS = [
+    { key: 'slr_start', label: 'Начало СЛР' },
+    { key: 'xylorod', label: 'Ингаляция ксилорода' },
+    { key: 'fetal_assessment', label: 'Выслушивание сердцебиения плода, оценка наличия кровянистых выделений' },
+    { key: 'vein_catheter', label: 'Катетеризация вены' },
+    { key: 'adrenaline', label: 'Введение адреналина' },
+    { key: 'transport_or', label: 'Транспортировка в операционную' },
+    { key: 'intubation', label: 'Интубация трахеи' },
+    { key: 'defibrillator', label: 'Использование дефибриллятора' }
+  ].freeze
+
+  RED_ARREST_VITALS = [
+    { key: 'bp', label: 'АД' },
+    { key: 'pulse', label: 'Пульс' },
+    { key: 'saturation', label: 'Сатурация' }
   ].freeze
   
   # Действия для желтого приоритета
@@ -203,12 +231,27 @@ class Triage < ActiveRecord::Base
   def self.action_text_for_key(key)
     return '' if key.blank?
 
+    k = key.to_s
+    return 'Красный (остановка): бригада вызвана' if k == 'ra_brigade_called'
+    return 'Красный (остановка): значение АД зафиксировано' if k == 'ra_vital_bp'
+    return 'Красный (остановка): значение пульса зафиксировано' if k == 'ra_vital_pulse'
+    return 'Красный (остановка): значение сатурации зафиксировано' if k == 'ra_vital_saturation'
+
+    RED_ARREST_TEAM.each do |e|
+      return "Красный (остановка): вызов — #{e[:label]}" if k == "ra_team_#{e[:key]}"
+    end
+    RED_ARREST_MANIPS.each do |e|
+      return "Красный (остановка): манипуляция — #{e[:label]}" if k == "ra_manip_#{e[:key]}"
+    end
+    return 'Красный (остановка): манипуляция — назначено срочное кесарево сечение' if k == 'ra_manip_urgent_cesarean'
+    return 'Красный (остановка): манипуляция — завершить СЛР' if k == 'ra_manip_slr_complete'
+
     [RED_PRIORITY_ACTIONS, YELLOW_PRIORITY_ACTIONS, PURPLE_PRIORITY_ACTIONS, GREEN_PRIORITY_ACTIONS].each do |arr|
       arr.each do |a|
-        return a[:text] if a[:key] == key.to_s
+        return a[:text] if a[:key] == k
       end
     end
-    key.to_s
+    k
   end
 
   def self.priority_label_ru(code)
@@ -286,19 +329,35 @@ class Triage < ActiveRecord::Base
     value == true || value.to_s == 'true'
   end
 
-  # Судороги и/или активное кровотечение → красный независимо от суммы баллов
-  def step1_red_from_seizures_or_bleeding?
-    s1 = step1_data || {}
-    truthy_step1_flag?(s1['seizures']) || truthy_step1_flag?(s1['active_bleeding'])
+  def self.step1_explicitly_no?(value)
+    value == false || value.to_s == 'false'
+  end
+
+  # Красный на шаге 1: судороги / кровотечение / нет дыхания или сердцебиения / сумма баллов ≤ 8
+  def self.step1_data_implies_red_priority?(s1)
+    s1 ||= {}
+    return true if s1['seizures'] == true || s1['seizures'].to_s == 'true'
+    return true if s1['active_bleeding'] == true || s1['active_bleeding'].to_s == 'true'
+    return true if step1_explicitly_no?(s1['breathing']) || step1_explicitly_no?(s1['heartbeat'])
+
+    eye = EYE_OPENING_SCORES[s1['eye_opening']] || 0
+    verbal = VERBAL_SCORES[s1['verbal_response']] || 0
+    motor = MOTOR_SCORES[s1['motor_response']] || 0
+    (eye + verbal + motor) <= 8
+  end
+
+  # Отдельный сценарий действий: на шаге 1 явно «нет дыхания» и/или «нет сердцебиения»
+  def self.step1_data_implies_red_arrest?(s1)
+    s1 ||= {}
+    step1_explicitly_no?(s1['breathing']) || step1_explicitly_no?(s1['heartbeat'])
+  end
+
+  def red_arrest_actions_flow?
+    priority.to_s == 'red' && self.class.step1_data_implies_red_arrest?(step1_data)
   end
 
   def check_step1_priority
-    if step1_red_from_seizures_or_bleeding?
-      self.priority = 'red'
-      return true
-    end
-    # Баллы сознания <= 8 -> красный приоритет
-    if total_consciousness_score <= 8
+    if self.class.step1_data_implies_red_priority?(step1_data)
       self.priority = 'red'
       return true
     end
@@ -454,14 +513,102 @@ class Triage < ActiveRecord::Base
   # Начать действия по приоритету
   def start_actions!
     return if actions_started_at
+    data = {}
+    if red_arrest_actions_flow?
+      data['red_arrest'] = { 'team' => {}, 'manip' => {}, 'vitals' => {} }
+    end
     update(
       actions_started_at: Time.now,
-      actions_data: {}
+      actions_data: data
     )
+  end
+
+  def ensure_red_arrest_bucket!
+    self.actions_data ||= {}
+    self.actions_data['red_arrest'] ||= { 'team' => {}, 'manip' => {}, 'vitals' => {} }
+    h = actions_data['red_arrest']
+    h['team'] ||= {}
+    h['manip'] ||= {}
+    h['vitals'] ||= {}
+  end
+
+  def red_arrest_data
+    d = actions_data && actions_data['red_arrest']
+    d.is_a?(Hash) ? d : {}
+  end
+
+  # @return [Symbol] :ok_new, :ok_already, :invalid
+  def mark_red_arrest_brigade!
+    return :invalid unless red_arrest_actions_flow?
+    return :ok_already if brigade_called_at
+
+    ensure_red_arrest_bucket!
+    now = Time.now
+    self.brigade_called_at = now
+    actions_data['red_arrest']['brigade_called_at'] = now.to_i
+    save ? :ok_new : :invalid
+  end
+
+  # group: "team" | "manip"
+  def toggle_red_arrest_item!(group, key, checked)
+    return false unless red_arrest_actions_flow?
+
+    g = group.to_s
+    raise ArgumentError, 'group' unless %w[team manip].include?(g)
+
+    k = key.to_s
+    allowed_team = RED_ARREST_TEAM.map { |e| e[:key].to_s }
+    allowed_manip = RED_ARREST_MANIPS.map { |e| e[:key].to_s } + %w[urgent_cesarean slr_complete]
+    return false if g == 'team' && !allowed_team.include?(k)
+    return false if g == 'manip' && !allowed_manip.include?(k)
+
+    ensure_red_arrest_bucket!
+    actions_data['red_arrest'][g] ||= {}
+    if ActiveModel::Type::Boolean.new.cast(checked)
+      actions_data['red_arrest'][g][key.to_s] = Time.now.to_i
+    else
+      actions_data['red_arrest'][g].delete(key.to_s)
+    end
+    save
+  end
+
+  def set_red_arrest_vital!(vkey, value)
+    return false unless red_arrest_actions_flow?
+
+    ensure_red_arrest_bucket!
+    vkey = vkey.to_s
+    val = value.to_s.strip
+    actions_data['red_arrest']['vitals'] ||= {}
+    if val.empty?
+      actions_data['red_arrest']['vitals'].delete(vkey)
+    else
+      actions_data['red_arrest']['vitals'][vkey] = { 'value' => val, 'at' => Time.now.to_i }
+    end
+    save
+  end
+
+  def can_complete_red_arrest?
+    return false unless red_arrest_actions_flow?
+    return false unless brigade_called_at
+
+    manip = red_arrest_data['manip'] || {}
+    manip['urgent_cesarean'].present? || manip['slr_complete'].present?
+  end
+
+  def red_arrest_actions_progress_for_monitor
+    ra = red_arrest_data
+    team_n = (ra['team'] || {}).size
+    manip_n = (ra['manip'] || {}).size
+    vit_n = (ra['vitals'] || {}).count { |_, d| d.is_a?(Hash) && d['value'].present? }
+    done = (brigade_called_at ? 1 : 0) + team_n + manip_n + vit_n
+    total = 1 + RED_ARREST_TEAM.size + RED_ARREST_MANIPS.size + 2 + RED_ARREST_VITALS.size
+    { completed: done, total: total }
   end
   
   # Отметить действие как выполненное
   def mark_action!(action_key)
+    return false if red_arrest_actions_flow?
+
     self.actions_data ||= {}
     return if actions_data[action_key]
     
@@ -478,6 +625,8 @@ class Triage < ActiveRecord::Base
   
   # Снять отметку с действия
   def unmark_action!(action_key)
+    return false if red_arrest_actions_flow?
+
     self.actions_data ||= {}
     actions_data.delete(action_key)
     
@@ -508,10 +657,17 @@ class Triage < ActiveRecord::Base
   
   # Завершить все действия
   def complete_actions!
+    if red_arrest_actions_flow?
+      return false unless can_complete_red_arrest?
+      update(actions_completed_at: Time.now)
+      return true
+    end
+
     final_action = priority_actions.find { |a| a[:final] }
     return false unless final_action
     return false unless can_complete_final_action? && action_completed?(final_action[:key])
     update(actions_completed_at: Time.now)
+    true
   end
   
   # Действия завершены?

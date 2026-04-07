@@ -91,6 +91,8 @@ helpers do
       "#{format_duration_sec(sec)} (#{sec} с)"
     when 'action'
       Triage.action_text_for_key(raw)
+    when 'value'
+      raw.nil? ? '—' : raw.to_s
     else
       raw.nil? ? '—' : raw.to_s
     end
@@ -661,10 +663,16 @@ def get_monitor_patients_data
       end
       
       # Прогресс действий
-      actions = triage.priority_actions || []
-      completed_actions = (triage.actions_data || {}).keys.length
-      data[:actions_total] = actions.length
-      data[:actions_completed] = completed_actions
+      if triage.red_arrest_actions_flow?
+        prog = triage.red_arrest_actions_progress_for_monitor
+        data[:actions_total] = prog[:total]
+        data[:actions_completed] = prog[:completed]
+      else
+        actions = triage.priority_actions || []
+        completed_actions = (triage.actions_data || {}).keys.length
+        data[:actions_total] = actions.length
+        data[:actions_completed] = completed_actions
+      end
     else
       # Данные для режима "Этапы триажа"
       data[:time_remaining] = triage.time_remaining
@@ -853,12 +861,107 @@ get '/patients/:id/triage/actions' do
     redirect "/patients/#{@patient.id}/triage"
   end
   
-  # Автоматически начинаем действия для всех приоритетов с действиями
-  if @triage.priority_actions.any? && !@triage.actions_started_at && !@triage.actions_completed?
+  # Автоматически начинаем действия для всех приоритетов с действиями (в т.ч. сценарий «остановка»)
+  if (@triage.priority_actions.any? || @triage.red_arrest_actions_flow?) && !@triage.actions_started_at && !@triage.actions_completed?
     @triage.start_actions!
   end
   
   erb :triage_actions
+end
+
+# Красный приоритет (нет дыхания / нет сердцебиения): вызов бригады
+post '/patients/:id/triage/actions/red_arrest/brigade' do
+  content_type :json
+
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  return { error: 'Триаж не найден' }.to_json if triage.nil?
+  return { error: 'Недоступно' }.to_json unless triage.red_arrest_actions_flow?
+
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
+  res = triage.mark_red_arrest_brigade!
+  triage.reload
+  pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
+  if res == :ok_new
+    TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_marked',
+                          payload: { action: 'ra_brigade_called', performer_name: pname })
+  end
+
+  return { error: 'не удалось сохранить' }.to_json if res == :invalid
+
+  {
+    success: true,
+    brigade_timer_ends_at: triage.brigade_timer_ends_at
+  }.to_json
+end
+
+# Красный приоритет (остановка): чекбоксы бригады / манипуляций
+post '/patients/:id/triage/actions/red_arrest/toggle' do
+  content_type :json
+
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  return { error: 'Триаж не найден' }.to_json if triage.nil?
+  return { error: 'Недоступно' }.to_json unless triage.red_arrest_actions_flow?
+
+  group = params[:group].to_s
+  key = params[:key].to_s
+  checked = params[:checked] == 'true' || params[:checked] == '1' || params[:checked] == true
+
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
+  unless triage.toggle_red_arrest_item!(group, key, checked)
+    return { error: 'не удалось сохранить' }.to_json
+  end
+  triage.reload
+  pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
+
+  audit_key = if group == 'team'
+                "ra_team_#{key}"
+              else
+                "ra_manip_#{key}"
+              end
+  ev = checked ? 'priority_action_marked' : 'priority_action_unmarked'
+  TriageAuditEvent.log!(patient: patient, triage: triage, type: ev,
+                        payload: { action: audit_key, performer_name: pname })
+
+  {
+    success: true,
+    can_complete: triage.can_complete_red_arrest?
+  }.to_json
+end
+
+# Красный приоритет (остановка): АД, пульс, сатурация
+post '/patients/:id/triage/actions/red_arrest/vital' do
+  content_type :json
+
+  patient = Patient.find(params[:id])
+  triage = patient.triage
+  return { error: 'Триаж не найден' }.to_json if triage.nil?
+  return { error: 'Недоступно' }.to_json unless triage.red_arrest_actions_flow?
+
+  vk = params[:key].to_s
+  return { error: 'ключ' }.to_json unless %w[bp pulse saturation].include?(vk)
+
+  val = params[:value].to_s
+  action_uid = resolve_step_performer_user_id(params, patient)
+  triage.set_step_performer_user!('actions', action_uid)
+  triage.set_red_arrest_vital!(vk, val)
+  triage.reload
+  pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
+
+  audit_action = case vk
+                 when 'bp' then 'ra_vital_bp'
+                 when 'pulse' then 'ra_vital_pulse'
+                 when 'saturation' then 'ra_vital_saturation'
+                 end
+  if val.strip.present?
+    TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_marked',
+                          payload: { action: audit_action, value: val.strip, performer_name: pname })
+  end
+
+  { success: true }.to_json
 end
 
 # Отметить действие как выполненное
@@ -870,6 +973,10 @@ post '/patients/:id/triage/actions/mark' do
   
   if triage.nil?
     return { error: 'Триаж не найден' }.to_json
+  end
+
+  if triage.red_arrest_actions_flow?
+    return { error: 'Этот приоритет использует отдельный сценарий действий' }.to_json
   end
   
   action_key = params[:action]
@@ -902,6 +1009,10 @@ post '/patients/:id/triage/actions/unmark' do
   
   if triage.nil?
     return { error: 'Триаж не найден' }.to_json
+  end
+
+  if triage.red_arrest_actions_flow?
+    return { error: 'Этот приоритет использует отдельный сценарий действий' }.to_json
   end
   
   action_key = params[:action]

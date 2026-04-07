@@ -54,7 +54,8 @@ class TriageAuditEvent < ActiveRecord::Base
     'seconds_used' => 'Фактически затрачено',
     'within_limit' => 'Уложился в лимит',
     'timer_expired' => 'Истёк таймер шага',
-    'action' => 'Действие'
+    'action' => 'Действие',
+    'value' => 'Значение'
   }.freeze
 
   ADVANCE_RESULT_LABELS = {
@@ -64,7 +65,7 @@ class TriageAuditEvent < ActiveRecord::Base
 
   PAYLOAD_DISPLAY_KEY_ORDER = %w[
     full_name performer_name step from_step to_step advance_result priority
-    limit_seconds seconds_used within_limit timer_expired action
+    limit_seconds seconds_used within_limit timer_expired action value
   ].freeze
 
   def payload_hash
