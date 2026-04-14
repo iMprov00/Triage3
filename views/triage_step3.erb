@@ -108,10 +108,7 @@
 
   <%= erb :step_performer_field, locals: { step_key: 3 } %>
 
-  <div class="d-grid gap-2 d-md-flex justify-content-md-between">
-    <a href="/patients/<%= @patient.id %>/triage/step2" class="btn btn-secondary btn-lg">
-      <i class="bi bi-arrow-left"></i> Назад к шагу 2
-    </a>
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end">
     <button type="submit" class="btn btn-primary btn-lg">
       <i class="bi bi-check-circle"></i> Завершить триаж
     </button>

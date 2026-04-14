@@ -55,7 +55,10 @@ class TriageAuditEvent < ActiveRecord::Base
     'within_limit' => 'Уложился в лимит',
     'timer_expired' => 'Истёк таймер шага',
     'action' => 'Действие',
-    'value' => 'Значение'
+    'value' => 'Значение',
+    'step_values' => 'Данные шага',
+    'step_values_captured_at' => 'Время фиксации данных шага',
+    'changed_fields' => 'Изменённые поля'
   }.freeze
 
   ADVANCE_RESULT_LABELS = {
@@ -66,6 +69,7 @@ class TriageAuditEvent < ActiveRecord::Base
   PAYLOAD_DISPLAY_KEY_ORDER = %w[
     full_name performer_name step from_step to_step advance_result priority
     limit_seconds seconds_used within_limit timer_expired action value
+    step_values step_values_captured_at changed_fields
   ].freeze
 
   def payload_hash
@@ -98,11 +102,14 @@ class TriageAuditEvent < ActiveRecord::Base
 
     triage.reload
     timing = Triage.step_timing_for_step(triage, step_num)
+    captured_at = Time.current
     base = {
       step: step_num,
       advance_result: advance_result,
       priority: triage.priority,
-      performer_name: performer_display
+      performer_name: performer_display,
+      step_values: step_values_snapshot(triage, step_num),
+      step_values_captured_at: captured_at.to_i
     }.merge(timing).merge(extra)
 
     log!(patient: patient, triage: triage, type: "step#{step_num}_submitted", payload: base)
@@ -115,5 +122,14 @@ class TriageAuditEvent < ActiveRecord::Base
       log!(patient: patient, triage: triage, type: 'step_advanced',
            payload: { from_step: step_num, to_step: step_num + 1, performer_name: performer_display })
     end
+  end
+
+  def self.step_values_snapshot(triage, step_num)
+    src = triage.step_data(step_num)
+    return {} unless src.is_a?(Hash)
+
+    src.transform_keys(&:to_s)
+  rescue StandardError
+    {}
   end
 end

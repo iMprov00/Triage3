@@ -11,7 +11,10 @@
           <button class="app-nav-toggle-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appNavOffcanvas" aria-controls="appNavOffcanvas" aria-label="Открыть меню">
             <i class="bi bi-list" aria-hidden="true"></i>
           </button>
-          <a href="/patients" class="app-logo">Триаж</a>
+          <a href="/patients" class="app-logo" title="На главную — список пациентов">
+            <img src="/images/logo.png" alt="" class="app-logo-img" width="40" height="40" decoding="async">
+            <span class="app-logo-text">Триаж</span>
+          </a>
         </div>
 
         <nav class="d-none d-lg-flex align-items-center justify-content-center flex-grow-1 gap-2 flex-wrap mx-2" aria-label="Основное меню">
@@ -43,8 +46,14 @@
     </div>
 
     <div class="offcanvas offcanvas-start app-offcanvas text-bg-light" tabindex="-1" id="appNavOffcanvas" aria-labelledby="appNavOffcanvasLabel">
-      <div class="offcanvas-header">
-        <h5 class="offcanvas-title fw-semibold" id="appNavOffcanvasLabel">Меню</h5>
+      <div class="offcanvas-header align-items-center border-bottom">
+        <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
+          <img src="/images/logo.png" alt="" class="app-logo-img app-logo-img--drawer" width="44" height="44" decoding="async">
+          <div class="min-w-0">
+            <h5 class="offcanvas-title fw-bold mb-0 text-dark" id="appNavOffcanvasLabel">Меню</h5>
+            <div class="small text-muted text-truncate">Триаж</div>
+          </div>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Закрыть"></button>
       </div>
       <div class="offcanvas-body d-flex flex-column">

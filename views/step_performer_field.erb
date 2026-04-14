@@ -1,8 +1,6 @@
 <%# locals: step_key — номер шага (1–3) или 'actions' для действий приоритета %>
 <% sk = step_key %>
-<% default_uid = (@patient.default_step_performer_user_id || current_user.id).to_i %>
-<% saved = @triage.step_performer_user_id(sk) %>
-<% selected = (saved || default_uid).to_i %>
+<% selected = current_user.id.to_i %>
 <% if can_choose_step_performer? %>
   <div class="app-card card mb-3 border-secondary-subtle">
     <div class="app-card-header card-header py-2">
@@ -11,7 +9,7 @@
     <div class="card-body py-2">
       <label class="form-label small mb-1" for="step-performer-<%= sk %>">Кто выполняет / подтверждает</label>
       <select name="step_performer_user_id" id="step-performer-<%= sk %>" class="form-select form-select-sm">
-        <% performer_users_for_select.each do |u| %>
+        <% step_performer_users_for_select.each do |u| %>
           <option value="<%= u.id %>" <%= 'selected' if u.id == selected %>><%= Rack::Utils.escape_html(u.full_name) %> — <%= u.position_label %></option>
         <% end %>
       </select>

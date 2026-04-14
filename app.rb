@@ -112,6 +112,94 @@ helpers do
     end
   end
 
+  STEP_FIELD_LABELS = {
+    1 => {
+      'eye_opening' => 'Открывание глаз',
+      'verbal_response' => 'Речевые реакции',
+      'motor_response' => 'Двигательные реакции',
+      'breathing' => 'Дыхание',
+      'heartbeat' => 'Сердцебиение',
+      'seizures' => 'Судороги',
+      'active_bleeding' => 'Активное кровотечение'
+    },
+    2 => {
+      'position' => 'Положение пациента',
+      'urgency_criteria' => 'Критерии неотложности',
+      'infection_signs' => 'Признаки инфекционных заболеваний'
+    },
+    3 => {
+      'respiratory_rate' => 'ЧДД',
+      'saturation' => 'Сатурация',
+      'systolic_bp' => 'Систолическое АД',
+      'diastolic_bp' => 'Диастолическое АД',
+      'heart_rate' => 'ЧСС',
+      'temperature' => 'Температура'
+    }
+  }.freeze
+
+  def step_field_label(step_num, key)
+    STEP_FIELD_LABELS.dig(step_num.to_i, key.to_s) || key.to_s
+  end
+
+  def step_field_value_display(step_num, key, value)
+    s = step_num.to_i
+    k = key.to_s
+    return '—' if value.nil?
+
+    if %w[breathing heartbeat seizures active_bleeding].include?(k)
+      return (value == true || value.to_s == 'true') ? 'Да' : 'Нет'
+    end
+
+    if s == 2 && %w[urgency_criteria infection_signs].include?(k)
+      arr = Array(value).map(&:to_s).reject(&:empty?)
+      return '—' if arr.empty?
+
+      options = (k == 'urgency_criteria') ? Triage::URGENCY_CRITERIA : Triage::INFECTION_SIGNS
+      labels = arr.filter_map do |v|
+        if v =~ /^\d+$/
+          idx = v.to_i
+          options[idx]
+        elsif v == 'true'
+          nil
+        else
+          v
+        end
+      end
+      return labels.join('; ') if labels.any?
+      return arr.join('; ')
+    end
+
+    value.to_s
+  end
+
+  def step_values_rows_from_payload(payload_hash)
+    ph = payload_hash.is_a?(Hash) ? payload_hash : {}
+    step_num = ph['step'].to_i
+    values = ph['step_values']
+    return [] unless values.is_a?(Hash)
+
+    values.map do |k, v|
+      [step_field_label(step_num, k), step_field_value_display(step_num, k, v)]
+    end
+  end
+
+  def step_changed_rows_from_payload(payload_hash)
+    ph = payload_hash.is_a?(Hash) ? payload_hash : {}
+    step_num = ph['step'].to_i
+    arr = ph['changed_fields']
+    return [] unless arr.is_a?(Array)
+
+    arr.filter_map do |h|
+      next unless h.is_a?(Hash)
+      field = h['field'].to_s
+      [
+        step_field_label(step_num, field),
+        step_field_value_display(step_num, field, h['before']),
+        step_field_value_display(step_num, field, h['after'])
+      ]
+    end
+  end
+
   def current_user
     @current_user ||= begin
       session[:user_id].present? ? User.find_by(id: session[:user_id]) : nil
@@ -154,26 +242,100 @@ helpers do
     u
   end
 
+  # Исполнитель "по карте пациента" (матрица прав):
+  # - admin: любой пользователь
+  # - doctor: только себя + пользователей с ролью "other"
+  # - other: только себя (и фактически не видит селектор)
+  def patient_performer_users_for_select
+    return [] unless current_user
+
+    if current_user.admin?
+      return User.includes(:job_position).ordered.to_a
+    end
+
+    if current_user.doctor?
+      others = User.joins(:job_position).where(job_positions: { kind: 'other' }).ordered.to_a
+      own = current_user
+      return ([own] + others).uniq { |u| u.id }
+    end
+
+    [current_user]
+  end
+
   def resolve_patient_performer_user_id(params)
     uid = params[:performer_user_id].to_i
-    if current_user.doctor_or_admin?
-      allowed = User.doctor_or_admin.pluck(:id)
-      return uid if uid.positive? && allowed.include?(uid)
-    end
+    allowed_ids = patient_performer_users_for_select.map(&:id)
+    return uid if uid.positive? && allowed_ids.include?(uid)
+
     current_user.id
   end
 
   def resolve_step_performer_user_id(params, patient)
-    default = patient.default_step_performer_user_id || current_user.id
-    return default unless current_user.doctor_or_admin?
+    default = current_user.id
+    allowed_ids = step_performer_users_for_select.map(&:id)
+    return default if allowed_ids.empty?
 
     uid = params[:step_performer_user_id].to_i
-    allowed = User.doctor_or_admin.pluck(:id)
-    uid.positive? && allowed.include?(uid) ? uid : default
+    uid.positive? && allowed_ids.include?(uid) ? uid : default
+  end
+
+  # Исполнитель на шагах триажа и действиях приоритета:
+  # - admin: любой пользователь
+  # - doctor: только себя + пользователей с ролью "other"
+  # - other: только себя (селектор скрыт)
+  def step_performer_users_for_select
+    return [] unless current_user
+
+    if current_user.admin?
+      return User.includes(:job_position).ordered.to_a
+    end
+
+    if current_user.doctor?
+      others = User.joins(:job_position).where(job_positions: { kind: 'other' }).ordered.to_a
+      return ([current_user] + others).uniq { |u| u.id }
+    end
+
+    [current_user]
   end
 
   def acting_performer_name_for_user_id(uid)
     User.find_by(id: uid)&.full_name
+  end
+
+  # Ограничения для роли "прочее":
+  # изменять шаги/действия можно только по "своим" пациентам (где пользователь назначен исполнителем).
+  def other_role_user?
+    current_user&.job_position&.kind == 'other'
+  end
+
+  def current_user_is_patient_performer?(patient)
+    return false unless current_user && patient
+
+    uid_match = patient.respond_to?(:performer_user_id) &&
+                patient.performer_user_id.present? &&
+                patient.performer_user_id == current_user.id
+    return true if uid_match
+
+    # Fallback для legacy-данных без performer_user_id
+    patient.performer_name.to_s.strip == current_user.full_name.to_s.strip
+  end
+
+  def restricted_other_can_modify_patient?(patient)
+    return true unless other_role_user?
+
+    current_user_is_patient_performer?(patient)
+  end
+
+  def enforce_other_patient_modify_permission!(patient, as_json: false)
+    return if restricted_other_can_modify_patient?(patient)
+
+    msg = 'Недостаточно прав: пользователь с ролью "Прочее" может изменять только своих пациентов.'
+    if as_json
+      halt 403, { error: msg }.to_json
+    else
+      flash[:error] = msg
+      redirect '/patients'
+    end
   end
 
   def performers_for_filters
@@ -1112,6 +1274,10 @@ end
 # Удаление пациента
 delete '/patients/:id' do
   patient = Patient.find(params[:id])
+  if other_role_user?
+    flash[:error] = 'Недостаточно прав: роль "Прочее" не может удалять пациентов.'
+    redirect '/patients'
+  end
   
   if patient.destroy
     flash[:notice] = "Пациент удален"
@@ -1165,6 +1331,7 @@ get '/patients/:id/triage/edit_step/:step' do |id, step|
   @patient = Patient.find(id)
   @triage = @patient.triage
   @step = step.to_i
+  enforce_other_patient_modify_permission!(@patient)
   
   if @triage.nil?
     flash[:error] = "Триаж не найден"
@@ -1207,6 +1374,7 @@ post '/patients/:id/triage/preview_step_update/:step' do |id, step|
   patient = Patient.find(id)
   triage = patient.triage
   step_num = step.to_i
+  enforce_other_patient_modify_permission!(patient, as_json: true)
 
   if triage.nil?
     halt 404, { ok: false, error: 'Триаж не найден' }.to_json
@@ -1229,6 +1397,7 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
   patient = Patient.find(id)
   triage = patient.triage
   step_num = step.to_i
+  enforce_other_patient_modify_permission!(patient)
   
   if triage.nil?
     flash[:error] = "Триаж не найден"
@@ -1243,13 +1412,27 @@ post '/patients/:id/triage/update_step/:step' do |id, step|
   
   # Запоминаем был ли триаж уже завершён
   was_completed = triage.completed_at.present?
+  before_data = Marshal.load(Marshal.dump(triage.step_data(step_num) || {}))
 
   triage.apply_update_step!(step_num, params)
 
   if triage.save
     triage.reload
+    after_data = triage.step_data(step_num) || {}
+    changed_fields = (before_data.keys.map(&:to_s) | after_data.keys.map(&:to_s)).filter_map do |k|
+      b = before_data[k] || before_data[k.to_sym]
+      a = after_data[k] || after_data[k.to_sym]
+      next if b == a
+
+      { field: k, before: b, after: a }
+    end
     TriageAuditEvent.log!(patient: patient, triage: triage, type: 'triage_edit_saved',
-                          payload: { step: step_num, priority: triage.priority, performer_name: patient.performer_name })
+                          payload: {
+                            step: step_num,
+                            priority: triage.priority,
+                            performer_name: current_user&.full_name || patient.performer_name,
+                            changed_fields: changed_fields
+                          })
 
     # Определяем куда перенаправить и какое сообщение показать
     if triage.completed_at
