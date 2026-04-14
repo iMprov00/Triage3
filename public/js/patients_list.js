@@ -10,18 +10,14 @@ var lastPatientsHash = null; // Для предотвращения лишних
 function getPatientsHash(patients) {
   return patients.map(function(p) {
     var t = p.triage;
-    return p.id + ':' + (t ? t.step + ':' + t.priority + ':' + (t.completed_at ? '1' : '0') + ':' + (t.timer_active ? '1' : '0') + ':' + (t.actions_completed_at ? '1' : '0') : 'null');
+    var perf = p.performer_name || '';
+    var st = (p.card_state_class || '').replace(/\s+/g, '');
+    var flags = (p.can_delete === false ? '0' : '1') + (p.can_edit_saved_steps === false ? '0' : '1');
+    return p.id + ':' + st + ':' + perf + ':' + flags + ':' + (t ? t.step + ':' + t.priority + ':' + (t.completed_at ? '1' : '0') + ':' + (t.timer_active ? '1' : '0') + ':' + (t.actions_completed_at ? '1' : '0') : 'null');
   }).join('|');
 }
 
 // Функции для классов
-function stepClass(s) {
-  return s === 1 ? 'badge-step-1' :
-         s === 2 ? 'badge-step-2' :
-         s === 3 ? 'badge-step-3' :
-         'bg-secondary';
-}
-
 function priorityClass(p) {
   return p === 'red' ? 'badge-priority-1' :
          p === 'yellow' ? 'badge-priority-2' :
@@ -52,7 +48,32 @@ function formatTime(seconds) {
   return mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
 }
 
-// Рендеринг списка пациентов
+function stepDataHasValues(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  return Object.keys(obj).some(function(k) {
+    var v = obj[k];
+    if (v == null || v === '') return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === 'object') return Object.keys(v).length > 0;
+    return true;
+  });
+}
+
+// Должно совпадать с patient_list_card_state_class в app.rb (fallback при старых ответах API).
+function patientListCardStateClass(p) {
+  var t = p.triage;
+  if (!t) return 'patient-b-card--notriage';
+  if (t.actions_completed_at) return 'patient-b-card--done';
+  if (!t.completed_at) return 'patient-b-card--triage-active';
+  var pr = (t.priority || '').toString();
+  if (pr === 'red') return 'patient-b-card--priority-red';
+  if (pr === 'yellow') return 'patient-b-card--priority-yellow';
+  if (pr === 'purple') return 'patient-b-card--priority-purple';
+  if (pr === 'green') return 'patient-b-card--priority-green';
+  return 'patient-b-card--triage-active';
+}
+
+// Карточка варианта B + модалки (должно совпадать с patient_list_variant_b.erb)
 function renderPatientsList(patients) {
   var container = document.getElementById('patients-list-container');
   if (!patients || patients.length === 0) {
@@ -63,242 +84,180 @@ function renderPatientsList(patients) {
   var html = '';
   patients.forEach(function(p) {
     var t = p.triage;
+    var detailId = 'patientDetailModal' + p.id;
+    var deleteId = 'deleteModal' + p.id;
+    var canDelete = p.can_delete !== false;
+    var canEditSaved = p.can_edit_saved_steps !== false;
+    var maxTime = t ? (t.max_time || 120) : 120;
+    var stateCls = p.card_state_class || patientListCardStateClass(p);
 
-    // Начало карточки
-    html += '<div class="col-12 col-sm-6 col-lg-4 col-xl-3 col-card">';
-    html += '<div class="app-card card h-100">';
-    html += '<div class="card-body d-flex flex-column">';
+    html += '<div class="col-12 col-md-6 col-xl-4 col-card">';
+    html += '<div class="patient-b-card h-100 ' + stateCls + '">';
+    html += '<div class="patient-b-head"><h2 class="patient-b-fio">' + escapeHtml(p.full_name) + '</h2></div>';
+    html += '<div class="small text-secondary">' + escapeHtml(p.admission_date || '');
+    if (p.admission_time) {
+      html += ' · ' + escapeHtml(p.admission_time);
+    }
+    html += '<span class="text-muted">·</span> исп. <strong class="text-body">' + escapeHtml(p.performer_name || '') + '</strong></div>';
 
-    // Заголовок с ID и датой создания
-    html += '<div class="d-flex justify-content-between align-items-start mb-3">';
-    html += '<div><span class="badge bg-secondary">ID: ' + p.id + '</span></div>';
-    html += '<span class="text-muted small">' + (p.created_at ? p.created_at.substr(0, 10) : '') + '</span>';
-    html += '</div>';
-
-    // ФИО пациента
-    html += '<h5 class="card-title mb-4">' + escapeHtml(p.full_name) + '</h5>';
-
-    // Информация о пациенте
-    html += '<div class="card-text mb-4 flex-grow-1"><div class="small">';
-
-    // Дата поступления
-    html += '<div class="d-flex align-items-center mb-2">';
-    html += '<i class="bi bi-calendar-plus text-muted me-2" style="width: 20px;"></i>';
-    html += '<div><div class="text-secondary">Поступил</div><div class="fw-medium">' +
-            (p.admission_date || '') + ' <span class="text-muted">' + (p.admission_time || '') + '</span></div></div>';
-    html += '</div>';
-
-    // Дата рождения
-    html += '<div class="d-flex align-items-center mb-2">';
-    html += '<i class="bi bi-calendar-heart text-muted me-2" style="width: 20px;"></i>';
-    html += '<div><div class="text-secondary">Дата рождения</div><div class="fw-medium">' + (p.birth_date || '') + '</div></div>';
-    html += '</div>';
-
-    // Исполнитель
-    html += '<div class="d-flex align-items-center mb-2">';
-    html += '<i class="bi bi-person-badge text-muted me-2" style="width: 20px;"></i>';
-    html += '<div><div class="text-secondary">Исполнитель</div><div class="fw-medium">' + escapeHtml(p.performer_name || '') + '</div></div>';
-    html += '</div>';
-
-    // Вид обращения
-    html += '<div class="d-flex align-items-center mb-2">';
-    html += '<i class="bi bi-clipboard text-muted me-2" style="width: 20px;"></i>';
-    html += '<div><div class="text-secondary">Вид обращения</div><div class="fw-medium">' + escapeHtml(p.appeal_type || '') + '</div></div>';
-    html += '</div>';
-
-    // Срок беременности
-    html += '<div class="d-flex align-items-center">';
-    html += '<i class="bi bi-calendar-week text-muted me-2" style="width: 20px;"></i>';
-    html += '<div><div class="text-secondary">Срок беременности</div><div class="fw-medium">' + escapeHtml(p.pregnancy_display || '') + '</div></div>';
-    html += '</div>';
-
-    html += '</div></div>'; // Закрываем card-text и small
-
-    // Информация о триаже
     if (t) {
-      html += '<div class="mb-4">';
-
-      // Шаг и приоритет
-      html += '<div class="d-flex justify-content-between align-items-center mb-3">';
-      html += '<div class="d-flex gap-1">';
-
-      // Шаг
-      html += '<span class="badge ' + stepClass(t.step) + '">';
-      html += '<i class="bi bi-' + (t.step || 1) + '-circle"></i> Шаг ' + (t.step || 1);
-      html += '</span>';
-
-      // Приоритет
-      if (t.priority && t.priority !== 'pending') {
+      html += '<div class="patient-b-chips">';
+      if (t.completed_at && t.priority && t.priority !== 'pending') {
         html += '<span class="badge ' + priorityClass(t.priority) + '">' + escapeHtml(t.priority_name || t.priority) + '</span>';
+      } else if (!t.completed_at) {
+        html += '<span class="badge patient-b-step-badge"><i class="bi bi-' + (t.step || 1) + '-circle"></i> Шаг ' + (t.step || 1) + '</span>';
       }
-
       html += '</div>';
 
-      // Статус завершения
-      if (t.completed_at) {
-        html += '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Завершен</span>';
-      }
-
-      html += '</div>';
-
-      // Таймер
       if (t.timer_active) {
-        var maxTime = t.max_time || 120;
-        var endsAt = t.timer_ends_at || 0;
         var timeRemaining = t.time_remaining || 0;
         var percent = maxTime ? Math.round((timeRemaining / maxTime) * 100) : 100;
+        percent = Math.max(0, Math.min(100, percent));
         var timerBoxClass = t.expired ? 'timer-expired' : 'timer-running';
-
-        html += '<div class="timer-box ' + timerBoxClass + '" data-timer-ends-at="' + endsAt + '" data-step-max="' + maxTime + '" data-patient-id="' + p.id + '">';
-        html += '<div class="d-flex justify-content-between align-items-center mb-2">';
-        html += '<span class="text-secondary small">Таймер шага</span>';
-        html += '<span class="timer-value fw-bold">' + timeRemaining + ' сек</span>';
+        var borderEx = t.expired ? ' border border-danger-subtle' : '';
+        html += '<div class="patient-b-timer-line timer-box patient-list-timer ' + timerBoxClass + borderEx + '" data-timer-ends-at="' + (t.timer_ends_at || 0) + '" data-step-max="' + maxTime + '" data-patient-id="' + p.id + '">';
+        html += '<span class="text-secondary small text-nowrap">Таймер</span>';
+        html += '<div class="progress mb-0"><div class="progress-bar ' + progressBarClass(percent) + '" style="width: ' + percent + '%"></div></div>';
+        html += '<span class="fw-bold small text-nowrap timer-value">' + formatTime(timeRemaining) + '</span>';
         html += '</div>';
-
-        // Прогресс-бар
-        html += '<div class="progress">';
-        html += '<div class="progress-bar ' + progressBarClass(percent) + '" style="width: ' + percent + '%"></div>';
-        html += '</div>';
-
-        // Предупреждение об истечении времени
-        if (t.expired) {
-          html += '<div class="alert alert-danger mt-2 mb-0 py-1"><i class="bi bi-exclamation-triangle"></i> Время вышло!</div>';
-        }
-
-        html += '</div>';
+      } else if (t.completed_at && !t.actions_completed_at) {
+        html += '<div class="small text-muted mb-0"><i class="bi bi-list-task"></i> Действия приоритета</div>';
+      } else if (t.actions_completed_at) {
+        html += '<div class="small text-muted mb-0"><i class="bi bi-check-all"></i> Все действия завершены</div>';
       }
-
-      html += '</div>'; // Закрываем mb-4
-
-      // Основные кнопки действий
-      html += '<div class="mt-auto">';
-
-      if (t.timer_active && !t.completed_at) {
-        var step = t.step || 1;
-        var link = step === 1 ? '/patients/' + p.id + '/triage' :
-                   step === 2 ? '/patients/' + p.id + '/triage/step2' :
-                   '/patients/' + p.id + '/triage/step3';
-        var btnCls = step === 1 ? 'btn-primary' :
-                     step === 2 ? 'btn-warning' :
-                     'btn-success';
-        var btnText = step === 1 ? 'Шаг 1 — Уровень сознания' :
-                      step === 2 ? 'Шаг 2 — Общая оценка' :
-                      'Шаг 3 — Витальные функции';
-
-        html += '<a href="' + link + '" class="btn ' + btnCls + ' btn-sm w-100 mb-2">';
-        html += '<i class="bi bi-clipboard-pulse"></i> ' + btnText;
-        html += '</a>';
-      } else if (t.completed_at) {
-        html += '<a href="/patients/' + p.id + '/triage/actions" class="btn btn-info btn-sm w-100 mb-2">';
-        html += '<i class="bi bi-eye"></i> Действия по приоритету';
-        html += '</a>';
-        html += '<a href="/patients/' + p.id + '/triage/view" class="btn btn-outline-secondary btn-sm w-100">';
-        html += '<i class="bi bi-file-text"></i> Просмотр данных триажа';
-        html += '</a>';
-      }
-
-      html += '</div>';
-
-      // Кнопки управления
-      html += '<div class="action-bar mt-3 pt-3 border-top">';
-
-      // Редактирование пациента
-      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-sm btn-outline-secondary flex-fill" title="Редактировать пациента">';
-      html += '<i class="bi bi-pencil"></i>';
-      html += '</a>';
-
-      // Кнопки редактирования шагов (пока действия не завершены)
-      if (t && !t.actions_completed_at) {
-        // Проверяем наличие данных для шагов
-        var hasStep1 = t.step1_data && Object.keys(t.step1_data).length > 0;
-        var hasStep2 = t.step2_data && Object.keys(t.step2_data).length > 0;
-        var hasStep3 = t.step3_data && Object.keys(t.step3_data).length > 0;
-
-        if (hasStep1) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-sm btn-outline-info" title="Редактировать шаг 1">';
-          html += '<i class="bi bi-1-circle"></i>';
-          html += '</a>';
-        }
-        if (hasStep2) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-sm btn-outline-info" title="Редактировать шаг 2">';
-          html += '<i class="bi bi-2-circle"></i>';
-          html += '</a>';
-        }
-        if (hasStep3) {
-          html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-sm btn-outline-info" title="Редактировать шаг 3">';
-          html += '<i class="bi bi-3-circle"></i>';
-          html += '</a>';
-        }
-      }
-
-      // Удаление пациента
-      html += '<button type="button" class="btn btn-sm btn-outline-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal' + p.id + '" title="Удалить пациента">';
-      html += '<i class="bi bi-trash"></i>';
-      html += '</button>';
-
-      html += '</div>'; // Закрываем action-bar
-
     } else {
-      // Нет триажа
-      html += '<div class="alert alert-warning mb-4">';
-      html += '<div class="d-flex align-items-center"><i class="bi bi-exclamation-circle me-2"></i>';
-      html += '<div><div class="fw-medium">Триаж не создан</div><div class="small">Начните триаж для определения приоритета</div></div>';
-      html += '</div>';
-      html += '<a href="/patients/' + p.id + '/triage" class="btn btn-sm btn-primary w-100 mt-2">';
-      html += '<i class="bi bi-play-circle"></i> Начать триаж';
-      html += '</a>';
-      html += '</div>';
-
-      // Кнопки управления для пациента без триажа
-      html += '<div class="action-bar mt-3 pt-3 border-top">';
-      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-sm btn-outline-secondary flex-fill">';
-      html += '<i class="bi bi-pencil"></i> Редактировать';
-      html += '</a>';
-      html += '<button type="button" class="btn btn-sm btn-outline-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal' + p.id + '">';
-      html += '<i class="bi bi-trash"></i> Удалить';
-      html += '</button>';
-      html += '</div>';
+      html += '<div class="small text-info mb-0"><i class="bi bi-info-circle"></i> Триаж не начат</div>';
     }
 
-    html += '</div></div></div>'; // Закрываем card-body, card, col-card
+    html += '<div class="patient-b-actions">';
+    html += '<button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#' + detailId + '">';
+    html += '<i class="bi bi-layout-text-sidebar-reverse me-1"></i> Подробнее и действия</button>';
+    html += '</div></div></div>';
 
-    // Модальное окно удаления
-    html += '<div class="modal fade" id="deleteModal' + p.id + '" tabindex="-1">';
-    html += '<div class="modal-dialog modal-dialog-centered">';
-    html += '<div class="modal-content">';
-    html += '<div class="modal-header"><h5 class="modal-title">Подтверждение удаления</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>';
-    html += '<div class="modal-body">';
-    html += '<div class="d-flex align-items-center mb-3">';
-    html += '<div class="bg-danger bg-opacity-10 p-2 rounded me-3"><i class="bi bi-exclamation-triangle text-danger" style="font-size: 1.5rem;"></i></div>';
-    html += '<div><h6 class="mb-1">Вы уверены, что хотите удалить пациента?</h6><p class="text-muted small mb-0">Это действие нельзя отменить.</p></div>';
-    html += '</div>';
-    html += '<div class="bg-light p-3 rounded mb-3"><div class="row small">';
-    html += '<div class="col-6"><div class="text-secondary mb-1">Пациент</div><div class="fw-medium">' + escapeHtml(p.full_name) + '</div></div>';
-    html += '<div class="col-6"><div class="text-secondary mb-1">ID</div><div class="fw-medium">' + p.id + '</div></div>';
+    // ——— Модалка подробнее ———
+    html += '<div class="modal fade patient-detail-modal" id="' + detailId + '" tabindex="-1" aria-hidden="true">';
+    html += '<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content">';
+    html += '<div class="modal-header border-0 pb-0"><div>';
+    html += '<h5 class="modal-title">' + escapeHtml(p.full_name) + '</h5>';
+    html += '<div class="small text-muted">ID ' + p.id;
     if (t) {
-      html += '<div class="col-12 mt-2"><div class="text-secondary mb-1">Статус триажа</div><div class="fw-medium">';
-      if (t.completed_at) {
-        html += 'Завершен (' + escapeHtml(t.priority_name || '') + ')';
-      } else {
-        html += 'Активен (шаг ' + (t.step || 1) + ')';
-      }
-      html += '</div></div>';
+      html += ' · ';
+      html += t.completed_at ? 'триаж завершён' : ('шаг ' + (t.step || 1));
+    } else {
+      html += ' · триаж не создан';
     }
-    html += '</div></div>';
-    html += '<div class="alert alert-warning small mb-0"><i class="bi bi-info-circle me-1"></i>Будут удалены все данные пациента, включая историю триажа.</div>';
-    html += '</div>';
-    html += '<div class="modal-footer">';
-    html += '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>';
-    html += '<form action="/patients/' + p.id + '" method="post" style="display: inline;">';
-    html += '<input type="hidden" name="_method" value="DELETE">';
-    html += '<button type="submit" class="btn btn-danger">Удалить пациента</button>';
-    html += '</form>';
+    html += '</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button></div>';
+    html += '<div class="modal-body pt-2">';
+
+    if (t) {
+      html += '<div class="d-flex flex-wrap gap-2 mb-3">';
+      if (t.completed_at && t.priority && t.priority !== 'pending') {
+        html += '<span class="badge ' + priorityClass(t.priority) + '">' + escapeHtml(t.priority_name || t.priority) + '</span>';
+      } else if (!t.completed_at) {
+        html += '<span class="badge patient-b-step-badge">Шаг ' + (t.step || 1) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '<dl class="patient-detail-dl mb-4">';
+    html += '<dt>Поступление</dt><dd>' + escapeHtml(p.admission_date || '') + (p.admission_time ? ', ' + escapeHtml(p.admission_time) : '') + '</dd>';
+    html += '<dt>Исполнитель</dt><dd>' + escapeHtml(p.performer_name || '') + '</dd>';
+    html += '<dt>Дата рождения</dt><dd>' + escapeHtml(p.birth_date || '—') + '</dd>';
+    html += '<dt>Вид обращения</dt><dd>' + escapeHtml(p.appeal_type || '') + '</dd>';
+    html += '<dt>Срок беременности</dt><dd>' + escapeHtml(p.pregnancy_display || '') + '</dd>';
+    html += '</dl>';
+
+    if (t && t.expired && t.timer_active && !t.completed_at) {
+      html += '<div class="alert alert-danger py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Время шага истекло — сохраните шаг или продолжите по ситуации.</div>';
+    }
+
+    html += '<div class="d-grid gap-2">';
+    if (!t) {
+      html += '<form action="/patients/' + p.id + '/triage/start" method="post" class="d-grid">';
+      html += '<button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-play-circle me-2"></i> Начать триаж</button></form>';
+      html += '<div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">';
+      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a></div>';
+    } else if (!t.completed_at) {
+      var step = t.step || 1;
+      var link = step === 1 ? '/patients/' + p.id + '/triage' : (step === 2 ? '/patients/' + p.id + '/triage/step2' : '/patients/' + p.id + '/triage/step3');
+      var btnText = step === 1 ? 'Шаг 1 — Уровень сознания' : (step === 2 ? 'Шаг 2 — Общая оценка' : 'Шаг 3 — Витальные функции');
+      html += '<a href="' + link + '" class="btn btn-primary btn-lg"><i class="bi bi-clipboard-pulse me-2"></i> ' + btnText + '</a>';
+      var showStepRow = !t.actions_completed_at && canEditSaved;
+      if (showStepRow) {
+        html += '<div class="d-flex flex-wrap gap-2">';
+        if (stepDataHasValues(t.step1_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 1</a>';
+        }
+        if (stepDataHasValues(t.step2_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 2</a>';
+        }
+        if (stepDataHasValues(t.step3_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 3</a>';
+        }
+        html += '</div>';
+      }
+      html += '<div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">';
+      html += '<a href="/patients/' + p.id + '/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>';
+      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a></div>';
+    } else if (!t.actions_completed_at) {
+      html += '<a href="/patients/' + p.id + '/triage/actions" class="btn btn-primary btn-lg"><i class="bi bi-list-check me-2"></i> Действия по приоритету</a>';
+      var showStepRowActions = canEditSaved;
+      if (showStepRowActions) {
+        html += '<div class="d-flex flex-wrap gap-2">';
+        if (stepDataHasValues(t.step1_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/1" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 1</a>';
+        }
+        if (stepDataHasValues(t.step2_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/2" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 2</a>';
+        }
+        if (stepDataHasValues(t.step3_data)) {
+          html += '<a href="/patients/' + p.id + '/triage/edit_step/3" class="btn btn-primary flex-grow-1" style="min-width:7rem">Ред. шаг 3</a>';
+        }
+        html += '</div>';
+      }
+      html += '<div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">';
+      html += '<a href="/patients/' + p.id + '/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>';
+      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a></div>';
+    } else {
+      html += '<div class="patient-detail-modal-footer-actions d-grid gap-2">';
+      html += '<a href="/patients/' + p.id + '/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>';
+      html += '<a href="/patients/' + p.id + '/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a></div>';
+    }
+    if (canDelete) {
+      html += '<button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#' + deleteId + '">';
+      html += '<i class="bi bi-trash me-1"></i> Удалить пациента</button>';
+    }
     html += '</div></div></div></div>';
+
+    if (canDelete) {
+      html += '<div class="modal fade" id="' + deleteId + '" tabindex="-1" aria-hidden="true">';
+      html += '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">';
+      html += '<div class="modal-header"><h5 class="modal-title">Подтверждение удаления</h5>';
+      html += '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button></div>';
+      html += '<div class="modal-body">';
+      html += '<div class="d-flex align-items-center mb-3"><div class="bg-danger bg-opacity-10 p-2 rounded me-3">';
+      html += '<i class="bi bi-exclamation-triangle text-danger fs-4"></i></div><div>';
+      html += '<h6 class="mb-1">Удалить пациента?</h6><p class="text-muted small mb-0">Действие необратимо.</p></div></div>';
+      html += '<div class="bg-light p-3 rounded mb-3 small"><div class="fw-medium">' + escapeHtml(p.full_name) + '</div>';
+      html += '<div class="text-muted">ID ' + p.id + '</div>';
+      if (t) {
+        html += '<div class="mt-2 text-muted">Триаж: ';
+        if (t.actions_completed_at) html += 'завершён полностью';
+        else if (t.completed_at) html += 'действия приоритета';
+        else html += 'шаг ' + (t.step || 1);
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div class="alert alert-warning small mb-0 py-2"><i class="bi bi-info-circle me-1"></i> Будут удалены все данные пациента и история триажа.</div>';
+      html += '</div><div class="modal-footer">';
+      html += '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>';
+      html += '<form action="/patients/' + p.id + '" method="post" class="d-inline">';
+      html += '<input type="hidden" name="_method" value="DELETE">';
+      html += '<button type="submit" class="btn btn-danger">Удалить</button></form></div></div></div></div>';
+    }
   });
 
   container.innerHTML = html;
-
-  // Инициализируем Bootstrap компоненты для новых элементов
   initBootstrapComponents();
 }
 
@@ -408,8 +367,12 @@ function updateAllTimers() {
     // Рассчитываем оставшееся время локально
     var remaining = Math.max(0, Math.floor(timerEndsAt - now));
 
-    // Обновляем текст таймера
-    timerValue.textContent = remaining + ' сек';
+    // Обновляем текст таймера (в списке пациентов — мм:сс)
+    if (box.classList.contains('patient-list-timer')) {
+      timerValue.textContent = formatTime(remaining);
+    } else {
+      timerValue.textContent = remaining + ' сек';
+    }
 
     // Обновляем классы
     box.classList.remove('timer-running', 'timer-expired');

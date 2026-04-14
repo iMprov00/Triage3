@@ -460,20 +460,36 @@
                           <li><%= e[:label] %> — <%= format_nsk(Time.at(ts.to_i)) %></li>
                         <% end %>
                       <% end %>
-                      <% if ra.dig('manip', 'urgent_cesarean') %>
-                        <li>Назначено срочное кесарево сечение — <%= format_nsk(Time.at(ra.dig('manip', 'urgent_cesarean').to_i)) %></li>
+                      <% if ra.dig('manip', 'csection_done') || ra.dig('manip', 'urgent_cesarean') %>
+                        <% ts = ra.dig('manip', 'csection_done') || ra.dig('manip', 'urgent_cesarean') %>
+                        <li>Выполнено кесарево сечение — <%= format_nsk(Time.at(ts.to_i)) %></li>
                       <% end %>
-                      <% if ra.dig('manip', 'slr_complete') %>
-                        <li>Завершить СЛР — <%= format_nsk(Time.at(ra.dig('manip', 'slr_complete').to_i)) %></li>
+                      <% if ra.dig('manip', 'resusc_outcome_recovery') || ra.dig('manip', 'slr_complete') %>
+                        <% ts = ra.dig('manip', 'resusc_outcome_recovery') || ra.dig('manip', 'slr_complete') %>
+                        <li>Восстановление сердечной деятельности. Завершение СЛР — <%= format_nsk(Time.at(ts.to_i)) %></li>
+                      <% end %>
+                      <% if ra.dig('manip', 'resusc_outcome_death') %>
+                        <li>Смерть — <%= format_nsk(Time.at(ra.dig('manip', 'resusc_outcome_death').to_i)) %></li>
                       <% end %>
                     </ul>
                     <p class="fw-semibold mb-1">Показатели</p>
                     <ul class="mb-0">
                       <% Triage::RED_ARREST_VITALS.each do |v| %>
                         <% d = ra.dig('vitals', v[:key]) %>
-                        <% if d.is_a?(Hash) && d['value'].present? %>
+                        <% if d.is_a?(Hash) && d['values'].is_a?(Array) %>
+                          <% non_empty = d['values'].map(&:to_s).reject(&:blank?) %>
+                          <% if non_empty.any? %>
+                            <li><%= v[:label] %>: <%= non_empty.join(' / ') %> (<%= format_nsk(Time.at(d['at'].to_i)) %>)</li>
+                          <% end %>
+                        <% elsif d.is_a?(Hash) && d['value'].present? %>
                           <li><%= v[:label] %>: <%= d['value'] %> (<%= format_nsk(Time.at(d['at'].to_i)) %>)</li>
                         <% end %>
+                      <% end %>
+                      <% if ra.dig('vitals', 'fetal_heartbeat').present? %>
+                        <li>Сердцебиение плода: <%= ra.dig('vitals', 'fetal_heartbeat') == 'no' ? 'Нет' : 'Да' %></li>
+                      <% end %>
+                      <% if ra.dig('vitals', 'active_bleeding').present? %>
+                        <li>Наличие кровотечения: <%= ra.dig('vitals', 'active_bleeding') == 'yes' ? 'Да' : 'Нет' %></li>
                       <% end %>
                     </ul>
                   </div>

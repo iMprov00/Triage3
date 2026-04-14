@@ -222,6 +222,7 @@ helpers do
     return true if p == '/sw.js'
     return true if p.start_with?('/icons/')
     return true if p.start_with?('/css/', '/js/')
+    return true if p.start_with?('/prototypes/')
     return true if p.start_with?('/assets/')
     return true if p =~ %r{\A/api/patient_timer/}
     false
@@ -342,6 +343,70 @@ helpers do
     names = User.doctor_or_admin.pluck(:full_name)
     legacy = Patient.where.not(performer_name: [nil, '']).distinct.pluck(:performer_name)
     (names + legacy).compact.uniq.sort
+  end
+
+  # Есть ли сохранённые ответы по шагу (для ссылки «редактировать шаг»).
+  def triage_step_has_saved_data?(triage, step_num)
+    return false unless triage
+
+    data = case step_num.to_i
+           when 1 then triage.step1_data
+           when 2 then triage.step2_data
+           when 3 then triage.step3_data
+           else nil
+           end
+    data.is_a?(Hash) && data.any? { |_k, v| v.present? }
+  end
+
+  # CSS-класс контура карточки в списке пациентов (вариант B): цвет + пульсация по статусу.
+  def patient_list_card_state_class(patient)
+    t = patient.triage
+    return 'patient-b-card--notriage' if t.nil?
+    return 'patient-b-card--done' if t.actions_completed?
+
+    return 'patient-b-card--triage-active' if t.completed_at.blank?
+
+    case t.priority.to_s
+    when 'red' then 'patient-b-card--priority-red'
+    when 'yellow' then 'patient-b-card--priority-yellow'
+    when 'purple' then 'patient-b-card--priority-purple'
+    when 'green' then 'patient-b-card--priority-green'
+    else 'patient-b-card--triage-active'
+    end
+  end
+
+  def patient_to_list_hash(p)
+    t = p.triage
+    max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120
+    {
+      id: p.id,
+      full_name: p.full_name,
+      admission_date: p.admission_date.to_s,
+      admission_time: p.admission_time_formatted,
+      performer_name: p.performer_name,
+      birth_date: p.birth_date&.to_s,
+      appeal_type: p.appeal_type,
+      pregnancy_display: p.pregnancy_display,
+      created_at: format_time_nsk(p.created_at, "%d.%m.%Y %H:%M"),
+      can_delete: !other_role_user?,
+      can_edit_saved_steps: !other_role_user? || current_user_is_patient_performer?(p),
+      card_state_class: patient_list_card_state_class(p),
+      triage: t ? {
+        step: t.step,
+        priority: t.priority,
+        priority_name: t.priority_name,
+        completed_at: t.completed_at,
+        actions_completed_at: t.actions_completed_at,
+        timer_active: t.timer_active,
+        time_remaining: t.time_remaining,
+        timer_ends_at: t.timer_ends_at,
+        expired: t.expired?,
+        max_time: max_time,
+        step1_data: t.step1_data || {},
+        step2_data: t.step2_data || {},
+        step3_data: t.step3_data || {}
+      } : nil
+    }
   end
 end
 
@@ -621,36 +686,6 @@ def build_merged_patients_list(params)
   active_list + rest_list
 end
 
-def patient_to_list_hash(p)
-  t = p.triage
-  max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120
-  {
-    id: p.id,
-    full_name: p.full_name,
-    admission_date: p.admission_date.to_s,
-    admission_time: p.admission_time_formatted,
-    performer_name: p.performer_name,
-    appeal_type: p.appeal_type,
-    pregnancy_display: p.pregnancy_display,
-    created_at: format_time_nsk(p.created_at, "%d.%m.%Y %H:%M"),
-    triage: t ? {
-      step: t.step,
-      priority: t.priority,
-      priority_name: t.priority_name,
-      completed_at: t.completed_at,
-      actions_completed_at: t.actions_completed_at,
-      timer_active: t.timer_active,
-      time_remaining: t.time_remaining,
-      timer_ends_at: t.timer_ends_at,
-      expired: t.expired?,
-      max_time: max_time,
-      step1_data: t.step1_data || {},
-      step2_data: t.step2_data || {},
-      step3_data: t.step3_data || {}
-    } : nil
-  }
-end
-
 # Создание нового пациента
 get '/patients/new' do
   erb :patients_new
@@ -680,44 +715,12 @@ post '/patients' do
   
   if patient.persisted?
       puts "Пациент сохранён: id=#{patient.id}, admission_date=#{patient.admission_date}, full_name=#{patient.full_name}"
-    flash[:notice] = "Пациент создан. Переход к триажу."
-    redirect "/patients/#{patient.id}/triage"
+    flash[:notice] = 'Пациент добавлен в список. Триаж можно начать из списка, когда будете готовы.'
+    redirect "/patients?admission_date=#{patient.admission_date}"
   else
     flash[:error] = "Ошибка при создании пациента: #{patient.errors.full_messages.join(', ')}"
     puts "Ошибка сохранения: #{patient.errors.full_messages}"
     redirect '/patients/new'
-  end
-end
-
-# Страница триажа
-get '/patients/:id/triage' do
-  @patient = Patient.find(params[:id])
-  @triage = @patient.triage
-  
-  if @triage.nil?
-    flash[:error] = "Триаж не найден"
-    redirect "/patients"
-  end
-  
-  erb :triage_step1
-end
-
-# Обновление триажа
-post '/patients/:id/triage' do
-  patient = Patient.find(params[:id])
-  triage = patient.triage
-  
-  if triage.update(
-    eye_opening: params[:eye_opening],
-    verbal_response: params[:verbal_response],
-    consciousness_level: params[:consciousness_level]
-  )
-    triage.complete_triage
-    flash[:notice] = "Триаж сохранен"
-    redirect "/patients"
-  else
-    flash[:error] = "Ошибка при сохранении триажа"
-    redirect "/patients/#{patient.id}/triage"
   end
 end
 
@@ -870,13 +873,34 @@ get '/monitor_events', provides: 'text/event-stream' do
   end
 end
 
+# Явное начало триажа из списка (после регистрации пациента триаж не создаётся автоматически).
+post '/patients/:id/triage/start' do
+  patient = Patient.find(params[:id])
+  enforce_other_patient_modify_permission!(patient)
+
+  if patient.triage.present?
+    flash[:info] = 'Триаж для этого пациента уже начат.'
+    redirect "/patients/#{patient.id}/triage"
+  end
+
+  triage = patient.start_triage!
+  TriageAuditEvent.log!(
+    patient: patient,
+    triage: triage,
+    type: 'triage_started',
+    payload: { performer_name: patient.performer_name }
+  )
+  flash[:notice] = 'Триаж начат. Заполните шаг 1.'
+  redirect "/patients/#{patient.id}/triage"
+end
+
 # Страница триажа (этап 1)
 get '/patients/:id/triage' do
   @patient = Patient.find(params[:id])
   @triage = @patient.triage
   
   if @triage.nil?
-    flash[:error] = "Триаж не найден"
+    flash[:error] = 'Триаж ещё не начат. Нажмите «Начать триаж» в списке пациентов.'
     redirect "/patients"
   end
   
@@ -893,6 +917,11 @@ end
 post '/patients/:id/triage/step1' do
   patient = Patient.find(params[:id])
   triage = patient.triage
+  unless triage
+    flash[:error] = 'Триаж не найден. Начните триаж из списка пациентов.'
+    redirect '/patients'
+    halt
+  end
   
   step_data = {
     'eye_opening' => params[:eye_opening],
@@ -943,6 +972,11 @@ end
 post '/patients/:id/triage/step2' do
   patient = Patient.find(params[:id])
   triage = patient.triage
+  unless triage
+    flash[:error] = 'Триаж не найден. Начните триаж из списка пациентов.'
+    redirect '/patients'
+    halt
+  end
   
   step_data = {
     'position' => params[:position],
@@ -989,6 +1023,11 @@ end
 post '/patients/:id/triage/step3' do
   patient = Patient.find(params[:id])
   triage = patient.triage
+  unless triage
+    flash[:error] = 'Триаж не найден. Начните триаж из списка пациентов.'
+    redirect '/patients'
+    halt
+  end
   
   step_data = {
     'respiratory_rate' => params[:respiratory_rate],
@@ -1021,8 +1060,11 @@ get '/patients/:id/triage/actions' do
   @patient = Patient.find(params[:id])
   @triage = @patient.triage
   
-  if @triage.nil? || @triage.priority == 'pending'
-    flash[:error] = "Приоритет не определен"
+  if @triage.nil?
+    flash[:error] = 'Триаж не начат.'
+    redirect '/patients'
+  elsif @triage.priority == 'pending'
+    flash[:error] = 'Приоритет не определён — завершите шаги триажа.'
     redirect "/patients/#{@patient.id}/triage"
   end
   
@@ -1057,7 +1099,8 @@ post '/patients/:id/triage/actions/red_arrest/brigade' do
 
   {
     success: true,
-    brigade_timer_ends_at: triage.brigade_timer_ends_at
+    brigade_timer_ends_at: triage.brigade_timer_ends_at,
+    can_complete: triage.can_complete_red_arrest?
   }.to_json
 end
 
@@ -1097,7 +1140,7 @@ post '/patients/:id/triage/actions/red_arrest/toggle' do
   }.to_json
 end
 
-# Красный приоритет (остановка): АД, пульс, сатурация
+# Красный приоритет (остановка): витальные замеры и бинарные признаки
 post '/patients/:id/triage/actions/red_arrest/vital' do
   content_type :json
 
@@ -1107,7 +1150,13 @@ post '/patients/:id/triage/actions/red_arrest/vital' do
   return { error: 'Недоступно' }.to_json unless triage.red_arrest_actions_flow?
 
   vk = params[:key].to_s
-  return { error: 'ключ' }.to_json unless %w[bp pulse saturation].include?(vk)
+  allowed_keys = %w[
+    bp_1 bp_2 bp_3
+    pulse_1 pulse_2 pulse_3
+    saturation_1 saturation_2 saturation_3
+    fetal_heartbeat active_bleeding
+  ]
+  return { error: 'ключ' }.to_json unless allowed_keys.include?(vk)
 
   val = params[:value].to_s
   action_uid = resolve_step_performer_user_id(params, patient)
@@ -1117,16 +1166,29 @@ post '/patients/:id/triage/actions/red_arrest/vital' do
   pname = acting_performer_name_for_user_id(action_uid) || patient.performer_name
 
   audit_action = case vk
-                 when 'bp' then 'ra_vital_bp'
-                 when 'pulse' then 'ra_vital_pulse'
-                 when 'saturation' then 'ra_vital_saturation'
+                 when 'bp_1' then 'ra_vital_bp_1'
+                 when 'bp_2' then 'ra_vital_bp_2'
+                 when 'bp_3' then 'ra_vital_bp_3'
+                 when 'pulse_1' then 'ra_vital_pulse_1'
+                 when 'pulse_2' then 'ra_vital_pulse_2'
+                 when 'pulse_3' then 'ra_vital_pulse_3'
+                 when 'saturation_1' then 'ra_vital_saturation_1'
+                 when 'saturation_2' then 'ra_vital_saturation_2'
+                 when 'saturation_3' then 'ra_vital_saturation_3'
+                 when 'fetal_heartbeat'
+                   val.strip == 'no' ? 'ra_vital_fetal_heartbeat_no' : 'ra_vital_fetal_heartbeat_yes'
+                 when 'active_bleeding'
+                   val.strip == 'yes' ? 'ra_vital_active_bleeding_yes' : 'ra_vital_active_bleeding_no'
                  end
   if val.strip.present?
     TriageAuditEvent.log!(patient: patient, triage: triage, type: 'priority_action_marked',
                           payload: { action: audit_action, value: val.strip, performer_name: pname })
   end
 
-  { success: true }.to_json
+  {
+    success: true,
+    can_complete: triage.can_complete_red_arrest?
+  }.to_json
 end
 
 # Отметить действие как выполненное

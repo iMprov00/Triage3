@@ -1,0 +1,256 @@
+<%# Компактная карточка пациента (вариант B) + модалки «подробнее» и удаления %>
+<% t = patient.triage %>
+<% show_saved_step_btns = t && !t.actions_completed? && (!other_role_user? || current_user_is_patient_performer?(patient)) %>
+<% can_del = !other_role_user? %>
+<% detail_id = "patientDetailModal#{patient.id}" %>
+<% delete_id = "deleteModal#{patient.id}" %>
+<% max_time = t ? (case t.step when 1 then 120 when 2 then 300 when 3 then 600 else 120 end) : 120 %>
+
+<div class="col-12 col-md-6 col-xl-4 col-card">
+  <div class="patient-b-card h-100 <%= patient_list_card_state_class(patient) %>">
+    <div class="patient-b-head">
+      <h2 class="patient-b-fio"><%= Rack::Utils.escape_html(patient.full_name) %></h2>
+    </div>
+    <div class="small text-secondary">
+      <%= patient.admission_date %>
+      <% if patient.admission_time_formatted.present? %>
+        · <%= patient.admission_time_formatted %>
+      <% end %>
+      <span class="text-muted">·</span>
+      исп. <strong class="text-body"><%= Rack::Utils.escape_html(patient.performer_name.to_s) %></strong>
+    </div>
+
+    <% if t %>
+      <div class="patient-b-chips">
+        <% if t.completed_at.present? && t.priority.present? && t.priority != 'pending' %>
+          <%
+            pr_class = case t.priority
+              when 'red' then 'badge-priority-1'
+              when 'yellow' then 'badge-priority-2'
+              when 'purple' then 'badge-priority-3'
+              when 'green' then 'badge-priority-4'
+              else 'bg-secondary'
+            end
+          %>
+          <span class="badge <%= pr_class %>"><%= Rack::Utils.escape_html(t.priority_name) %></span>
+        <% elsif t.completed_at.blank? %>
+          <span class="badge patient-b-step-badge"><i class="bi bi-<%= t.step %>-circle"></i> Шаг <%= t.step %></span>
+        <% end %>
+      </div>
+
+      <% if t.timer_active %>
+        <%
+          rem = t.time_remaining.to_i
+          pct = max_time.positive? ? [[(rem.to_f / max_time * 100).round, 100].min, 0].max : 100
+          bar_class = pct <= 25 ? 'progress-bar-danger' : (pct <= 50 ? 'progress-bar-warning' : 'progress-bar-success')
+          box_class = t.expired? ? 'timer-expired' : 'timer-running'
+        %>
+        <div class="patient-b-timer-line timer-box patient-list-timer <%= box_class %> <%= 'border border-danger-subtle' if t.expired? %>"
+             data-timer-ends-at="<%= t.timer_ends_at || 0 %>"
+             data-step-max="<%= max_time %>"
+             data-patient-id="<%= patient.id %>">
+          <span class="text-secondary small text-nowrap">Таймер</span>
+          <div class="progress mb-0">
+            <div class="progress-bar <%= bar_class %>" style="width: <%= pct %>%"></div>
+          </div>
+          <span class="fw-bold small text-nowrap timer-value"><%= format_duration_sec(rem) %></span>
+        </div>
+      <% elsif t.completed_at.present? && !t.actions_completed? %>
+        <div class="small text-muted mb-0"><i class="bi bi-list-task"></i> Действия приоритета</div>
+      <% elsif t.actions_completed? %>
+        <div class="small text-muted mb-0"><i class="bi bi-check-all"></i> Все действия завершены</div>
+      <% end %>
+    <% else %>
+      <div class="small text-info mb-0"><i class="bi bi-info-circle"></i> Триаж не начат</div>
+    <% end %>
+
+    <div class="patient-b-actions d-grid gap-2">
+      <% if t.nil? && restricted_other_can_modify_patient?(patient) %>
+        <form action="/patients/<%= patient.id %>/triage/start" method="post" class="m-0">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-play-circle me-1"></i> Начать триаж</button>
+        </form>
+      <% end %>
+      <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#<%= detail_id %>">
+        <i class="bi bi-layout-text-sidebar-reverse me-1"></i> Подробнее и действия
+      </button>
+    </div>
+  </div>
+</div>
+
+<%# --- Модалка: подробности и действия --- %>
+<div class="modal fade patient-detail-modal" id="<%= detail_id %>" tabindex="-1" aria-labelledby="<%= detail_id %>Label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <h5 class="modal-title" id="<%= detail_id %>Label"><%= Rack::Utils.escape_html(patient.full_name) %></h5>
+          <div class="small text-muted">ID <%= patient.id %><% if t %> · <% if t.completed_at.present? %>триаж завершён<% else %>шаг <%= t.step %><% end %><% else %>триаж не создан<% end %></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <% if t %>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <% if t.completed_at.present? && t.priority.present? && t.priority != 'pending' %>
+              <%
+                pr_class = case t.priority
+                  when 'red' then 'badge-priority-1'
+                  when 'yellow' then 'badge-priority-2'
+                  when 'purple' then 'badge-priority-3'
+                  when 'green' then 'badge-priority-4'
+                  else 'bg-secondary'
+                end
+              %>
+              <span class="badge <%= pr_class %>"><%= Rack::Utils.escape_html(t.priority_name) %></span>
+            <% elsif t.completed_at.blank? %>
+              <span class="badge patient-b-step-badge">Шаг <%= t.step %></span>
+            <% end %>
+          </div>
+        <% end %>
+
+        <dl class="patient-detail-dl mb-4">
+          <dt>Поступление</dt>
+          <dd><%= patient.admission_date %><% if patient.admission_time_formatted.present? %>, <%= patient.admission_time_formatted %><% end %></dd>
+          <dt>Исполнитель</dt>
+          <dd><%= Rack::Utils.escape_html(patient.performer_name.to_s) %></dd>
+          <dt>Дата рождения</dt>
+          <dd><%= patient.birth_date %></dd>
+          <dt>Вид обращения</dt>
+          <dd><%= Rack::Utils.escape_html(patient.appeal_type.to_s) %></dd>
+          <dt>Срок беременности</dt>
+          <dd><%= Rack::Utils.escape_html(patient.pregnancy_display.to_s) %></dd>
+        </dl>
+
+        <% if t&.expired? && t.timer_active && t.completed_at.blank? %>
+          <div class="alert alert-danger py-2 small mb-3"><i class="bi bi-exclamation-triangle me-1"></i> Время шага истекло — сохраните шаг или продолжите по ситуации.</div>
+        <% end %>
+
+        <div class="d-grid gap-2">
+          <% if t.nil? %>
+            <% if restricted_other_can_modify_patient?(patient) %>
+              <form action="/patients/<%= patient.id %>/triage/start" method="post" class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-play-circle me-2"></i> Начать триаж</button>
+              </form>
+            <% else %>
+              <p class="small text-muted mb-0">Начать триаж может пользователь с правами на эту карту.</p>
+            <% end %>
+            <div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">
+              <a href="/patients/<%= patient.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a>
+            </div>
+          <% elsif t.completed_at.blank? %>
+            <%
+              link = case t.step
+                when 1 then "/patients/#{patient.id}/triage"
+                when 2 then "/patients/#{patient.id}/triage/step2"
+                when 3 then "/patients/#{patient.id}/triage/step3"
+                else "/patients/#{patient.id}/triage"
+              end
+              btn_text = case t.step
+                when 1 then 'Шаг 1 — Уровень сознания'
+                when 2 then 'Шаг 2 — Общая оценка'
+                when 3 then 'Шаг 3 — Витальные функции'
+                else 'Продолжить триаж'
+              end
+            %>
+            <a href="<%= link %>" class="btn btn-primary btn-lg"><i class="bi bi-clipboard-pulse me-2"></i> <%= btn_text %></a>
+            <% if show_saved_step_btns %>
+              <div class="d-flex flex-wrap gap-2">
+                <% if triage_step_has_saved_data?(t, 1) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/1" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 1</a>
+                <% end %>
+                <% if triage_step_has_saved_data?(t, 2) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/2" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 2</a>
+                <% end %>
+                <% if triage_step_has_saved_data?(t, 3) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/3" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 3</a>
+                <% end %>
+              </div>
+            <% end %>
+            <div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">
+              <a href="/patients/<%= patient.id %>/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>
+              <a href="/patients/<%= patient.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a>
+            </div>
+          <% elsif !t.actions_completed? %>
+            <a href="/patients/<%= patient.id %>/triage/actions" class="btn btn-primary btn-lg"><i class="bi bi-list-check me-2"></i> Действия по приоритету</a>
+            <% if show_saved_step_btns %>
+              <div class="d-flex flex-wrap gap-2">
+                <% if triage_step_has_saved_data?(t, 1) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/1" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 1</a>
+                <% end %>
+                <% if triage_step_has_saved_data?(t, 2) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/2" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 2</a>
+                <% end %>
+                <% if triage_step_has_saved_data?(t, 3) %>
+                  <a href="/patients/<%= patient.id %>/triage/edit_step/3" class="btn btn-primary flex-grow-1" style="min-width: 7rem;">Ред. шаг 3</a>
+                <% end %>
+              </div>
+            <% end %>
+            <div class="patient-detail-modal-footer-actions d-grid gap-2 pt-2 border-top mt-1">
+              <a href="/patients/<%= patient.id %>/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>
+              <a href="/patients/<%= patient.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a>
+            </div>
+          <% else %>
+            <div class="patient-detail-modal-footer-actions d-grid gap-2">
+              <a href="/patients/<%= patient.id %>/triage/view" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр данных триажа</a>
+              <a href="/patients/<%= patient.id %>/edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i> Карта пациента</a>
+            </div>
+          <% end %>
+
+          <% if can_del %>
+            <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#<%= delete_id %>">
+              <i class="bi bi-trash me-1"></i> Удалить пациента
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# --- Удаление --- %>
+<% if can_del %>
+<div class="modal fade" id="<%= delete_id %>" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Подтверждение удаления</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="bg-danger bg-opacity-10 p-2 rounded me-3">
+            <i class="bi bi-exclamation-triangle text-danger fs-4"></i>
+          </div>
+          <div>
+            <h6 class="mb-1">Удалить пациента?</h6>
+            <p class="text-muted small mb-0">Действие необратимо.</p>
+          </div>
+        </div>
+        <div class="bg-light p-3 rounded mb-3 small">
+          <div class="fw-medium"><%= Rack::Utils.escape_html(patient.full_name) %></div>
+          <div class="text-muted">ID <%= patient.id %></div>
+          <% if t %>
+            <div class="mt-2 text-muted">
+              Триаж:
+              <% if t.actions_completed? %>завершён полностью
+              <% elsif t.completed_at.present? %>действия приоритета
+              <% else %>шаг <%= t.step %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <div class="alert alert-warning small mb-0 py-2">
+          <i class="bi bi-info-circle me-1"></i> Будут удалены все данные пациента и история триажа.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+        <form action="/patients/<%= patient.id %>" method="post" class="d-inline">
+          <input type="hidden" name="_method" value="DELETE">
+          <button type="submit" class="btn btn-danger">Удалить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>

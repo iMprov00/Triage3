@@ -40,8 +40,8 @@ class Triage < ActiveRecord::Base
   RED_ARREST_TEAM = [
     { key: 'midwife_triage', label: 'Акушерка триажного поста' },
     { key: 'procedural_nurse', label: 'Процедурная медсестра' },
-    { key: 'obgyn_1', label: 'Акушер-гинеколог' },
-    { key: 'obgyn_2', label: '2-й акушер-гинеколог' },
+    { key: 'obgyn_1', label: 'Акушер-гинеколог №1' },
+    { key: 'obgyn_2', label: 'Акушер-гинеколог №2' },
     { key: 'nurse_anesthetist', label: 'Медицинская сестра-анестезист' },
     { key: 'anesthesiologist', label: 'Анестезиолог-реаниматолог' },
     { key: 'pediatric_resus', label: 'Детская реанимация' }
@@ -49,10 +49,8 @@ class Triage < ActiveRecord::Base
 
   RED_ARREST_MANIPS = [
     { key: 'slr_start', label: 'Начало СЛР' },
-    { key: 'xylorod', label: 'Ингаляция ксилорода' },
-    { key: 'fetal_assessment', label: 'Выслушивание сердцебиения плода, оценка наличия кровянистых выделений' },
+    { key: 'oxygen_inhalation', label: 'Ингаляция кислорода' },
     { key: 'vein_catheter', label: 'Катетеризация вены' },
-    { key: 'adrenaline', label: 'Введение адреналина' },
     { key: 'transport_or', label: 'Транспортировка в операционную' },
     { key: 'intubation', label: 'Интубация трахеи' },
     { key: 'defibrillator', label: 'Использование дефибриллятора' }
@@ -143,6 +141,18 @@ class Triage < ActiveRecord::Base
   ].freeze
   
   after_initialize :set_defaults
+
+  class << self
+    attr_writer :priority_strategy, :actions_catalog
+
+    def priority_strategy
+      @priority_strategy ||= TriageRules::DefaultPriorityStrategy.new
+    end
+
+    def actions_catalog
+      @actions_catalog ||= TriageRules::DefaultActionsCatalog.new
+    end
+  end
   
   def set_defaults
     self.step ||= 1
@@ -229,29 +239,7 @@ class Triage < ActiveRecord::Base
 
   # Текст действия по ключу (для журнала аудита)
   def self.action_text_for_key(key)
-    return '' if key.blank?
-
-    k = key.to_s
-    return 'Красный (остановка): бригада вызвана' if k == 'ra_brigade_called'
-    return 'Красный (остановка): значение АД зафиксировано' if k == 'ra_vital_bp'
-    return 'Красный (остановка): значение пульса зафиксировано' if k == 'ra_vital_pulse'
-    return 'Красный (остановка): значение сатурации зафиксировано' if k == 'ra_vital_saturation'
-
-    RED_ARREST_TEAM.each do |e|
-      return "Красный (остановка): вызов — #{e[:label]}" if k == "ra_team_#{e[:key]}"
-    end
-    RED_ARREST_MANIPS.each do |e|
-      return "Красный (остановка): манипуляция — #{e[:label]}" if k == "ra_manip_#{e[:key]}"
-    end
-    return 'Красный (остановка): манипуляция — назначено срочное кесарево сечение' if k == 'ra_manip_urgent_cesarean'
-    return 'Красный (остановка): манипуляция — завершить СЛР' if k == 'ra_manip_slr_complete'
-
-    [RED_PRIORITY_ACTIONS, YELLOW_PRIORITY_ACTIONS, PURPLE_PRIORITY_ACTIONS, GREEN_PRIORITY_ACTIONS].each do |arr|
-      arr.each do |a|
-        return a[:text] if a[:key] == k
-      end
-    end
-    k
+    actions_catalog.action_text_for_key(key)
   end
 
   def self.priority_label_ru(code)
@@ -335,21 +323,12 @@ class Triage < ActiveRecord::Base
 
   # Красный на шаге 1: судороги / кровотечение / нет дыхания или сердцебиения / сумма баллов ≤ 8
   def self.step1_data_implies_red_priority?(s1)
-    s1 ||= {}
-    return true if s1['seizures'] == true || s1['seizures'].to_s == 'true'
-    return true if s1['active_bleeding'] == true || s1['active_bleeding'].to_s == 'true'
-    return true if step1_explicitly_no?(s1['breathing']) || step1_explicitly_no?(s1['heartbeat'])
-
-    eye = EYE_OPENING_SCORES[s1['eye_opening']] || 0
-    verbal = VERBAL_SCORES[s1['verbal_response']] || 0
-    motor = MOTOR_SCORES[s1['motor_response']] || 0
-    (eye + verbal + motor) <= 8
+    priority_strategy.step1_data_implies_red_priority?(s1)
   end
 
   # Отдельный сценарий действий: на шаге 1 явно «нет дыхания» и/или «нет сердцебиения»
   def self.step1_data_implies_red_arrest?(s1)
-    s1 ||= {}
-    step1_explicitly_no?(s1['breathing']) || step1_explicitly_no?(s1['heartbeat'])
+    priority_strategy.step1_data_implies_red_arrest?(s1)
   end
 
   def red_arrest_actions_flow?
@@ -357,8 +336,9 @@ class Triage < ActiveRecord::Base
   end
 
   def check_step1_priority
-    if self.class.step1_data_implies_red_priority?(step1_data)
-      self.priority = 'red'
+    next_priority = self.class.priority_strategy.evaluate_step1(self)
+    if next_priority.present?
+      self.priority = next_priority
       return true
     end
     false
@@ -382,59 +362,16 @@ class Triage < ActiveRecord::Base
   end
   
   def check_step2_priority
-    position = step2_data['position']
-    urgency_criteria = step2_data['urgency_criteria'] || []
-    infection_signs = step2_data['infection_signs'] || []
-    
-    # Если не активное положение ИЛИ есть критерии неотложности -> желтый
-    if position != 'активное положение, свободное перемещение' ||
-       any_urgency_criteria_selected?(urgency_criteria)
-      self.priority = 'yellow'
+    next_priority = self.class.priority_strategy.evaluate_step2(self)
+    if next_priority.present?
+      self.priority = next_priority
       return true
     end
-    
-    # Если активное положение, нет критериев неотложности, но есть признаки инфекции -> фиолетовый
-    if position == 'активное положение, свободное перемещение' &&
-       !any_urgency_criteria_selected?(urgency_criteria) &&
-       any_infection_signs_selected?(infection_signs)
-      self.priority = 'purple'
-      return true
-    end
-    
     false
   end
   
   def check_step3_priority
-    vitals = step3_data || {}
-    
-    # Проверка витальных функций
-    respiratory_rate = vitals['respiratory_rate'].to_i
-    saturation = vitals['saturation'].to_i
-    systolic_bp = vitals['systolic_bp'].to_i
-    diastolic_bp = vitals['diastolic_bp'].to_i
-    heart_rate = vitals['heart_rate'].to_i
-    temperature = vitals['temperature'].to_f
-    
-    # Желтые условия
-    yellow_conditions = []
-    yellow_conditions << :respiratory_rate if respiratory_rate > 24 || respiratory_rate < 16
-    yellow_conditions << :saturation if saturation < 93
-    yellow_conditions << :systolic_bp if systolic_bp >= 140
-    yellow_conditions << :diastolic_bp if diastolic_bp >= 90
-    yellow_conditions << :heart_rate if heart_rate > 110 || heart_rate < 50
-    
-    # Фиолетовые условия
-    purple_conditions = []
-    purple_conditions << :temperature if temperature >= 37.5
-    
-    if yellow_conditions.any?
-      self.priority = 'yellow'
-    elsif purple_conditions.any?
-      self.priority = 'purple'
-    else
-      self.priority = 'green'
-    end
-    
+    self.priority = self.class.priority_strategy.evaluate_step3(self)
     true # Этап 3 всегда определяет приоритет
   end
   
@@ -558,13 +495,25 @@ class Triage < ActiveRecord::Base
 
     k = key.to_s
     allowed_team = RED_ARREST_TEAM.map { |e| e[:key].to_s }
-    allowed_manip = RED_ARREST_MANIPS.map { |e| e[:key].to_s } + %w[urgent_cesarean slr_complete]
+    allowed_manip = RED_ARREST_MANIPS.map { |e| e[:key].to_s } + %w[
+      adrenaline_1 adrenaline_2 adrenaline_3
+      csection_done
+      resusc_outcome_recovery
+      resusc_outcome_death
+      urgent_cesarean
+      slr_complete
+    ]
     return false if g == 'team' && !allowed_team.include?(k)
     return false if g == 'manip' && !allowed_manip.include?(k)
 
     ensure_red_arrest_bucket!
     actions_data['red_arrest'][g] ||= {}
     if ActiveModel::Type::Boolean.new.cast(checked)
+      # Взаимоисключающие исходы СЛР: при выборе одного автоматически снимаем второй.
+      if g == 'manip' && %w[resusc_outcome_recovery resusc_outcome_death].include?(k)
+        other = k == 'resusc_outcome_recovery' ? 'resusc_outcome_death' : 'resusc_outcome_recovery'
+        actions_data['red_arrest'][g].delete(other)
+      end
       actions_data['red_arrest'][g][key.to_s] = Time.now.to_i
     else
       actions_data['red_arrest'][g].delete(key.to_s)
@@ -578,6 +527,27 @@ class Triage < ActiveRecord::Base
     ensure_red_arrest_bucket!
     vkey = vkey.to_s
     val = value.to_s.strip
+    # Поддержка 3 последовательных замеров для AD/пульса/сатурации:
+    # ключи приходят как bp_1..bp_3, pulse_1..pulse_3, saturation_1..saturation_3.
+    if vkey =~ /\A(bp|pulse|saturation)_(1|2|3)\z/
+      base = Regexp.last_match(1)
+      idx = Regexp.last_match(2).to_i - 1
+      entry = actions_data['red_arrest']['vitals'][base]
+      values = if entry.is_a?(Hash) && entry['values'].is_a?(Array)
+                 entry['values']
+               else
+                 old_single = entry.is_a?(Hash) ? entry['value'].to_s : ''
+                 [old_single, '', '']
+               end
+      values[idx] = val
+      if values.all?(&:blank?)
+        actions_data['red_arrest']['vitals'].delete(base)
+      else
+        actions_data['red_arrest']['vitals'][base] = { 'values' => values, 'at' => Time.now.to_i }
+      end
+      return save
+    end
+
     actions_data['red_arrest']['vitals'] ||= {}
     if val.empty?
       actions_data['red_arrest']['vitals'].delete(vkey)
@@ -592,16 +562,28 @@ class Triage < ActiveRecord::Base
     return false unless brigade_called_at
 
     manip = red_arrest_data['manip'] || {}
-    manip['urgent_cesarean'].present? || manip['slr_complete'].present?
+    manip['csection_done'].present? ||
+      manip['resusc_outcome_recovery'].present? ||
+      manip['resusc_outcome_death'].present? ||
+      manip['urgent_cesarean'].present? ||
+      manip['slr_complete'].present?
   end
 
   def red_arrest_actions_progress_for_monitor
     ra = red_arrest_data
     team_n = (ra['team'] || {}).size
     manip_n = (ra['manip'] || {}).size
-    vit_n = (ra['vitals'] || {}).count { |_, d| d.is_a?(Hash) && d['value'].present? }
+    vit_n = (ra['vitals'] || {}).sum do |_, d|
+      if d.is_a?(Hash) && d['values'].is_a?(Array)
+        d['values'].count { |v| v.present? }
+      elsif d.is_a?(Hash) && d['value'].present?
+        1
+      else
+        0
+      end
+    end
     done = (brigade_called_at ? 1 : 0) + team_n + manip_n + vit_n
-    total = 1 + RED_ARREST_TEAM.size + RED_ARREST_MANIPS.size + 2 + RED_ARREST_VITALS.size
+    total = 1 + RED_ARREST_TEAM.size + RED_ARREST_MANIPS.size + 7 + (RED_ARREST_VITALS.size * 3)
     { completed: done, total: total }
   end
   
@@ -677,13 +659,7 @@ class Triage < ActiveRecord::Base
   
   # Получить список действий для текущего приоритета
   def priority_actions
-    case priority
-    when 'red' then RED_PRIORITY_ACTIONS
-    when 'yellow' then YELLOW_PRIORITY_ACTIONS
-    when 'purple' then PURPLE_PRIORITY_ACTIONS
-    when 'green' then GREEN_PRIORITY_ACTIONS
-    else []
-    end
+    self.class.actions_catalog.actions_for(priority: priority, triage: self)
   end
   
   # Получить финальное действие для приоритета

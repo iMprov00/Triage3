@@ -23,7 +23,6 @@ class Patient < ActiveRecord::Base
     'ДКЦ'
   ].freeze
   
-  after_create :create_triage_entry
   after_create :log_patient_registration_audit
 
   # Метод для поиска по всем полям
@@ -99,6 +98,17 @@ class Patient < ActiveRecord::Base
     created_by_user_id || performer_user_id
   end
 
+  # Создаёт запись триажа при явном «Начать триаж» из списка (не при регистрации пациента).
+  def start_triage!
+    return triage if triage.present?
+
+    Triage.create!(
+      patient_id: id,
+      start_time: Time.current,
+      timer_active: true
+    )
+  end
+
   private
 
   def sync_performer_name_from_user
@@ -109,29 +119,11 @@ class Patient < ActiveRecord::Base
   end
 
   def log_patient_registration_audit
-    t = triage
-    return unless t
-
     TriageAuditEvent.log!(
       patient: self,
-      triage: t,
+      triage: nil,
       type: 'patient_registered',
       payload: { full_name: full_name, performer_name: performer_name }
     )
-    TriageAuditEvent.log!(
-      patient: self,
-      triage: t,
-      type: 'triage_started',
-      payload: { performer_name: performer_name }
-    )
-  end
-  
-  def create_triage_entry
-    Triage.create(
-      patient_id: self.id,
-      start_time: Time.now,
-      timer_active: true
-    )
-    puts "Создан триаж для пациента #{self.id}: #{triage.inspect}"
   end
 end

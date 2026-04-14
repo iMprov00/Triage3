@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Макет C — сплит-строка</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/prototypes/patients-list-proto-shared.css">
+</head>
+<body>
+  <div class="container py-3 py-md-4">
+    <div class="proto-banner">
+      <div class="proto-switch justify-content-between gap-2 mb-2">
+        <strong>Макет C — сплит (статус справа)</strong>
+        <span class="small text-muted">тестовые данные</span>
+      </div>
+      <div class="proto-switch">
+        <a href="/prototypes/index.html" class="btn btn-sm btn-outline-secondary">К выбору вариантов</a>
+        <a href="/prototypes/variant-a-rows.html" class="btn btn-sm btn-outline-primary">Вариант A</a>
+        <a href="/prototypes/variant-b-cards.html" class="btn btn-sm btn-outline-primary">Вариант B</a>
+      </div>
+    </div>
+
+    <h1 class="page-title h4 mb-3">Пациенты</h1>
+    <p class="text-muted small mb-3">Слева — идентификация и поступление; справа — компактный столбец «что происходит сейчас». Нижняя полоска — вход в модалку со всеми кнопками.</p>
+
+    <div class="proto-c-row">
+      <div>
+        <h2 class="h5 mb-1 fw-semibold">Иванова Мария Сергеевна</h2>
+        <div class="small text-secondary">
+          Поступление <strong class="text-body">14.04.2026</strong>, 09:40
+          <span class="text-muted mx-1">·</span>
+          Исполнитель: <strong class="text-body">Петрова А.И.</strong>
+        </div>
+      </div>
+      <div class="proto-c-status">
+        <div class="d-flex flex-wrap gap-1 justify-content-end">
+          <span class="badge badge-step-2">Шаг 2</span>
+          <span class="badge badge-priority-2">Жёлтый</span>
+        </div>
+        <div class="timer-box timer-running p-2 rounded-3" style="min-width: 9rem;">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-secondary">Таймер</span>
+            <span class="fw-bold timer-value">04:33</span>
+          </div>
+          <div class="progress mb-0" style="height: 6px;">
+            <div class="progress-bar progress-bar-warning" style="width: 55%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="proto-c-foot">
+        <button type="button" class="btn btn-link text-decoration-none p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalC1">
+          Управление, редактирование шагов, удаление <i class="bi bi-chevron-right"></i>
+        </button>
+        <span class="small text-muted d-none d-sm-inline">ID 1001</span>
+      </div>
+    </div>
+
+    <div class="proto-c-row">
+      <div>
+        <h2 class="h5 mb-1 fw-semibold">Петрова Анна Викторовна</h2>
+        <div class="small text-secondary">
+          Поступление <strong class="text-body">14.04.2026</strong>, 10:05
+          <span class="text-muted mx-1">·</span>
+          Исполнитель: <strong class="text-body">Сидорова Е.П.</strong>
+        </div>
+      </div>
+      <div class="proto-c-status">
+        <div class="d-flex flex-wrap gap-1">
+          <span class="badge badge-step-1">Шаг 1</span>
+          <span class="badge bg-secondary">Приоритет позже</span>
+        </div>
+        <div class="timer-box timer-running p-2 rounded-3" style="min-width: 9rem;">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-secondary">Таймер</span>
+            <span class="fw-bold timer-value">02:10</span>
+          </div>
+          <div class="progress mb-0" style="height: 6px;">
+            <div class="progress-bar progress-bar-success" style="width: 88%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="proto-c-foot">
+        <button type="button" class="btn btn-link text-decoration-none p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalC2">
+          Управление и действия <i class="bi bi-chevron-right"></i>
+        </button>
+        <span class="small text-muted d-none d-sm-inline">ID 1002</span>
+      </div>
+    </div>
+
+    <div class="proto-c-row">
+      <div>
+        <h2 class="h5 mb-1 fw-semibold">Сидорова Елена Николаевна</h2>
+        <div class="small text-secondary">
+          Поступление <strong class="text-body">14.04.2026</strong>, 08:20
+          <span class="text-muted mx-1">·</span>
+          Исполнитель: <strong class="text-body">Петрова А.И.</strong>
+        </div>
+      </div>
+      <div class="proto-c-status">
+        <span class="badge bg-success">Триаж завершён</span>
+        <span class="badge badge-priority-1">Красный</span>
+        <div class="small text-end text-muted">Дальше — действия приоритета</div>
+      </div>
+      <div class="proto-c-foot">
+        <button type="button" class="btn btn-link text-decoration-none p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalC3">
+          Действия приоритета и просмотр <i class="bi bi-chevron-right"></i>
+        </button>
+        <span class="small text-muted d-none d-sm-inline">ID 1003</span>
+      </div>
+    </div>
+
+    <div class="proto-c-row border-warning border-2">
+      <div>
+        <h2 class="h5 mb-1 fw-semibold">Кузнецова Ольга Павловна</h2>
+        <div class="small text-secondary">
+          Поступление <strong class="text-body">14.04.2026</strong>, 11:02
+          <span class="text-muted mx-1">·</span>
+          Исполнитель: <strong class="text-body">Козлов Д.С.</strong>
+        </div>
+        <div class="small text-warning-emphasis mt-1"><i class="bi bi-exclamation-circle"></i> Триаж не создан</div>
+      </div>
+      <div class="proto-c-status align-self-center">
+        <span class="badge bg-warning text-dark">Ожидание старта</span>
+      </div>
+      <div class="proto-c-foot">
+        <button type="button" class="btn btn-link text-decoration-none p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalC4">
+          Начать триаж или правка карты <i class="bi bi-chevron-right"></i>
+        </button>
+        <span class="small text-muted d-none d-sm-inline">ID 1004</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalC1" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Иванова Мария Сергеевна</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Здесь же можно разместить краткую «сводку по шагам» или последние изменения — для быстрого контекста перед действием.</p>
+          <dl class="proto-modal-dl mb-4">
+            <dt>Поступление</dt><dd>14.04.2026, 09:40</dd>
+            <dt>Исполнитель</dt><dd>Петрова А.И.</dd>
+            <dt>Дата рождения</dt><dd>12.03.1991</dd>
+            <dt>Вид обращения</dt><dd>Боль внизу живота</dd>
+            <dt>Срок беременности</dt><dd>24 недели</dd>
+          </dl>
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-warning"><i class="bi bi-clipboard-pulse me-1"></i> Продолжить шаг 2</button>
+            <div class="row g-2">
+              <div class="col-md-6"><button type="button" class="btn btn-outline-secondary w-100">Карта пациента</button></div>
+              <div class="col-md-6"><button type="button" class="btn btn-outline-info w-100">Редактировать шаг 1</button></div>
+            </div>
+            <button type="button" class="btn btn-outline-danger">Удалить пациента</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalC2" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Петрова Анна Викторовна</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="proto-modal-dl mb-4">
+            <dt>Поступление</dt><dd>14.04.2026, 10:05</dd>
+            <dt>Исполнитель</dt><dd>Сидорова Е.П.</dd>
+            <dt>Дата рождения</dt><dd>01.07.1988</dd>
+            <dt>Вид обращения</dt><dd>Консультация</dd>
+            <dt>Срок беременности</dt><dd>Неизвестно</dd>
+          </dl>
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary"><i class="bi bi-clipboard-pulse me-1"></i> Шаг 1</button>
+            <button type="button" class="btn btn-outline-secondary">Карта пациента</button>
+            <button type="button" class="btn btn-outline-danger">Удалить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalC3" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Сидорова Елена Николаевна</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="proto-modal-dl mb-4">
+            <dt>Поступление</dt><dd>14.04.2026, 08:20</dd>
+            <dt>Исполнитель</dt><dd>Петрова А.И.</dd>
+            <dt>Дата рождения</dt><dd>22.11.1995</dd>
+            <dt>Вид обращения</dt><dd>Схватки</dd>
+            <dt>Срок беременности</dt><dd>36 недель</dd>
+          </dl>
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-info text-white"><i class="bi bi-list-check me-1"></i> Действия по приоритету</button>
+            <button type="button" class="btn btn-outline-secondary"><i class="bi bi-file-text me-1"></i> Просмотр триажа</button>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-info flex-grow-1">Шаг 1</button>
+              <button type="button" class="btn btn-outline-info flex-grow-1">Шаг 2</button>
+              <button type="button" class="btn btn-outline-info flex-grow-1">Шаг 3</button>
+            </div>
+            <button type="button" class="btn btn-outline-danger">Удалить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalC4" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Кузнецова Ольга Павловна</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="proto-modal-dl mb-4">
+            <dt>Поступление</dt><dd>14.04.2026, 11:02</dd>
+            <dt>Исполнитель</dt><dd>Козлов Д.С.</dd>
+            <dt>Дата рождения</dt><dd>30.05.2000</dd>
+            <dt>Вид обращения</dt><dd>Плановая госпитализация</dd>
+            <dt>Срок беременности</dt><dd>32 недели</dd>
+          </dl>
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary"><i class="bi bi-play-circle me-1"></i> Начать триаж</button>
+            <button type="button" class="btn btn-outline-secondary">Карта пациента</button>
+            <button type="button" class="btn btn-outline-danger">Удалить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Макеты списка пациентов — выбор варианта</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/prototypes/patients-list-proto-shared.css">
+</head>
+<body>
+  <div class="container py-4 py-md-5" style="max-width: 720px;">
+    <h1 class="h3 mb-3">Макеты списка пациентов</h1>
+    <p class="text-secondary mb-4">
+      Статические страницы с тестовыми данными. Откройте вариант, сравните плотность строк, читаемость шага / приоритета / таймера и удобство модального окна с действиями.
+    </p>
+    <ul class="list-group shadow-sm">
+      <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong>Вариант A</strong>
+          <div class="small text-muted">Плотные строки «как входящие»: слева ФИО и мета, справа шаг / приоритет / таймер, кнопка «⋯» открывает детали.</div>
+        </div>
+        <a class="btn btn-primary" href="/prototypes/variant-a-rows.html">Открыть</a>
+      </li>
+      <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong>Вариант B</strong>
+          <div class="small text-muted">Сетка компактных карточек: в списке только главное; одна кнопка «Подробнее и действия».</div>
+        </div>
+        <a class="btn btn-primary" href="/prototypes/variant-b-cards.html">Открыть</a>
+      </li>
+      <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <strong>Вариант C</strong>
+          <div class="small text-muted">Двухколоночная строка: слева ФИО и поступление, справа блок статуса; снизу ссылка на модалку управления.</div>
+        </div>
+        <a class="btn btn-primary" href="/prototypes/variant-c-split.html">Открыть</a>
+      </li>
+    </ul>
+    <p class="small text-muted mt-4 mb-0">
+      URL после запуска приложения: <code>/prototypes/</code> (доступ без входа для просмотра макетов).
+    </p>
+  </div>
+</body>
+</html>
