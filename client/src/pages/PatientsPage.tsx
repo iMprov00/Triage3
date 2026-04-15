@@ -1,0 +1,195 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { createConsumer } from "@rails/actioncable";
+import { apiJson, formatTimer } from "../api";
+import type { PatientListRow } from "../types";
+
+const APPEAL_TYPES = [
+  "Плановая госпитализация по направлению",
+  "Самообращение",
+  "СМП",
+  "ДКЦ",
+];
+
+export default function PatientsPage() {
+  const nav = useNavigate();
+  const [rows, setRows] = useState<PatientListRow[]>([]);
+  const [err, setErr] = useState("");
+  const [admissionDate, setAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [search, setSearch] = useState("");
+  const [appealType, setAppealType] = useState("all");
+  const [onlyActive, setOnlyActive] = useState("");
+
+  const qs = useMemo(() => {
+    const p = new URLSearchParams();
+    p.set("admission_date", admissionDate);
+    if (search) p.set("search", search);
+    if (appealType !== "all") p.set("appeal_type", appealType);
+    if (onlyActive) p.set("only_active", onlyActive);
+    return p.toString();
+  }, [admissionDate, search, appealType, onlyActive]);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiJson<PatientListRow[]>(`/api/v1/patients_list?${qs}`);
+      setRows(data);
+      setErr("");
+    } catch {
+      setErr("Не удалось загрузить список");
+    }
+  }, [qs]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    const consumer = createConsumer("/cable");
+    const sub = consumer.subscriptions.create("PatientsListChannel", {
+      received() {
+        void load();
+      },
+    });
+    const t = window.setInterval(() => void load(), 15000);
+    return () => {
+      sub.unsubscribe();
+      consumer.disconnect();
+      window.clearInterval(t);
+    };
+  }, [load]);
+
+  async function logout() {
+    await apiJson("/api/v1/logout", { method: "DELETE" });
+    nav("/login");
+  }
+
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      setRows((prev) => [...prev]);
+    }, 1000);
+    return () => window.clearInterval(tick);
+  }, []);
+
+  function remaining(t: PatientListRow["triage"]): number {
+    if (!t?.timer_active || !t.timer_ends_at) return 0;
+    return Math.max(0, Math.floor(t.timer_ends_at - Date.now() / 1000));
+  }
+
+  return (
+    <div className="container py-3">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 className="h4 mb-0">Пациенты</h1>
+        <div className="d-flex flex-wrap gap-2">
+          <Link to="/patients/new" className="btn btn-primary btn-sm">
+            Новый
+          </Link>
+          <Link to="/monitor" className="btn btn-outline-secondary btn-sm" target="_blank" rel="noreferrer">
+            Монитор
+          </Link>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void logout()}>
+            Выход
+          </button>
+        </div>
+      </div>
+
+      <div className="card mb-3">
+        <div className="card-body row g-2">
+          <div className="col-md-3">
+            <label className="form-label small mb-0">Дата поступления</label>
+            <input type="date" className="form-control" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} />
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small mb-0">Поиск</label>
+            <input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ФИО, ID…" />
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small mb-0">Вид обращения</label>
+            <select className="form-select" value={appealType} onChange={(e) => setAppealType(e.target.value)}>
+              <option value="all">Все</option>
+              {APPEAL_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-md-3">
+            <label className="form-label small mb-0">Статус</label>
+            <select className="form-select" value={onlyActive} onChange={(e) => setOnlyActive(e.target.value)}>
+              <option value="">Все</option>
+              <option value="1">Только активные</option>
+            </select>
+          </div>
+          <div className="col-12">
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => void load()}>
+              Применить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {err && <div className="alert alert-warning">{err}</div>}
+
+      <div className="row g-3">
+        {rows.map((p) => (
+          <div key={p.id} className="col-12 col-md-6 col-xl-4">
+            <div className={`card h-100 shadow-sm ${p.card_state_class}`}>
+              <div className="card-body">
+                <h2 className="h6">{p.full_name}</h2>
+                <div className="small text-muted">
+                  {p.admission_date} {p.admission_time && `· ${p.admission_time}`}
+                  <br />
+                  исп. <strong>{p.performer_name}</strong>
+                </div>
+                {p.triage?.timer_active && p.triage.timer_ends_at ? (
+                  <div className="mt-2 small">
+                    <div className="text-muted">Таймер</div>
+                    <div className="fw-bold">{formatTimer(remaining(p.triage))}</div>
+                    <div className="progress mt-1" style={{ height: 6 }}>
+                      <div
+                        className="progress-bar"
+                        style={{
+                          width: `${Math.min(100, (remaining(p.triage) / (p.triage.max_time || 120)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="small text-muted mt-2">{p.triage ? `Шаг ${p.triage.step}` : "Триаж не начат"}</div>
+                )}
+                <div className="mt-3 d-grid gap-2">
+                  {!p.triage && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={async () => {
+                        await apiJson(`/api/v1/patients/${p.id}/triage/start`, { method: "POST", json: {} });
+                        void load();
+                        nav(`/patients/${p.id}/triage`);
+                      }}
+                    >
+                      Начать триаж
+                    </button>
+                  )}
+                  {p.triage && !p.triage.completed_at && (
+                    <Link to={`/patients/${p.id}/triage`} className="btn btn-primary btn-sm">
+                      Шаг {p.triage.step}
+                    </Link>
+                  )}
+                  {p.triage?.completed_at && !p.triage.actions_completed_at && (
+                    <Link to={`/patients/${p.id}/triage/actions`} className="btn btn-warning btn-sm">
+                      Действия
+                    </Link>
+                  )}
+                  <Link to={`/patients/${p.id}/edit`} className="btn btn-outline-secondary btn-sm">
+                    Карта
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

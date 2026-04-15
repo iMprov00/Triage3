@@ -4,3 +4,10 @@ hospital.db
 db/schema.rb
 hospital.db-shm
 hospital.db-wal
+
+api/tmp/
+api/log/
+api/storage/
+api/db/*.sqlite3
+client/node_modules/
+client/dist/
