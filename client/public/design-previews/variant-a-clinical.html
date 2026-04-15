@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>A — Клиническая ясность (превью)</title>
+    <style>
+      :root {
+        --bg: #f0fdfa;
+        --card: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #0d9488;
+        --accent2: #54c654;
+        --border: #cbd5e1;
+        --shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        --radius: 12px;
+        --touch: 44px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 15px;
+        padding-bottom: 2rem;
+      }
+      .cross {
+        padding: 0.65rem 1rem;
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.8rem;
+      }
+      .cross a {
+        color: var(--accent);
+      }
+      .topbar {
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+      }
+      header {
+        background: #fff;
+        border-bottom: 2px solid var(--border);
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+      .brand {
+        font-weight: 800;
+        font-size: 1.15rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .brand span {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 8px;
+        background: var(--accent2);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 1rem;
+      }
+      .nav {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .btn {
+        min-height: var(--touch);
+        padding: 0 1rem;
+        border-radius: 10px;
+        border: 2px solid var(--border);
+        background: #fff;
+        font-weight: 600;
+        cursor: default;
+        font-size: 0.9rem;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      main {
+        padding: 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 1rem;
+      }
+      .filters {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 0.75rem;
+      }
+      @media (min-width: 640px) {
+        .filters {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 0.25rem;
+      }
+      input,
+      select {
+        width: 100%;
+        min-height: var(--touch);
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 0 0.75rem;
+        font-size: 16px;
+      }
+      .cards {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 768px) {
+        .cards {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .pcard {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1rem 1rem 1rem 1rem;
+        border-left: 5px solid var(--accent);
+      }
+      .pcard.urgent {
+        border-left-color: #dc2626;
+      }
+      .pcard.warn {
+        border-left-color: #f59e0b;
+      }
+      .pcard h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+      .meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .timer {
+        margin-top: 0.75rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        font-size: 1.35rem;
+        color: var(--text);
+      }
+      .actions {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .actions button {
+        min-height: var(--touch);
+        border-radius: 10px;
+        border: none;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .a1 {
+        background: var(--accent2);
+        color: #fff;
+      }
+      .a2 {
+        background: #e2e8f0;
+        color: var(--text);
+      }
+      .idea {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: #ecfeff;
+        border-radius: var(--radius);
+        border: 1px dashed var(--accent);
+        font-size: 0.9rem;
+        color: #134e4a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar"></div>
+    <div class="cross">
+      <a href="index.html">Все варианты</a> · <a href="variant-b-brand.html">B</a> · <a href="variant-c-dense.html">C</a> ·
+      <a href="variant-d-soft.html">D</a>
+    </div>
+    <header>
+      <div class="brand"><span>+</span> Триаж</div>
+      <div class="nav">
+        <button type="button" class="btn btn-primary">Пациенты</button>
+        <button type="button" class="btn">Монитор</button>
+        <button type="button" class="btn">Выход</button>
+      </div>
+    </header>
+    <main>
+      <h1>Пациенты</h1>
+      <div class="filters">
+        <div>
+          <label>Дата поступления</label>
+          <input type="date" value="2026-04-15" />
+        </div>
+        <div>
+          <label>Поиск</label>
+          <input type="text" placeholder="ФИО, ID…" />
+        </div>
+        <div>
+          <label>Вид обращения</label>
+          <select>
+            <option>Все</option>
+            <option>СМП</option>
+          </select>
+        </div>
+        <div>
+          <label>Статус</label>
+          <select>
+            <option>Только активные</option>
+          </select>
+        </div>
+      </div>
+      <div class="cards">
+        <article class="pcard urgent">
+          <h2>Иванов Пётр Сергеевич</h2>
+          <div class="meta">15.04.2026 · 09:12<br />исп. Сидорова А.И.</div>
+          <div class="timer">04:32</div>
+          <div class="actions">
+            <button type="button" class="a1">Шаг 2</button>
+            <button type="button" class="a2">Карта</button>
+          </div>
+        </article>
+        <article class="pcard warn">
+          <h2>Петрова Мария Олеговна</h2>
+          <div class="meta">15.04.2026 · 08:40<br />исп. Ким В.Р.</div>
+          <div class="timer">Действия · 12:05</div>
+          <div class="actions">
+            <button type="button" class="a1">Действия</button>
+            <button type="button" class="a2">Карта</button>
+          </div>
+        </article>
+        <article class="pcard">
+          <h2>Смирнов Алексей</h2>
+          <div class="meta">15.04.2026 · 07:55<br />исп. —</div>
+          <div class="meta" style="margin-top: 0.5rem">Триаж не начат</div>
+          <div class="actions">
+            <button type="button" class="a1">Начать триаж</button>
+            <button type="button" class="a2">Карта</button>
+          </div>
+        </article>
+      </div>
+      <div class="idea">
+        <strong>Идея варианта A:</strong> максимальная читаемость и предсказуемость. Светлый фон не «боится» дневного света в
+        коридоре; цветная полоса слева кодирует срочность без анимаций; кнопки не ниже 44px.
+      </div>
+    </main>
+  </body>
+</html>

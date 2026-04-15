@@ -4,7 +4,7 @@ module Api
   module V1
     class TriagesController < ApplicationController
       before_action :set_patient
-      before_action :enforce_other_patient_modify_permission!, only: :start
+      before_action -> { enforce_other_patient_modify_permission!(@patient) }, only: :start
 
       def show
         triage = @patient.triage

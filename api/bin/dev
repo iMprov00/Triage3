@@ -1,2 +1,4 @@
 #!/usr/bin/env ruby.exe
-exec "./bin/rails", "server", *ARGV
+# Через Bundler — иначе `ruby bin/rails` может не найти версию из BUNDLED WITH в Gemfile.lock.
+rails = File.expand_path("rails", __dir__)
+exec "bundle", "exec", Gem.ruby, rails, "server", *ARGV

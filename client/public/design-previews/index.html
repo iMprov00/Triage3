@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Варианты дизайна — Триаж (превью)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #e5e7eb;
+        color: #111827;
+        padding: 1.5rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.5rem;
+      }
+      p.lead {
+        margin: 0 0 1.5rem;
+        color: #4b5563;
+        max-width: 52rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1rem;
+        max-width: 56rem;
+      }
+      @media (min-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      a.card {
+        display: block;
+        padding: 1.25rem;
+        background: #fff;
+        border-radius: 12px;
+        text-decoration: none;
+        color: inherit;
+        border: 1px solid #d1d5db;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        transition: box-shadow 0.2s, transform 0.15s;
+      }
+      a.card:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+      a.card h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.05rem;
+      }
+      a.card span {
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+      .tag {
+        display: inline-block;
+        margin-top: 0.65rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Статические превью дизайна</h1>
+    <p class="lead">
+      Откройте любой вариант (локально или через dev-сервер Vite по адресу вида
+      <code>/design-previews/variant-a-clinical.html</code>). Это не приложение, а макеты для сравнения настроения,
+      плотности и читаемости на планшете и телефоне.
+    </p>
+    <div class="grid">
+      <a class="card" href="variant-a-clinical.html">
+        <h2>A — Клиническая ясность</h2>
+        <span>Светлый фон, высокий контраст, акцент «медицинский бирюзовый», крупные зоны касания. Хорошо при ярком свете и усталости.</span>
+        <span class="tag">планшет · приёмный покой</span>
+      </a>
+      <a class="card" href="variant-b-brand.html">
+        <h2>B — Бренд и приоритеты</h2>
+        <span>Зелёная шапка как сейчас, карточки с цветной полосой по приоритету. Быстро считывается «кто срочнее».</span>
+        <span class="tag">планшет · динамичный поток</span>
+      </a>
+      <a class="card" href="variant-c-dense.html">
+        <h2>C — Плотный «операторский»</h2>
+        <span>Больше пациентов на экран, табличные блоки, жирные таймеры. Для опытных пользователей и ПК+планшет.</span>
+        <span class="tag">десктоп · смена</span>
+      </a>
+      <a class="card" href="variant-d-soft.html">
+        <h2>D — Мягкий «человечный»</h2>
+        <span>Тёплый нейтральный фон, мягкие тени, менее «техничный» вид. Снижает ощущение холодности интерфейса.</span>
+        <span class="tag">телефон · длительные смены</span>
+      </a>
+    </div>
+  </body>
+</html>

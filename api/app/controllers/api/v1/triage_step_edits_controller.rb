@@ -4,7 +4,7 @@ module Api
   module V1
     class TriageStepEditsController < ApplicationController
       before_action :set_patient
-      before_action :enforce_other_patient_modify_permission!, only: %i[preview update]
+      before_action -> { enforce_other_patient_modify_permission!(@patient) }, only: %i[preview update]
       before_action :set_triage
       before_action :validate_step_access!, only: %i[preview update]
 

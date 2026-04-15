@@ -11,7 +11,7 @@ module Api
       end
 
       def show
-        patient = Patient.find(params[:id])
+        patient = Patient.find(params[:patient_id])
         render json: patient_full_json(patient)
       end
 
@@ -30,7 +30,7 @@ module Api
       end
 
       def update
-        patient = Patient.find(params[:id])
+        patient = Patient.find(params[:patient_id])
         attrs = patient_attributes
         if current_user.doctor_or_admin? && params.key?(:performer_user_id)
           attrs[:performer_user_id] = resolve_patient_performer_user_id
@@ -54,7 +54,7 @@ module Api
           return
         end
 
-        patient = Patient.find(params[:id])
+        patient = Patient.find(params[:patient_id])
         patient.destroy!
         head :no_content
       end

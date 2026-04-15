@@ -3,7 +3,8 @@
 module Api
   module V1
     class SessionsController < ApplicationController
-      skip_before_action :authenticate_user!, only: :create
+      # create — вход; show — проверка сессии для SPA; destroy — выход даже при «пустой» сессии
+      skip_before_action :authenticate_user!, only: %i[create show destroy]
 
       def create
         user = User.find_by(login: params[:login].to_s.strip.downcase)

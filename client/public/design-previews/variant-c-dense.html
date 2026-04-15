@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>C — Плотный операторский (превью)</title>
+    <style>
+      :root {
+        --line: #e2e8f0;
+        --bg: #eef2f6;
+        --panel: #fff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --green: #16a34a;
+        --touch: 40px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+      }
+      .cross {
+        padding: 0.4rem 0.75rem;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        font-size: 0.75rem;
+      }
+      .cross a {
+        color: #2563eb;
+      }
+      header {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 0.45rem 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+      }
+      .nav button {
+        min-height: var(--touch);
+        padding: 0 0.65rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        border: 1px solid #475569;
+        background: #334155;
+        color: #f8fafc;
+        cursor: default;
+      }
+      .nav button.on {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #f8fafc;
+      }
+      main {
+        padding: 0.5rem 0.65rem 1.5rem;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .toolbar h1 {
+        margin: 0;
+        font-size: 1rem;
+        flex: 1 1 auto;
+      }
+      .toolbar input,
+      .toolbar select {
+        min-height: var(--touch);
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 0 0.5rem;
+        font-size: 14px;
+      }
+      table.list {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .list th,
+      .list td {
+        padding: 0.45rem 0.55rem;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      .list th {
+        background: #f8fafc;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .mono {
+        font-family: ui-monospace, monospace;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--green);
+      }
+      .mono.warn {
+        color: #ca8a04;
+      }
+      .mono.bad {
+        color: #dc2626;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.65rem;
+        padding: 0.12rem 0.35rem;
+        border-radius: 4px;
+        background: #e2e8f0;
+        color: #475569;
+        font-weight: 600;
+      }
+      .tag.sm {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .list button {
+        min-height: 34px;
+        padding: 0 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        cursor: default;
+      }
+      .list button.p {
+        background: var(--green);
+        color: #fff;
+        border-color: var(--green);
+      }
+      .mobile-cards {
+        display: none;
+      }
+      @media (max-width: 720px) {
+        table.list {
+          display: none;
+        }
+        .mobile-cards {
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+        }
+        .mcard {
+          background: var(--panel);
+          border: 1px solid var(--line);
+          border-radius: 8px;
+          padding: 0.55rem 0.65rem;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 0.35rem;
+          align-items: center;
+        }
+        .mcard .n {
+          font-weight: 700;
+          font-size: 0.9rem;
+        }
+        .mcard .r {
+          grid-column: 1 / -1;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+      }
+      .idea {
+        margin-top: 1rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+        padding: 0.75rem;
+        border-left: 3px solid #64748b;
+        background: #fff;
+        border-radius: 0 8px 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cross">
+      <a href="index.html">Все варианты</a> · <a href="variant-a-clinical.html">A</a> · <a href="variant-b-brand.html">B</a> ·
+      <a href="variant-d-soft.html">D</a>
+    </div>
+    <header>
+      <strong>Триаж</strong>
+      <span style="opacity: 0.85">admin · Регистратура</span>
+      <div class="nav">
+        <button type="button" class="on">Пациенты</button>
+        <button type="button">Монитор</button>
+        <button type="button">Выход</button>
+      </div>
+    </header>
+    <main>
+      <div class="toolbar">
+        <h1>Пациенты</h1>
+        <input type="date" style="width: 9.5rem" />
+        <input type="search" placeholder="Поиск…" style="min-width: 8rem; flex: 1 1 120px" />
+        <select>
+          <option>Все</option>
+          <option>Активные</option>
+        </select>
+      </div>
+      <table class="list" aria-label="Список (превью)">
+        <thead>
+          <tr>
+            <th>Пациент</th>
+            <th>Обращение</th>
+            <th>Исполнитель</th>
+            <th>Таймер</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Иванов П. С.</strong></td>
+            <td><span class="tag sm">СМП</span></td>
+            <td>Петров</td>
+            <td class="mono bad">01:04</td>
+            <td><button type="button" class="p">Шаг 2</button> <button type="button">Карта</button></td>
+          </tr>
+          <tr>
+            <td><strong>Петрова М. О.</strong></td>
+            <td><span class="tag">План</span></td>
+            <td>Ким</td>
+            <td class="mono warn">11:22</td>
+            <td><button type="button" class="p">Действия</button> <button type="button">Карта</button></td>
+          </tr>
+          <tr>
+            <td><strong>Смирнов А.</strong></td>
+            <td><span class="tag">Самообр.</span></td>
+            <td>—</td>
+            <td class="mono">—</td>
+            <td><button type="button" class="p">Старт</button> <button type="button">Карта</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="mobile-cards">
+        <div class="mcard">
+          <div class="n">Иванов П. С.</div>
+          <span class="tag sm">СМП</span>
+          <div class="r">
+            <span class="mono bad">01:04</span>
+            <button type="button" class="p">Шаг 2</button>
+          </div>
+        </div>
+        <div class="mcard">
+          <div class="n">Петрова М. О.</div>
+          <span class="tag">План</span>
+          <div class="r">
+            <span class="mono warn">11:22</span>
+            <button type="button" class="p">Действия</button>
+          </div>
+        </div>
+      </div>
+      <div class="idea">
+        <strong>C:</strong> на широком экране — почти таблица: много строк без «воздуха». На узком — те же данные
+        компактными карточками. Удобно, если команда уже выучила сетку и хочет минимум прокрутки; на телефоне нужен
+        отдельный компактный ряд (как здесь внизу при &lt;720px).
+      </div>
+    </main>
+  </body>
+</html>

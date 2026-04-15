@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson } from "../api";
 
@@ -11,13 +11,48 @@ const APPEAL_TYPES = [
 
 type Props = { mode: "new" | "edit" };
 
+const BIRTH_MONTHS: { value: number; label: string }[] = [
+  { value: 1, label: "Январь" },
+  { value: 2, label: "Февраль" },
+  { value: 3, label: "Март" },
+  { value: 4, label: "Апрель" },
+  { value: 5, label: "Май" },
+  { value: 6, label: "Июнь" },
+  { value: 7, label: "Июль" },
+  { value: 8, label: "Август" },
+  { value: 9, label: "Сентябрь" },
+  { value: 10, label: "Октябрь" },
+  { value: 11, label: "Ноябрь" },
+  { value: 12, label: "Декабрь" },
+];
+
+function daysInMonth(year: number, month: number): number {
+  if (!year || !month) return 31;
+  return new Date(year, month, 0).getDate();
+}
+
+function parseIsoDate(iso: string): { y: number; m: number; d: number } {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (!m) return { y: 0, m: 0, d: 0 };
+  return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
+}
+
+function toBirthIso(y: number, m: number, d: number): string | null {
+  if (!y || !m || !d) return null;
+  const dim = daysInMonth(y, m);
+  if (d < 1 || d > dim) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 export default function PatientFormPage({ mode }: Props) {
   const { patientId } = useParams();
   const nav = useNavigate();
   const [fullName, setFullName] = useState("");
   const [admissionDate, setAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [admissionTime, setAdmissionTime] = useState("08:00");
-  const [birthDate, setBirthDate] = useState("");
+  const [birthDay, setBirthDay] = useState(0);
+  const [birthMonth, setBirthMonth] = useState(0);
+  const [birthYear, setBirthYear] = useState(0);
   const [appealType, setAppealType] = useState(APPEAL_TYPES[0]);
   const [pregnancyUnknown, setPregnancyUnknown] = useState(false);
   const [pregnancyWeeks, setPregnancyWeeks] = useState("");
@@ -45,7 +80,10 @@ export default function PatientFormPage({ mode }: Props) {
         setFullName(String(p.full_name || ""));
         setAdmissionDate(String(p.admission_date || ""));
         setAdmissionTime(String(p.admission_time || "08:00"));
-        setBirthDate(String(p.birth_date || ""));
+        const bd = parseIsoDate(String(p.birth_date || ""));
+        setBirthYear(bd.y);
+        setBirthMonth(bd.m);
+        setBirthDay(bd.d);
         setAppealType(String(p.appeal_type || APPEAL_TYPES[0]));
         setPregnancyUnknown(Boolean(p.pregnancy_unknown));
         setPregnancyWeeks(p.pregnancy_weeks != null ? String(p.pregnancy_weeks) : "");
@@ -56,9 +94,29 @@ export default function PatientFormPage({ mode }: Props) {
     })();
   }, [mode, patientId]);
 
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(() => {
+    const from = currentYear - 100;
+    const out: number[] = [];
+    for (let y = currentYear; y >= from; y -= 1) out.push(y);
+    return out;
+  }, [currentYear]);
+
+  const maxDay = useMemo(() => daysInMonth(birthYear, birthMonth), [birthYear, birthMonth]);
+  const dayOptions = useMemo(() => Array.from({ length: maxDay }, (_, i) => i + 1), [maxDay]);
+
+  useEffect(() => {
+    if (birthDay > maxDay) setBirthDay(maxDay);
+  }, [maxDay, birthDay]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
+    const birthDate = toBirthIso(birthYear, birthMonth, birthDay);
+    if (!birthDate) {
+      setErr("Укажите корректную дату рождения (день, месяц и год).");
+      return;
+    }
     const body: Record<string, unknown> = {
       full_name: fullName,
       admission_date: admissionDate,
@@ -107,8 +165,57 @@ export default function PatientFormPage({ mode }: Props) {
             </div>
           </div>
           <div className="mt-2">
-            <label className="form-label">Дата рождения</label>
-            <input type="date" className="form-control" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+            <span className="form-label d-block">Дата рождения</span>
+            <div className="row g-2">
+              <div className="col-4">
+                <label className="form-label small text-muted mb-0">День</label>
+                <select
+                  className="form-select"
+                  required
+                  value={birthDay || ""}
+                  onChange={(e) => setBirthDay(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                >
+                  <option value="">—</option>
+                  {dayOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-4">
+                <label className="form-label small text-muted mb-0">Месяц</label>
+                <select
+                  className="form-select"
+                  required
+                  value={birthMonth || ""}
+                  onChange={(e) => setBirthMonth(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                >
+                  <option value="">—</option>
+                  {BIRTH_MONTHS.map((mo) => (
+                    <option key={mo.value} value={mo.value}>
+                      {mo.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-4">
+                <label className="form-label small text-muted mb-0">Год</label>
+                <select
+                  className="form-select"
+                  required
+                  value={birthYear || ""}
+                  onChange={(e) => setBirthYear(e.target.value ? parseInt(e.target.value, 10) : 0)}
+                >
+                  <option value="">—</option>
+                  {yearOptions.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
           <div className="mt-2">
             <label className="form-label">Вид обращения</label>

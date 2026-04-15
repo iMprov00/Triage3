@@ -38,15 +38,15 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="container-fluid py-3 bg-dark text-white min-vh-100">
-      <h1 className="h4 mb-3">Монитор</h1>
+    <div className="triag-monitor-page triag-full-bleed py-3 container-fluid">
+      <h1 className="h4 mb-3 text-white">Монитор</h1>
       <div className="row g-3">
         {rows.map((r) => (
-          <div key={String(r.id)} className="col-12 col-md-6 col-lg-4">
-            <div className="card bg-secondary text-white h-100">
+          <div key={String(r.id)} className="col-12 col-sm-6 col-xl-4">
+            <div className="card triag-monitor-card text-white h-100 border-0">
               <div className="card-body">
                 <div className="fw-bold">{String(r.full_name)}</div>
-                <div className="small text-white-50">{String(r.performer_name || "")}</div>
+                <div className="small triag-monitor-meta">{String(r.performer_name || "")}</div>
                 {r.is_in_actions ? (
                   <div className="mt-2">
                     <div className="small">Действия</div>

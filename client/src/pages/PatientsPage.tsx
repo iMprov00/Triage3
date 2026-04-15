@@ -58,11 +58,6 @@ export default function PatientsPage() {
     };
   }, [load]);
 
-  async function logout() {
-    await apiJson("/api/v1/logout", { method: "DELETE" });
-    nav("/login");
-  }
-
   useEffect(() => {
     const tick = window.setInterval(() => {
       setRows((prev) => [...prev]);
@@ -76,33 +71,25 @@ export default function PatientsPage() {
   }
 
   return (
-    <div className="container py-3">
+    <div className="container-fluid triag-page-wide px-0 px-sm-1">
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h4 mb-0">Пациенты</h1>
-        <div className="d-flex flex-wrap gap-2">
-          <Link to="/patients/new" className="btn btn-primary btn-sm">
-            Новый
-          </Link>
-          <Link to="/monitor" className="btn btn-outline-secondary btn-sm" target="_blank" rel="noreferrer">
-            Монитор
-          </Link>
-          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void logout()}>
-            Выход
-          </button>
-        </div>
+        <Link to="/patients/new" className="btn btn-primary btn-sm">
+          Новый пациент
+        </Link>
       </div>
 
       <div className="card mb-3">
-        <div className="card-body row g-2">
-          <div className="col-md-3">
+        <div className="card-body row g-2 g-md-3">
+          <div className="col-12 col-sm-6 col-lg-3">
             <label className="form-label small mb-0">Дата поступления</label>
             <input type="date" className="form-control" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} />
           </div>
-          <div className="col-md-3">
+          <div className="col-12 col-sm-6 col-lg-3">
             <label className="form-label small mb-0">Поиск</label>
             <input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ФИО, ID…" />
           </div>
-          <div className="col-md-3">
+          <div className="col-12 col-sm-6 col-lg-3">
             <label className="form-label small mb-0">Вид обращения</label>
             <select className="form-select" value={appealType} onChange={(e) => setAppealType(e.target.value)}>
               <option value="all">Все</option>
@@ -113,7 +100,7 @@ export default function PatientsPage() {
               ))}
             </select>
           </div>
-          <div className="col-md-3">
+          <div className="col-12 col-sm-6 col-lg-3">
             <label className="form-label small mb-0">Статус</label>
             <select className="form-select" value={onlyActive} onChange={(e) => setOnlyActive(e.target.value)}>
               <option value="">Все</option>
@@ -121,8 +108,8 @@ export default function PatientsPage() {
             </select>
           </div>
           <div className="col-12">
-            <button type="button" className="btn btn-sm btn-primary" onClick={() => void load()}>
-              Применить
+            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => void load()}>
+              Обновить список
             </button>
           </div>
         </div>
@@ -133,7 +120,7 @@ export default function PatientsPage() {
       <div className="row g-3">
         {rows.map((p) => (
           <div key={p.id} className="col-12 col-md-6 col-xl-4">
-            <div className={`card h-100 shadow-sm ${p.card_state_class}`}>
+            <div className={`card h-100 shadow-sm patient-b-card ${p.card_state_class}`}>
               <div className="card-body">
                 <h2 className="h6">{p.full_name}</h2>
                 <div className="small text-muted">

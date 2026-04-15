@@ -4,6 +4,7 @@ class TriageStatePresenter
   def self.call(patient, triage)
     {
       patient_id: patient.id,
+      patient_full_name: patient.full_name,
       step: triage.step,
       priority: triage.priority,
       priority_name: triage.priority_name,
@@ -19,7 +20,16 @@ class TriageStatePresenter
       actions_data: triage.actions_data || {},
       actions_started_at: triage.actions_started_at,
       actions_time_limit: Triage::ACTIONS_TIME_LIMIT,
+      actions_timer_ends_at: triage.actions_timer_ends_at,
+      brigade_called_at: triage.brigade_called_at&.iso8601(3),
+      brigade_time_limit: triage.brigade_time_limit,
+      brigade_timer_label: triage.brigade_timer_label,
       red_arrest_flow: triage.red_arrest_actions_flow?,
+      red_arrest_schema: {
+        team: Triage::RED_ARREST_TEAM.map { |e| { key: e[:key].to_s, label: e[:label] } },
+        manips: Triage::RED_ARREST_MANIPS.map { |e| { key: e[:key].to_s, label: e[:label] } },
+        vitals: Triage::RED_ARREST_VITALS.map { |e| { key: e[:key].to_s, label: e[:label] } }
+      },
       priority_actions: triage.priority_actions,
       final_action: triage.final_action,
       can_complete_final: triage.can_complete_final_action?,

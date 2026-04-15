@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
+import RedArrestActionsPanel, { type RedArrestTriageView } from "../components/RedArrestActionsPanel";
 
 type ActionDef = { key: string; text?: string; label?: string; starts_timer?: boolean; final?: boolean };
 
@@ -14,6 +15,7 @@ export default function TriageActionsPage() {
     try {
       const r = await apiJson<{ triage: Record<string, unknown> }>(`/api/v1/patients/${patientId}/triage/actions`);
       setTriage(r.triage);
+      setErr("");
     } catch {
       setErr("Недоступно");
     }
@@ -70,10 +72,10 @@ export default function TriageActionsPage() {
     <div className="container py-3">
       <Link to="/patients">← Пациенты</Link>
       <h1 className="h4 mt-2">Действия по приоритету</h1>
-      {triage.actions_started_at != null && (
+      {!red && triage.actions_started_at != null && (
         <div className="alert alert-info py-2 small">Фаза действий: {formatTimer(phaseRem)}</div>
       )}
-      {triage.brigade_timer_ends_at != null && (
+      {!red && triage.brigade_timer_ends_at != null && (
         <div className="alert alert-warning py-2 small">
           Таймер бригады: {formatTimer(Math.max(0, Math.floor((triage.brigade_timer_ends_at as number) - Date.now() / 1000)))}
         </div>
@@ -81,7 +83,13 @@ export default function TriageActionsPage() {
       {err && <div className="alert alert-danger py-2">{err}</div>}
 
       {red ? (
-        <div className="alert alert-secondary">Сценарий red_arrest: используйте классический экран или расширьте SPA (API уже есть).</div>
+        <RedArrestActionsPanel
+          patientId={patientId!}
+          triage={triage as RedArrestTriageView}
+          onRefresh={load}
+          onComplete={complete}
+          setErr={setErr}
+        />
       ) : (
         <ul className="list-group">
           {actions.map((a) => {

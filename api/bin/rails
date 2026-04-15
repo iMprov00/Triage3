@@ -1,4 +1,25 @@
 #!/usr/bin/env ruby.exe
+# Удаляет устаревший tmp/pids/server.pid, если процесс уже не существует (на Windows после Ctrl+C
+# at_exit не всегда срабатывает, и rackup считает, что сервер «ещё запущен»).
+if %w[server s].include?(ARGV[0].to_s)
+  require "fileutils"
+
+  root = File.expand_path("..", __dir__)
+  pid_path = File.join(root, "tmp", "pids", "server.pid")
+  if File.exist?(pid_path)
+    pid = File.read(pid_path).strip.to_i
+    if pid <= 0
+      FileUtils.rm_f(pid_path)
+    else
+      begin
+        Process.kill(0, pid)
+      rescue Errno::ESRCH, Errno::EINVAL
+        FileUtils.rm_f(pid_path)
+      end
+    end
+  end
+end
+
 APP_PATH = File.expand_path("../config/application", __dir__)
 require_relative "../config/boot"
 require "rails/commands"
