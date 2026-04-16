@@ -11,6 +11,15 @@ const APPEAL_TYPES = [
   "ДКЦ",
 ];
 
+type PatientDetailsResponse = {
+  patient: PatientListRow & {
+    birth_date?: string | null;
+    appeal_type?: string | null;
+    pregnancy_display?: string | null;
+  };
+  triage: PatientListRow["triage"];
+};
+
 export default function PatientsPage() {
   const nav = useNavigate();
   const [rows, setRows] = useState<PatientListRow[]>([]);
@@ -19,6 +28,11 @@ export default function PatientsPage() {
   const [search, setSearch] = useState("");
   const [appealType, setAppealType] = useState("all");
   const [onlyActive, setOnlyActive] = useState("");
+  const [detailsOpenFor, setDetailsOpenFor] = useState<number | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsErr, setDetailsErr] = useState("");
+  const [details, setDetails] = useState<PatientDetailsResponse | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PatientListRow | null>(null);
 
   const qs = useMemo(() => {
     const p = new URLSearchParams();
@@ -65,9 +79,98 @@ export default function PatientsPage() {
     return () => window.clearInterval(tick);
   }, []);
 
+  useEffect(() => {
+    if (detailsOpenFor == null && pendingDelete == null) return;
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.classList.remove("modal-open");
+      document.body.style.removeProperty("overflow");
+    };
+  }, [detailsOpenFor, pendingDelete]);
+
   function remaining(t: PatientListRow["triage"]): number {
     if (!t?.timer_active || !t.timer_ends_at) return 0;
     return Math.max(0, Math.floor(t.timer_ends_at - Date.now() / 1000));
+  }
+
+  function formatAdmissionDate(value?: string): string {
+    if (!value) return "—";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!m) return value;
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  }
+
+  function priorityTone(priority?: string): "red" | "yellow" | "purple" | "green" | "neutral" {
+    const p = (priority || "").toLowerCase();
+    if (p === "red") return "red";
+    if (p === "yellow") return "yellow";
+    if (p === "purple") return "purple";
+    if (p === "green") return "green";
+    return "neutral";
+  }
+
+  function statusLabel(p: PatientListRow): string {
+    if (!p.triage) return "Триаж не начат";
+    if (p.triage.completed_at && p.triage.actions_completed_at) return "Завершено";
+    if (p.triage.completed_at && !p.triage.actions_completed_at) return "Выполняются действия";
+    return `Шаг ${p.triage.step}`;
+  }
+
+  async function openDetails(patientId: number) {
+    setDetailsOpenFor(patientId);
+    setDetailsLoading(true);
+    setDetailsErr("");
+    try {
+      const data = await apiJson<PatientDetailsResponse>(`/api/v1/patients/${patientId}`);
+      setDetails(data);
+    } catch {
+      setDetails(null);
+      setDetailsErr("Не удалось загрузить данные пациента");
+    } finally {
+      setDetailsLoading(false);
+    }
+  }
+
+  function closeDetails() {
+    setDetailsOpenFor(null);
+    setDetails(null);
+    setDetailsLoading(false);
+    setDetailsErr("");
+  }
+
+  function openDeleteConfirm(patient: PatientListRow) {
+    setPendingDelete(patient);
+  }
+
+  function closeDeleteConfirm() {
+    setPendingDelete(null);
+  }
+
+  async function executeDeletePatient() {
+    if (!pendingDelete) return;
+    try {
+      await apiJson(`/api/v1/patients/${pendingDelete.id}`, { method: "DELETE" });
+      setPendingDelete(null);
+      closeDetails();
+      await load();
+    } catch {
+      setDetailsErr("Не удалось удалить пациента");
+      setPendingDelete(null);
+    }
+  }
+
+  function hasStepData(t: PatientListRow["triage"], step: 1 | 2 | 3): boolean {
+    if (!t) return false;
+    if (step === 1) return Object.keys(t.step1_data || {}).length > 0 || t.step >= 1;
+    if (step === 2) return Object.keys(t.step2_data || {}).length > 0 || t.step >= 2;
+    return Object.keys(t.step3_data || {}).length > 0 || t.step >= 3;
+  }
+
+  function editStepPath(patientId: number, stepNum: 1 | 2 | 3): string {
+    if (stepNum === 1) return `/patients/${patientId}/triage`;
+    if (stepNum === 2) return `/patients/${patientId}/triage/step2`;
+    return `/patients/${patientId}/triage/step3`;
   }
 
   return (
@@ -123,27 +226,37 @@ export default function PatientsPage() {
             <div className={`card h-100 shadow-sm patient-b-card ${p.card_state_class}`}>
               <div className="card-body">
                 <h2 className="h6">{p.full_name}</h2>
+                <div className="patient-card-tags">
+                  <span className="patient-tag patient-tag--status">{statusLabel(p)}</span>
+                  {p.triage?.priority_name && (
+                    <span className={`patient-tag patient-tag--priority patient-tag--${priorityTone(p.triage.priority)}`}>
+                      Приоритет: {p.triage.priority_name}
+                    </span>
+                  )}
+                  {p.triage?.completed_at && p.triage.actions_completed_at && <span className="patient-tag patient-tag--done">Готово</span>}
+                </div>
                 <div className="small text-muted">
-                  {p.admission_date} {p.admission_time && `· ${p.admission_time}`}
+                  Поступление: {formatAdmissionDate(p.admission_date)}
+                  {p.admission_time ? ` · ${p.admission_time}` : ""}
                   <br />
-                  исп. <strong>{p.performer_name}</strong>
+                  Исполнитель: <strong>{p.performer_name || "—"}</strong>
                 </div>
                 {p.triage?.timer_active && p.triage.timer_ends_at ? (
-                  <div className="mt-2 small">
-                    <div className="text-muted">Таймер</div>
-                    <div className="fw-bold">{formatTimer(remaining(p.triage))}</div>
-                    <div className="progress mt-1" style={{ height: 6 }}>
+                  <div className="mt-2 patient-timer-box">
+                    <div className="patient-timer-head">
+                      <span className="text-muted small">Таймер</span>
+                      <strong className="patient-timer-value">{formatTimer(remaining(p.triage))}</strong>
+                    </div>
+                    <div className="progress patient-timer-progress mt-1" style={{ height: 7 }}>
                       <div
-                        className="progress-bar"
+                        className={`progress-bar patient-timer-bar patient-timer-bar--${priorityTone(p.triage.priority)}`}
                         style={{
                           width: `${Math.min(100, (remaining(p.triage) / (p.triage.max_time || 120)) * 100)}%`,
                         }}
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="small text-muted mt-2">{p.triage ? `Шаг ${p.triage.step}` : "Триаж не начат"}</div>
-                )}
+                ) : null}
                 <div className="mt-3 d-grid gap-2">
                   {!p.triage && (
                     <button
@@ -168,15 +281,182 @@ export default function PatientsPage() {
                       Действия
                     </Link>
                   )}
-                  <Link to={`/patients/${p.id}/edit`} className="btn btn-outline-secondary btn-sm">
-                    Карта
-                  </Link>
+                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void openDetails(p.id)}>
+                    Подробнее
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         ))}
       </div>
+      {detailsOpenFor != null && (
+        <>
+          <div className="modal-backdrop fade show" onClick={closeDetails} />
+          <div className="modal fade show d-block patient-details-modal" role="dialog" aria-modal="true" aria-label="Подробнее о пациенте">
+            <div className="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+              <div className="modal-content patient-details-content">
+                <div className="modal-header">
+                  <h2 className="modal-title h5 mb-0">Подробнее о пациенте</h2>
+                  <button type="button" className="btn-close" aria-label="Закрыть" onClick={closeDetails} />
+                </div>
+                <div className="modal-body">
+                  {detailsLoading && <div className="text-muted">Загрузка...</div>}
+                  {!detailsLoading && detailsErr && <div className="alert alert-warning py-2 mb-0">{detailsErr}</div>}
+                  {!detailsLoading && !detailsErr && details && (
+                    <div className="d-grid gap-3 patient-details-grid">
+                      <div>
+                        <h3 className="h6 mb-2">{details.patient.full_name}</h3>
+                        <div className="small text-muted">
+                          ID: {details.patient.id}
+                          <br />
+                          Поступление: {details.patient.admission_date}
+                          {details.patient.admission_time ? ` · ${details.patient.admission_time}` : ""}
+                          <br />
+                          Исполнитель: <strong>{details.patient.performer_name || "—"}</strong>
+                        </div>
+                      </div>
+                      <div className="small patient-details-facts">
+                        <div>
+                          Дата рождения: <strong>{details.patient.birth_date || "—"}</strong>
+                        </div>
+                        <div>
+                          Вид обращения: <strong>{details.patient.appeal_type || "—"}</strong>
+                        </div>
+                        <div>
+                          Беременность: <strong>{details.patient.pregnancy_display || "—"}</strong>
+                        </div>
+                        <div>
+                          Статус триажа:{" "}
+                          <strong>{details.triage ? `Шаг ${details.triage.step} · ${details.triage.priority_name}` : "Триаж не начат"}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!detailsLoading && details && (
+                  <div className="modal-footer patient-details-footer">
+                    <div className="patient-details-main-action d-grid gap-2">
+                      {!details.triage && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={async () => {
+                            await apiJson(`/api/v1/patients/${details.patient.id}/triage/start`, { method: "POST", json: {} });
+                            closeDetails();
+                            await load();
+                            nav(`/patients/${details.patient.id}/triage`);
+                          }}
+                        >
+                          Начать триаж
+                        </button>
+                      )}
+                      {details.triage && !details.triage.completed_at && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => {
+                            closeDetails();
+                            nav(`/patients/${details.patient.id}/triage`);
+                          }}
+                        >
+                          Шаг {details.triage.step}
+                        </button>
+                      )}
+                      {details.triage?.completed_at && !details.triage.actions_completed_at && (
+                        <button
+                          type="button"
+                          className="btn btn-warning"
+                          onClick={() => {
+                            closeDetails();
+                            nav(`/patients/${details.patient.id}/triage/actions`);
+                          }}
+                        >
+                          Действия
+                        </button>
+                      )}
+                    </div>
+                    {details.patient.can_edit_saved_steps && details.triage && (
+                      <div className="patient-details-step-actions d-grid gap-2">
+                        <div className="small text-muted">Редактирование шагов:</div>
+                        <div className="d-flex flex-wrap gap-2">
+                          {[1, 2, 3].map((stepNum) =>
+                            hasStepData(details.triage, stepNum as 1 | 2 | 3) ? (
+                              <button
+                                key={stepNum}
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={() => {
+                                  closeDetails();
+                                  nav(editStepPath(details.patient.id, stepNum as 1 | 2 | 3));
+                                }}
+                              >
+                                Шаг {stepNum}
+                              </button>
+                            ) : null,
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="patient-details-bottom-actions d-flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => {
+                          closeDetails();
+                          nav(`/patients/${details.patient.id}/edit`);
+                        }}
+                      >
+                        Данные пациента
+                      </button>
+                      {details.patient.can_delete && (
+                        <button type="button" className="btn btn-soft-danger btn-sm" onClick={() => openDeleteConfirm(details.patient)}>
+                          Удалить пациента
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      {pendingDelete != null && (
+        <>
+          <div className="modal-backdrop fade show patient-delete-backdrop" onClick={closeDeleteConfirm} />
+          <div
+            className="modal fade show d-block patient-delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="patient-delete-title"
+          >
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h2 className="modal-title h5 mb-0" id="patient-delete-title">
+                    Удаление пациента
+                  </h2>
+                  <button type="button" className="btn-close" aria-label="Закрыть" onClick={closeDeleteConfirm} />
+                </div>
+                <div className="modal-body">
+                  <p className="mb-0">
+                    Удалить пациента <strong>«{pendingDelete.full_name}»</strong>? Это действие нельзя отменить.
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-outline-secondary" onClick={closeDeleteConfirm}>
+                    Отмена
+                  </button>
+                  <button type="button" className="btn btn-danger" onClick={() => void executeDeletePatient()}>
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -44,12 +44,17 @@ function toBirthIso(y: number, m: number, d: number): string | null {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
+function nowLocalTimeHm(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function PatientFormPage({ mode }: Props) {
   const { patientId } = useParams();
   const nav = useNavigate();
   const [fullName, setFullName] = useState("");
   const [admissionDate, setAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [admissionTime, setAdmissionTime] = useState("08:00");
+  const [admissionTime, setAdmissionTime] = useState(() => (mode === "new" ? nowLocalTimeHm() : "08:00"));
   const [birthDay, setBirthDay] = useState(0);
   const [birthMonth, setBirthMonth] = useState(0);
   const [birthYear, setBirthYear] = useState(0);
@@ -144,7 +149,10 @@ export default function PatientFormPage({ mode }: Props) {
   return (
     <div className="container py-3" style={{ maxWidth: 640 }}>
       <div className="mb-3">
-        <Link to="/patients">← К списку</Link>
+        <Link to="/patients" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
+          <i className="bi bi-arrow-left" aria-hidden />
+          К списку
+        </Link>
       </div>
       <h1 className="h4 mb-3">{mode === "new" ? "Новый пациент" : "Карта пациента"}</h1>
       <form onSubmit={(e) => void submit(e)} className="card shadow-sm">

@@ -86,11 +86,13 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
   const actionsRem =
     actionsEnds != null ? Math.max(0, Math.floor(actionsEnds - Date.now() / 1000)) : 0;
   const actionsPct = actionsEnds != null ? Math.min(100, Math.round((actionsRem / actionsLimit) * 100)) : 0;
+  const actionsTone = actionsRem <= 0 ? "danger" : actionsPct <= 25 ? "danger" : actionsPct <= 50 ? "warning" : "ok";
 
   const brigadeEnds = triage.brigade_timer_ends_at ?? null;
   const brigadeRem =
     brigadeEnds != null ? Math.max(0, Math.floor(brigadeEnds - Date.now() / 1000)) : 0;
   const brigadePct = brigadeEnds != null ? Math.min(100, Math.round((brigadeRem / brigadeLimit) * 100)) : 0;
+  const brigadeTone = brigadeRem <= 0 ? "danger" : brigadePct <= 25 ? "danger" : brigadePct <= 50 ? "warning" : "ok";
 
   const post = useCallback(
     async (path: string, json: Record<string, unknown>) => {
@@ -149,19 +151,17 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
 
       <div className="row mb-3">
         <div className="col-lg-6 mb-3">
-          <div className="card h-100 shadow-sm">
+          <div className={`card h-100 shadow-sm triage-timer-card triage-timer-card--${actionsTone} ${actionsRem <= 0 ? "triage-timer-card--expired" : ""}`}>
             <div className="card-header py-2">
               <span className="text-muted small text-uppercase">Время на действия</span>
             </div>
             <div className="card-body">
-              <div className={`text-center p-3 rounded ${actionsRem <= 0 ? "bg-danger-subtle" : "bg-light"}`}>
+              <div className="text-center p-3 rounded bg-light-subtle">
                 <div className="display-6 fw-bold">{formatTimer(actionsRem)}</div>
                 <small className="text-muted">из {Math.round(actionsLimit / 60)} минут</small>
-                <div className="progress mt-3" style={{ height: 8 }}>
+                <div className="progress mt-3 triage-timer-progress" style={{ height: 8 }}>
                   <div
-                    className={`progress-bar ${
-                      actionsPct <= 25 ? "bg-danger" : actionsPct <= 50 ? "bg-warning" : "bg-success"
-                    }`}
+                    className={`progress-bar triage-timer-bar triage-timer-bar--${actionsTone}`}
                     style={{ width: `${actionsPct}%` }}
                   />
                 </div>
@@ -171,16 +171,16 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
         </div>
         {brigadeOk && (
           <div className="col-lg-6 mb-3">
-            <div className="card h-100 border-danger shadow-sm">
-              <div className="card-header bg-danger text-white py-2">
+            <div className={`card h-100 shadow-sm triage-timer-card triage-timer-card--${brigadeTone} ${brigadeRem <= 0 ? "triage-timer-card--expired" : ""}`}>
+              <div className="card-header py-2">
                 <span className="small text-uppercase">{triage.brigade_timer_label || "Время прибытия бригады"}</span>
               </div>
               <div className="card-body">
-                <div className="text-center p-3 rounded bg-light">
+                <div className="text-center p-3 rounded bg-light-subtle">
                   <div className="display-6 fw-bold">{formatTimer(brigadeRem)}</div>
                   <small className="text-muted">из {Math.round(brigadeLimit / 60)} минут</small>
-                  <div className="progress mt-3" style={{ height: 8 }}>
-                    <div className="progress-bar bg-warning" style={{ width: `${brigadePct}%` }} />
+                  <div className="progress mt-3 triage-timer-progress" style={{ height: 8 }}>
+                    <div className={`progress-bar triage-timer-bar triage-timer-bar--${brigadeTone}`} style={{ width: `${brigadePct}%` }} />
                   </div>
                 </div>
               </div>

@@ -1,5 +1,5 @@
 /* TriagV3 PWA: статика — stale-while-revalidate; API не кешируем */
-const STATIC = "triag-client-static-v1";
+const STATIC = "triag-client-static-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
+import { triageStepMaxSeconds } from "../triageUi";
 
 type Options = { positions: string[]; urgency_criteria: string[]; infection_signs: string[] };
 
@@ -13,6 +14,7 @@ export default function TriageStep2Page() {
   const [urgency, setUrgency] = useState<string[]>([]);
   const [infection, setInfection] = useState<string[]>([]);
   const [err, setErr] = useState("");
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     void (async () => {
@@ -33,10 +35,18 @@ export default function TriageStep2Page() {
     })();
   }, [patientId]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((x) => x + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const rem =
     triage?.timer_active && triage.timer_ends_at
       ? Math.max(0, Math.floor((triage.timer_ends_at as number) - Date.now() / 1000))
       : 0;
+  const maxTime = triageStepMaxSeconds(triage);
+  const timerPct = Math.min(100, (rem / maxTime) * 100);
+  const timerTone = rem <= 0 ? "danger" : timerPct <= 25 ? "danger" : timerPct <= 50 ? "warning" : "ok";
 
   function toggle(arr: string[], v: string, set: (x: string[]) => void) {
     if (arr.includes(v)) set(arr.filter((x) => x !== v));
@@ -61,26 +71,46 @@ export default function TriageStep2Page() {
     }
   }
 
-  if (!opts || !triage) return <div className="container py-3">{err || "Загрузка…"}</div>;
+  if (!opts || !triage) return <div className="container-fluid triag-page-wide"><div className="triage-page-shell py-2 py-sm-3">{err || "Загрузка…"}</div></div>;
 
   if ((triage.step as number) !== 2) {
     return (
-      <div className="container py-3">
-        <Link to="/patients">← Назад</Link>
+      <div className="container-fluid triag-page-wide">
+        <div className="triage-page-shell py-2 py-sm-3">
+        <Link to="/patients" className="triage-back-link">← Назад</Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-3">
-      <Link to="/patients">← Пациенты</Link>
-      <h1 className="h4 mt-2">Шаг 2</h1>
-      <div className="alert alert-secondary py-2">Осталось: {formatTimer(rem)}</div>
+    <div className="container-fluid triag-page-wide">
+      <div className="triage-page-shell py-2 py-sm-3">
+      <div className="triage-page-head">
+        <Link to="/patients" className="triage-back-link">← Пациенты</Link>
+        <h1 className="h4 triage-page-title">Шаг 2</h1>
+      </div>
+      <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
+        <div className="triage-timer-row">
+          <span className="small text-muted">Осталось времени</span>
+          <span className="triage-timer-value">{formatTimer(rem)}</span>
+        </div>
+        <div className="progress triage-timer-progress">
+          <div className={`progress-bar triage-timer-bar triage-timer-bar--${timerTone}`} style={{ width: `${timerPct}%` }} />
+        </div>
+      </div>
       {err && <div className="alert alert-danger py-2">{err}</div>}
-      <form onSubmit={(e) => void submit(e)} className="card">
+      <form onSubmit={(e) => void submit(e)} className="card triage-form-card">
         <div className="card-body">
           <label className="form-label">Положение</label>
-          <select className="form-select mb-3" required value={position} onChange={(e) => setPosition(e.target.value)}>
+          <select
+            className={`form-select mb-3 ${
+              position && position !== "активное положение, свободное перемещение" ? "triage-select-yellow" : ""
+            }`}
+            required
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+          >
             <option value="">—</option>
             {opts.positions.map((p) => (
               <option key={p} value={p}>
@@ -89,23 +119,23 @@ export default function TriageStep2Page() {
             ))}
           </select>
           <div className="mb-2 fw-semibold">Критерии неотложности</div>
-          <div className="row row-cols-1 g-1 mb-3">
+          <div className="row row-cols-1 g-2 mb-3">
             {opts.urgency_criteria.map((c) => (
               <div key={c} className="col">
-                <label className="form-check">
-                  <input type="checkbox" className="form-check-input" checked={urgency.includes(c)} onChange={() => toggle(urgency, c, setUrgency)} />
-                  <span className="form-check-label small">{c}</span>
+                <label className={`triage-check-item ${urgency.includes(c) ? "triage-check-item--yellow" : ""}`}>
+                  <input type="checkbox" className="triage-check-input" checked={urgency.includes(c)} onChange={() => toggle(urgency, c, setUrgency)} />
+                  <span className="form-check-label triage-check-label">{c}</span>
                 </label>
               </div>
             ))}
           </div>
           <div className="mb-2 fw-semibold">Инфекция</div>
-          <div className="row row-cols-1 g-1">
+          <div className="row row-cols-1 g-2">
             {opts.infection_signs.map((c) => (
               <div key={c} className="col">
-                <label className="form-check">
-                  <input type="checkbox" className="form-check-input" checked={infection.includes(c)} onChange={() => toggle(infection, c, setInfection)} />
-                  <span className="form-check-label small">{c}</span>
+                <label className={`triage-check-item ${infection.includes(c) ? "triage-check-item--purple" : ""}`}>
+                  <input type="checkbox" className="triage-check-input" checked={infection.includes(c)} onChange={() => toggle(infection, c, setInfection)} />
+                  <span className="form-check-label triage-check-label">{c}</span>
                 </label>
               </div>
             ))}
@@ -115,6 +145,7 @@ export default function TriageStep2Page() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

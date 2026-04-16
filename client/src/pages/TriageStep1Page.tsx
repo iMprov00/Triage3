@@ -1,12 +1,82 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
+import { triageStepMaxSeconds } from "../triageUi";
 
 type Options = {
   eye_opening: string[];
   verbal_response: string[];
   motor_response: string[];
 };
+
+const EYE_SCORES: Record<string, number> = {
+  "произвольно открывает": 4,
+  "глаза закрыты": 3,
+  "открывает в ответ на голос": 3,
+  "открывает в ответ на болезненную стимуляцию": 2,
+  "глаза закрыты, нет реакции": 1,
+};
+
+const VERBAL_SCORES: Record<string, number> = {
+  "четко и своевременно отвечает на вопросы": 4,
+  "плохо ориентируется, речь невнятна": 3,
+  "речь бессвязная, набор слов, общий смысл отсутствует": 2,
+  "не отвечает": 1,
+};
+
+const MOTOR_SCORES: Record<string, number> = {
+  "осуществляет действия по требованию": 6,
+  "отталкивает конечности при болевом раздражении": 5,
+  "конечность дергается при болевом раздражении": 4,
+  "патологический сгибательный рефлекс": 3,
+  "патологический разгибательный рефлекс": 2,
+  "не двигается": 1,
+};
+
+type YesNoToggleProps = {
+  name: string;
+  label: string;
+  value: boolean;
+  /** «Да» — хороший вариант (зелёный), «Нет» — плохой (красный) */
+  mode: "yes_good" | "no_good";
+  onChange: (next: boolean) => void;
+};
+
+function YesNoToggle({ name, label, value, onChange, mode }: YesNoToggleProps) {
+  const yesId = `${name}_yes`;
+  const noId = `${name}_no`;
+  const yesTone = mode === "yes_good" ? "triage-yn-slot-yes-good" : "triage-yn-slot-yes-bad";
+  const noTone = mode === "yes_good" ? "triage-yn-slot-no-bad" : "triage-yn-slot-no-good";
+  return (
+    <div className="triage-yn-item">
+      <div className="triage-yn-label">{label}</div>
+      <div className="triage-yn-row" role="group" aria-label={label}>
+        <input
+          type="radio"
+          className="btn-check"
+          name={name}
+          id={yesId}
+          checked={value === true}
+          onChange={() => onChange(true)}
+        />
+        <label className={`triage-yn-slot ${yesTone}`} htmlFor={yesId}>
+          Да
+        </label>
+        <input
+          type="radio"
+          className="btn-check"
+          name={name}
+          id={noId}
+          checked={value === false}
+          onChange={() => onChange(false)}
+        />
+        <label className={`triage-yn-slot ${noTone}`} htmlFor={noId}>
+          Нет
+        </label>
+      </div>
+    </div>
+  );
+}
 
 export default function TriageStep1Page() {
   const { patientId } = useParams();
@@ -21,6 +91,7 @@ export default function TriageStep1Page() {
   const [seizures, setSeizures] = useState(false);
   const [bleeding, setBleeding] = useState(false);
   const [err, setErr] = useState("");
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     void (async () => {
@@ -45,10 +116,22 @@ export default function TriageStep1Page() {
     })();
   }, [patientId]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((x) => x + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const rem =
     triage?.timer_active && triage.timer_ends_at
       ? Math.max(0, Math.floor((triage.timer_ends_at as number) - Date.now() / 1000))
       : 0;
+  const maxTime = triageStepMaxSeconds(triage);
+  const timerPct = Math.min(100, (rem / maxTime) * 100);
+  const timerTone = rem <= 0 ? "danger" : timerPct <= 25 ? "danger" : timerPct <= 50 ? "warning" : "ok";
+  const eyeScore = EYE_SCORES[eye] || 0;
+  const verbalScore = VERBAL_SCORES[verbal] || 0;
+  const motorScore = MOTOR_SCORES[motor] || 0;
+  const totalScore = eyeScore + verbalScore + motorScore;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,10 +159,12 @@ export default function TriageStep1Page() {
 
   if (!opts || !triage) {
     return (
-      <div className="container py-3">
+      <div className="container-fluid triag-page-wide">
+        <div className="triage-page-shell py-2 py-sm-3">
         {err || "Загрузка…"}
         <div className="mt-2">
-          <Link to="/patients">← Назад</Link>
+          <Link to="/patients" className="triage-back-link">← Назад</Link>
+        </div>
         </div>
       </div>
     );
@@ -87,20 +172,33 @@ export default function TriageStep1Page() {
 
   if ((triage.step as number) !== 1) {
     return (
-      <div className="container py-3">
+      <div className="container-fluid triag-page-wide">
+        <div className="triage-page-shell py-2 py-sm-3">
         <p>Откройте текущий шаг из списка.</p>
-        <Link to="/patients">← Назад</Link>
+        <Link to="/patients" className="triage-back-link">← Назад</Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-3">
-      <Link to="/patients">← Пациенты</Link>
-      <h1 className="h4 mt-2">Шаг 1</h1>
-      <div className="alert alert-secondary py-2">Осталось: {formatTimer(rem)}</div>
+    <div className="container-fluid triag-page-wide">
+      <div className="triage-page-shell py-2 py-sm-3">
+      <div className="triage-page-head">
+        <Link to="/patients" className="triage-back-link">← Пациенты</Link>
+        <h1 className="h4 triage-page-title">Шаг 1</h1>
+      </div>
+      <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
+        <div className="triage-timer-row">
+          <span className="small text-muted">Осталось времени</span>
+          <span className="triage-timer-value">{formatTimer(rem)}</span>
+        </div>
+        <div className="progress triage-timer-progress">
+          <div className={`progress-bar triage-timer-bar triage-timer-bar--${timerTone}`} style={{ width: `${timerPct}%` }} />
+        </div>
+      </div>
       {err && <div className="alert alert-danger py-2">{err}</div>}
-      <form onSubmit={(e) => void submit(e)} className="card">
+      <form onSubmit={(e) => void submit(e)} className="card triage-form-card">
         <div className="card-body row g-3">
           <div className="col-md-4">
             <label className="form-label">Открывание глаз</label>
@@ -136,29 +234,20 @@ export default function TriageStep1Page() {
             </select>
           </div>
           <div className="col-12">
-            <div className="form-check form-check-inline">
-              <input className="form-check-input" type="checkbox" id="br" checked={breathing} onChange={(e) => setBreathing(e.target.checked)} />
-              <label className="form-check-label" htmlFor="br">
-                Дыхание да
-              </label>
+            <div className="triage-yn-grid">
+              <YesNoToggle name="breathing" label="Дыхание" mode="yes_good" value={breathing} onChange={setBreathing} />
+              <YesNoToggle name="heartbeat" label="Сердцебиение" mode="yes_good" value={heartbeat} onChange={setHeartbeat} />
+              <YesNoToggle name="seizures" label="Судороги" mode="no_good" value={seizures} onChange={setSeizures} />
+              <YesNoToggle name="bleeding" label="Кровотечение" mode="no_good" value={bleeding} onChange={setBleeding} />
             </div>
-            <div className="form-check form-check-inline">
-              <input className="form-check-input" type="checkbox" id="hb" checked={heartbeat} onChange={(e) => setHeartbeat(e.target.checked)} />
-              <label className="form-check-label" htmlFor="hb">
-                Сердцебиение да
-              </label>
-            </div>
-            <div className="form-check form-check-inline">
-              <input className="form-check-input" type="checkbox" id="sz" checked={seizures} onChange={(e) => setSeizures(e.target.checked)} />
-              <label className="form-check-label" htmlFor="sz">
-                Судороги
-              </label>
-            </div>
-            <div className="form-check form-check-inline">
-              <input className="form-check-input" type="checkbox" id="bl" checked={bleeding} onChange={(e) => setBleeding(e.target.checked)} />
-              <label className="form-check-label" htmlFor="bl">
-                Кровотечение
-              </label>
+          </div>
+          <div className="col-12">
+            <div className={`triage-score-box ${totalScore > 0 && totalScore <= 8 ? "triage-score-box--alert" : ""}`}>
+              <div className="small text-muted">Сумма баллов (уровень сознания)</div>
+              <div className="triage-score-total">{totalScore}</div>
+              <div className="small text-muted">
+                Глаза: {eyeScore} · Речь: {verbalScore} · Двигательные: {motorScore}
+              </div>
             </div>
           </div>
           <div className="col-12">
@@ -168,6 +257,7 @@ export default function TriageStep1Page() {
           </div>
         </div>
       </form>
+      </div>
     </div>
   );
 }

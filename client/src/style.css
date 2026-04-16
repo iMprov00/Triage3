@@ -247,6 +247,112 @@ body {
   border-bottom-color: var(--triag-border);
 }
 
+.patient-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.patient-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.patient-tag--status {
+  background: rgba(84, 198, 84, 0.12);
+  color: #2f6f2f;
+  border-color: rgba(84, 198, 84, 0.35);
+}
+
+.patient-tag--priority {
+  background: #f5f5f4;
+  color: #44403c;
+  border-color: #d6d3d1;
+}
+
+.patient-tag--red {
+  background: rgba(220, 38, 38, 0.12);
+  color: #991b1b;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.patient-tag--yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.patient-tag--purple {
+  background: rgba(139, 92, 246, 0.14);
+  color: #5b21b6;
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.patient-tag--green {
+  background: rgba(16, 185, 129, 0.14);
+  color: #065f46;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.patient-tag--done {
+  background: rgba(71, 85, 105, 0.12);
+  color: #334155;
+  border-color: rgba(71, 85, 105, 0.35);
+}
+
+.patient-timer-box {
+  padding: 0.55rem 0.65rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(214, 211, 209, 0.7);
+}
+
+.patient-timer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.patient-timer-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.03rem;
+  letter-spacing: 0.01em;
+  color: #1f2937;
+}
+
+.patient-timer-progress {
+  background: rgba(214, 211, 209, 0.55);
+}
+
+.patient-timer-bar {
+  transition: width 0.35s linear;
+}
+
+.patient-timer-bar--neutral,
+.patient-timer-bar--green {
+  background: #54c654;
+}
+
+.patient-timer-bar--yellow {
+  background: #f59e0b;
+}
+
+.patient-timer-bar--purple {
+  background: #8b5cf6;
+}
+
+.patient-timer-bar--red {
+  background: #dc2626;
+}
+
 /* ---------- Карточки пациентов (классы с API) ---------- */
 .card.patient-b-card,
 .patient-b-card.card {
@@ -396,40 +502,359 @@ body {
   margin-right: auto;
 }
 
-/* ---------- Монитор: полная ширина экрана + тёмная тема с акцентом legacy ---------- */
-.triag-full-bleed {
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  box-sizing: border-box;
-}
-
+/* ---------- Монитор (ТВ): без шапки приложения, крупная вёрстка ---------- */
 .triag-monitor-page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: clamp(0.75rem, 1.8vw, 2rem) clamp(0.75rem, 2vw, 2.5rem) calc(clamp(0.75rem, 1.8vw, 2rem) + env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(84, 198, 84, 0.14), transparent 55%),
+    linear-gradient(168deg, #0b1220 0%, #111827 38%, #0f172a 100%);
+  color: #f1f5f9;
+}
+
+.monitor-tv {
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.monitor-tv-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  margin-bottom: clamp(1rem, 2.2vw, 2rem);
+  padding-bottom: clamp(0.75rem, 1.5vw, 1.25rem);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.monitor-tv-brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  min-width: 0;
+}
+
+.monitor-tv-logo {
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.monitor-tv-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 3.2vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.monitor-tv-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: clamp(0.85rem, 1.35vw, 1.1rem);
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.monitor-tv-clock-block {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.monitor-tv-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 4.25rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(84, 198, 84, 0.25);
+}
+
+.monitor-tv-date {
+  margin-top: 0.35rem;
+  font-size: clamp(0.8rem, 1.2vw, 1rem);
+  color: rgba(203, 213, 225, 0.88);
+  text-transform: capitalize;
+}
+
+.monitor-tv-live {
+  margin-top: 0.4rem;
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.monitor-tv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: clamp(0.85rem, 1.8vw, 1.75rem);
+}
+
+@media (min-width: 1400px) {
+  .monitor-tv-grid {
+    grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
+  }
+}
+
+@media (min-width: 2200px) {
+  .monitor-tv-grid {
+    grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+  }
+}
+
+.monitor-tv-card {
+  position: relative;
+  border-radius: clamp(14px, 1.2vw, 22px);
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  min-height: clamp(12rem, 28vw, 20rem);
+}
+
+.monitor-tv-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: clamp(6px, 0.7vw, 10px);
+  background: rgba(100, 116, 139, 0.85);
+}
+
+.monitor-tv-card--priority-red .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #f87171, #b91c1c);
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.45);
+}
+
+.monitor-tv-card--priority-yellow .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #fbbf24, #b45309);
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.35);
+}
+
+.monitor-tv-card--priority-purple .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #c084fc, #6d28d9);
+  box-shadow: 0 0 18px rgba(192, 132, 252, 0.35);
+}
+
+.monitor-tv-card--priority-green .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #4ade80, #15803d);
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.3);
+}
+
+.monitor-tv-card-inner {
+  padding: clamp(0.85rem, 1.5vw, 1.35rem) clamp(0.85rem, 1.5vw, 1.35rem) clamp(0.85rem, 1.5vw, 1.35rem)
+    clamp(1rem, 1.6vw, 1.5rem);
+}
+
+.monitor-tv-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.monitor-tv-name {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #fff;
   flex: 1 1 auto;
-  min-height: min(100dvh, 100%);
-  background: linear-gradient(165deg, #0f172a 0%, #1e293b 42%, #0f172a 100%);
-  color: #f8fafc;
-  border-top: 3px solid var(--triag-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  padding-left: max(0.75rem, env(safe-area-inset-left, 12px));
-  padding-right: max(0.75rem, env(safe-area-inset-right, 12px));
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  min-width: 0;
 }
 
-.triag-monitor-page .triag-monitor-card {
-  background: rgba(30, 41, 59, 0.92);
-  border: 1px solid rgba(84, 198, 84, 0.22);
-  border-radius: var(--triag-radius-lg);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+.monitor-tv-pill {
+  flex-shrink: 0;
+  font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+  font-weight: 700;
+  padding: 0.35em 0.75em;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
 }
 
-.triag-monitor-page .triag-monitor-card .card-body {
-  color: inherit;
+.monitor-tv-pill--red {
+  background: rgba(127, 29, 29, 0.55);
+  border-color: rgba(252, 165, 165, 0.45);
+  color: #fecaca;
 }
 
-.triag-monitor-meta {
-  color: rgba(248, 250, 252, 0.65);
+.monitor-tv-pill--yellow {
+  background: rgba(120, 53, 15, 0.5);
+  border-color: rgba(253, 224, 71, 0.4);
+  color: #fef9c3;
+}
+
+.monitor-tv-pill--purple {
+  background: rgba(76, 29, 149, 0.45);
+  border-color: rgba(196, 181, 253, 0.4);
+  color: #ede9fe;
+}
+
+.monitor-tv-pill--green {
+  background: rgba(20, 83, 45, 0.5);
+  border-color: rgba(134, 239, 172, 0.4);
+  color: #dcfce7;
+}
+
+.monitor-tv-meta {
+  margin-top: clamp(0.5rem, 1vw, 0.85rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: clamp(0.78rem, 1.15vw, 1rem);
+  color: rgba(203, 213, 225, 0.88);
+}
+
+.monitor-tv-meta-item {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-tv-phase {
+  margin-top: clamp(0.55rem, 1vw, 0.9rem);
+  font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+  font-weight: 600;
+  color: rgba(148, 197, 255, 0.95);
+}
+
+.monitor-tv-phase--actions {
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.monitor-tv-actions-progress {
+  margin-top: 0.65rem;
+}
+
+.monitor-tv-actions-progress-label {
+  font-size: clamp(0.75rem, 1.05vw, 0.95rem);
+  color: rgba(226, 232, 240, 0.85);
+  margin-bottom: 0.35rem;
+}
+
+.monitor-tv-timer-block {
+  margin-top: clamp(0.65rem, 1.2vw, 1rem);
+}
+
+.monitor-tv-timer-block--secondary {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(71, 85, 105, 0.65);
+}
+
+.monitor-tv-timer-label {
+  font-size: clamp(0.68rem, 1vw, 0.88rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(148, 163, 184, 0.95);
+  margin-bottom: 0.25rem;
+}
+
+.monitor-tv-digits {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  margin: 0.15rem 0 0.5rem;
+}
+
+.monitor-tv-digits--sm {
+  font-size: clamp(1.35rem, 3vw, 2.25rem);
+}
+
+.monitor-tv-digits--ok {
+  color: #86efac;
+  text-shadow: 0 0 28px rgba(74, 222, 128, 0.25);
+}
+
+.monitor-tv-digits--warning {
+  color: #fcd34d;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.28);
+}
+
+.monitor-tv-digits--danger {
+  color: #fca5a5;
+  text-shadow: 0 0 26px rgba(248, 113, 113, 0.35);
+}
+
+.monitor-tv-bar.track {
+  height: clamp(8px, 1vw, 12px);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.95);
+  overflow: hidden;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+}
+
+.monitor-tv-bar-tall {
+  height: clamp(10px, 1.2vw, 16px);
+}
+
+.monitor-tv-bar.fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.35s ease-out;
+}
+
+.monitor-tv-bar--ok {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.monitor-tv-bar--warning {
+  background: linear-gradient(90deg, #ca8a04, #facc15);
+}
+
+.monitor-tv-bar--danger {
+  background: linear-gradient(90deg, #b91c1c, #f87171);
+}
+
+.monitor-tv-bar--muted {
+  background: linear-gradient(90deg, #475569, #94a3b8);
+}
+
+.monitor-tv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: clamp(16rem, 42vh, 28rem);
+  padding: 2rem;
+  border-radius: clamp(16px, 1.5vw, 24px);
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.monitor-tv-empty-icon {
+  width: clamp(3rem, 6vw, 5rem);
+  height: clamp(3rem, 6vw, 5rem);
+  border-radius: 50%;
+  margin-bottom: 1rem;
+  background: rgba(51, 65, 85, 0.5);
+  border: 2px solid rgba(148, 163, 184, 0.25);
+}
+
+.monitor-tv-empty-title {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.monitor-tv-empty-text {
+  margin: 0.75rem 0 0;
+  max-width: 36rem;
+  font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+  color: rgba(148, 163, 184, 0.95);
+  line-height: 1.45;
 }
 
 /* ---------- Загрузка сессии ---------- */
@@ -454,4 +879,680 @@ body {
 
 .text-triag-muted {
   color: var(--triag-text-muted) !important;
+}
+
+.triag-admin-hint {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(231, 213, 207, 0.95) !important;
+  color: var(--triag-text);
+}
+
+/* Страница администрирования: единая сетка типографики и кнопок */
+.triag-admin-page {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--triag-text);
+}
+
+.triag-admin-page .triag-admin-page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.triag-admin-page .triag-admin-card-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.triag-admin-page .triag-admin-lead {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--triag-text-muted);
+  margin-bottom: 1rem;
+}
+
+.triag-admin-page .triag-admin-hint {
+  font-size: 0.875rem;
+}
+
+.triag-admin-page .triag-admin-hint ul {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.triag-admin-page .triag-admin-hint p.small {
+  font-size: 0.8125rem !important;
+}
+
+.triag-admin-form-panel {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: var(--triag-radius-lg);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(250, 250, 249, 0.65);
+}
+
+.triag-admin-page .triag-admin-form-panel .form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--triag-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.triag-admin-page .triag-admin-form-panel--inline .form-control,
+.triag-admin-page .triag-admin-form-panel--inline .form-select {
+  font-size: 0.9375rem;
+}
+
+.triag-admin-page .triag-admin-compact-btn {
+  font-size: 0.75rem;
+  padding: 0.33rem 0.55rem;
+  min-height: 2rem;
+}
+
+.triag-admin-table-wrap {
+  border: 1px solid rgba(231, 213, 207, 0.85);
+  border-radius: var(--triag-radius-lg);
+  overflow: hidden;
+}
+
+.triag-admin-page .triag-admin-table {
+  font-size: 0.9375rem;
+  margin-bottom: 0;
+}
+
+.triag-admin-page .triag-admin-table thead th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--triag-text-muted);
+  border-bottom-width: 1px;
+  white-space: nowrap;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.triag-admin-page .triag-admin-table tbody td {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  vertical-align: middle;
+}
+
+.triag-admin-page .triag-admin-table .triag-admin-col-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.triag-admin-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.triag-admin-page .triag-admin-actions .btn {
+  min-width: 6.25rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.triag-admin-page .triag-admin-table .font-monospace {
+  font-size: inherit;
+}
+
+.triag-admin-page .triag-admin-empty {
+  font-size: 0.875rem;
+  color: var(--triag-text-muted);
+}
+
+.triag-admin-modal .modal-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.triag-admin-modal .form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--triag-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.triag-admin-modal .form-control,
+.triag-admin-modal .form-select {
+  font-size: 0.9375rem;
+}
+
+.triag-admin-modal .modal-footer .btn {
+  min-width: 6.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ---------- Тема «Soft D» — тёплый фон, мягкие карточки; сетка пациентов как в основном макете (несколько в ряд) ---------- */
+html.triag-theme-soft {
+  --triag-text: #292524;
+  --triag-text-muted: #78716c;
+  --triag-border: rgba(231, 213, 207, 0.95);
+  --triag-primary-bg: #fff7ed;
+  --triag-primary-light: #d8f5d8;
+  --bs-body-bg: #faf7f2;
+  --bs-body-color: #292524;
+  --bs-card-bg: #fffcfa;
+  --triag-radius: 12px;
+  --triag-radius-lg: 16px;
+  --triag-shadow: 0 10px 36px rgba(87, 83, 78, 0.07);
+  --triag-shadow-md: 0 14px 44px rgba(87, 83, 78, 0.09);
+  --bs-link-color: #3d8f3d;
+  --bs-link-hover-color: #2f6f2f;
+}
+
+html.triag-theme-soft .app-header {
+  background: var(--triag-primary);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(84, 198, 84, 0.36);
+  border-bottom: 1px solid rgba(67, 168, 67, 0.9);
+}
+
+html.triag-theme-soft .app-brand {
+  color: #ffffff !important;
+}
+
+html.triag-theme-soft .app-brand:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html.triag-theme-soft .app-brand-logo {
+  border-radius: 30% 70% 65% 35% / 40% 45% 55% 60%;
+  box-shadow: 0 2px 10px rgba(84, 198, 84, 0.35);
+}
+
+html.triag-theme-soft .app-user-badge {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+html.triag-theme-soft .app-nav .btn-outline-light {
+  --bs-btn-color: #ffffff;
+  --bs-btn-border-color: rgba(255, 255, 255, 0.74);
+  --bs-btn-hover-bg: rgba(255, 255, 255, 0.2);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.95);
+  --bs-btn-active-bg: rgba(255, 255, 255, 0.25);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-border-color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.triag-theme-soft .card {
+  border-color: rgba(231, 213, 207, 0.9);
+  box-shadow: var(--triag-shadow);
+}
+
+html.triag-theme-soft .form-control,
+html.triag-theme-soft .form-select {
+  border-color: #d6d3d1;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .form-control:focus,
+html.triag-theme-soft .form-select:focus {
+  border-color: rgba(84, 198, 84, 0.55);
+  box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.18);
+}
+
+html.triag-theme-soft .btn-primary {
+  box-shadow: 0 2px 14px rgba(84, 198, 84, 0.32);
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-outline-secondary {
+  --bs-btn-border-color: #d6d3d1;
+  --bs-btn-color: #44403c;
+  --bs-btn-hover-bg: #fafaf9;
+  --bs-btn-hover-color: #292524;
+  --bs-btn-hover-border-color: #a8a29e;
+  --bs-btn-active-color: #292524;
+  --bs-btn-active-bg: #f5f5f4;
+  --bs-btn-active-border-color: #a8a29e;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-warning {
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-outline-primary {
+  --bs-btn-color: #2f6f2f;
+  --bs-btn-border-color: rgba(84, 198, 84, 0.7);
+  --bs-btn-hover-bg: rgba(84, 198, 84, 0.14);
+  --bs-btn-hover-color: #1c1917;
+  --bs-btn-hover-border-color: #54c654;
+  --bs-btn-active-bg: rgba(84, 198, 84, 0.2);
+  --bs-btn-active-color: #1c1917;
+}
+
+html.triag-theme-soft .btn-soft-danger {
+  --bs-btn-bg: rgba(239, 68, 68, 0.12);
+  --bs-btn-border-color: rgba(220, 38, 38, 0.35);
+  --bs-btn-color: #991b1b;
+  --bs-btn-hover-bg: #dc2626;
+  --bs-btn-hover-border-color: #dc2626;
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-active-bg: #b91c1c;
+  --bs-btn-active-border-color: #b91c1c;
+  --bs-btn-active-color: #ffffff;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .patient-b-card .card-body h2,
+html.triag-theme-soft .patient-b-card .card-body .h6 {
+  font-family: Georgia, "Times New Roman", ui-serif, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1c1917;
+}
+
+html.triag-theme-soft .patient-b-card--done {
+  background: #f5f0eb !important;
+  border-color: #d6d3d1 !important;
+  opacity: 1;
+}
+
+html.triag-theme-soft .patient-tag--status {
+  background: rgba(84, 198, 84, 0.15);
+}
+
+html.triag-theme-soft .patient-timer-box {
+  background: #fffdfa;
+  border-color: rgba(231, 213, 207, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html.triag-theme-soft .patient-timer-value {
+  color: #292524;
+}
+
+/* Модалка подтверждения удаления — поверх «Подробнее» */
+.patient-delete-backdrop {
+  z-index: 1060;
+}
+
+.patient-delete-modal {
+  z-index: 1065;
+}
+
+/* ---------- Модалка "Подробнее" ---------- */
+.patient-details-modal .modal-dialog {
+  width: min(680px, calc(100% - 1rem));
+  max-width: min(680px, calc(100% - 1rem));
+}
+
+.patient-details-modal .modal-content {
+  border-radius: 14px;
+  border: 1px solid rgba(231, 213, 207, 0.95);
+}
+
+.patient-details-modal .modal-body {
+  text-align: left;
+}
+
+.patient-details-grid {
+  justify-items: start;
+}
+
+.patient-details-facts > div + div {
+  margin-top: 0.15rem;
+}
+
+.patient-details-modal .modal-footer.patient-details-footer {
+  display: block;
+  padding-top: 0.5rem;
+}
+
+.patient-details-main-action,
+.patient-details-step-actions {
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.patient-details-bottom-actions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.patient-details-bottom-actions .btn {
+  min-width: 9.75rem;
+}
+
+@media (max-width: 575.98px) {
+  .patient-details-bottom-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- Экраны шагов/действий триажа ---------- */
+.triage-page-shell {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.triage-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.triage-page-title {
+  margin: 0;
+}
+
+.triage-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--triag-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.triage-back-link:hover {
+  color: var(--triag-text);
+}
+
+.triage-timer-card {
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  background: #fffdfa;
+  margin-bottom: 0.8rem;
+}
+
+.triage-timer-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.triage-timer-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #292524;
+}
+
+.triage-timer-progress {
+  margin-top: 0.4rem;
+  height: 7px;
+  background: rgba(214, 211, 209, 0.55);
+}
+
+.triage-timer-progress .progress-bar {
+  background: var(--triag-primary);
+}
+
+.triage-timer-card--ok .triage-timer-value {
+  color: #2f6f2f;
+}
+
+.triage-timer-card--warning .triage-timer-value {
+  color: #92400e;
+}
+
+.triage-timer-card--danger .triage-timer-value {
+  color: #b91c1c;
+}
+
+.triage-timer-bar--ok {
+  background: #54c654 !important;
+}
+
+.triage-timer-bar--warning {
+  background: #f59e0b !important;
+}
+
+.triage-timer-bar--danger {
+  background: #dc2626 !important;
+}
+
+.triage-timer-card--expired {
+  border-color: rgba(220, 38, 38, 0.85);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.16);
+  animation: triage-expired-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes triage-expired-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.42);
+  }
+}
+
+.triage-form-card .card-body {
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+.triage-form-card .form-label,
+.triage-form-card .form-check-label,
+.triage-form-card .triage-check-label,
+.triage-form-card .triage-yn-label {
+  font-size: 1rem;
+}
+
+.triage-form-card .btn {
+  font-size: 1rem;
+}
+
+.triage-actions-list .list-group-item {
+  border-color: rgba(231, 213, 207, 0.95);
+  background: #fffdfa;
+}
+
+.triage-actions-top-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+@media (min-width: 640px) {
+  .triage-actions-top-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.triage-yn-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .triage-yn-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.triage-yn-item {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: #fffdfa;
+}
+
+.triage-yn-label {
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  color: #292524;
+}
+
+/* Шаг 1: «Да/Нет» — серая неактивная опция; цвет только у выбранной */
+.triage-yn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.triage-yn-slot {
+  flex: 1 1 calc(50% - 0.3rem);
+  min-width: 5.5rem;
+  min-height: var(--triag-touch);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #d1d5db;
+  color: #6b7280;
+  background: #f3f4f6;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.triage-yn-row .btn-check:not(:checked) + .triage-yn-slot:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: #4b5563;
+}
+
+.triage-yn-row .btn-check:focus-visible + .triage-yn-slot {
+  box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.25);
+}
+
+.triage-yn-row .btn-check:checked + .triage-yn-slot-yes-good,
+.triage-yn-row .btn-check:checked + .triage-yn-slot-no-good {
+  color: #fff;
+  background: var(--triag-primary);
+  border-color: var(--triag-primary-hover);
+  box-shadow: 0 2px 10px rgba(84, 198, 84, 0.32);
+}
+
+.triage-yn-row .btn-check:checked + .triage-yn-slot-yes-bad,
+.triage-yn-row .btn-check:checked + .triage-yn-slot-no-bad {
+  color: #fff;
+  background: #dc2626;
+  border-color: #b91c1c;
+  box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
+}
+
+.triage-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(231, 213, 207, 0.9);
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.triage-check-input {
+  margin-top: 0.15rem;
+  margin-right: 0.1rem;
+  transform: scale(1.15);
+}
+
+.triage-check-label {
+  font-size: 0.96rem;
+  line-height: 1.35;
+  color: #292524;
+}
+
+.triage-check-item--yellow {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-check-item--purple {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+.triage-select-yellow {
+  border-color: rgba(245, 158, 11, 0.7) !important;
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-input-yellow {
+  border-color: rgba(245, 158, 11, 0.7) !important;
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-input-purple {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  background: rgba(245, 243, 255, 0.95);
+}
+
+/* Шаг 3: жёлтая/фиолетовая подсветка только на полях с классами triage-input-*; фокус без зелёного кольца темы */
+.triage-step3-form .form-control:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.28);
+}
+
+.triage-step3-form .triage-input-yellow:focus {
+  border-color: rgba(217, 119, 6, 0.9) !important;
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.22);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-step3-form .triage-input-purple:focus {
+  border-color: rgba(124, 58, 237, 0.85) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+html.triag-theme-soft .triage-step3-form .form-control:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.28);
+}
+
+html.triag-theme-soft .triage-step3-form .triage-input-yellow:focus {
+  border-color: rgba(217, 119, 6, 0.9) !important;
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.22);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
+  border-color: rgba(124, 58, 237, 0.85) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+.triage-score-box {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 12px;
+  background: #fffdfa;
+  padding: 0.65rem 0.75rem;
+}
+
+.triage-score-box--alert {
+  border-color: rgba(220, 38, 38, 0.6);
+  background: rgba(254, 242, 242, 0.9);
+}
+
+.triage-score-total {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0.2rem 0 0.1rem;
+  color: #292524;
 }

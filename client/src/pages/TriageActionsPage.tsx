@@ -10,6 +10,7 @@ export default function TriageActionsPage() {
   const nav = useNavigate();
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [err, setErr] = useState("");
+  const [, setTick] = useState(0);
 
   async function load() {
     try {
@@ -30,6 +31,11 @@ export default function TriageActionsPage() {
     return () => window.clearInterval(t);
   }, [patientId]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((x) => x + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const actions = (triage?.priority_actions as ActionDef[]) || [];
   const red = Boolean(triage?.red_arrest_flow);
   const actionsData = (triage?.actions_data as Record<string, unknown>) || {};
@@ -42,6 +48,14 @@ export default function TriageActionsPage() {
 
   const phaseRem =
     phaseEnds != null ? Math.max(0, Math.floor(phaseEnds - Date.now() / 1000)) : 0;
+  const phasePct = limit > 0 ? Math.min(100, (phaseRem / limit) * 100) : 0;
+  const phaseTone = phaseRem <= 0 ? "danger" : phasePct <= 25 ? "danger" : phasePct <= 50 ? "warning" : "ok";
+  const brigadeEnds = triage?.brigade_timer_ends_at as number | null | undefined;
+  const brigadeRem =
+    brigadeEnds != null ? Math.max(0, Math.floor(brigadeEnds - Date.now() / 1000)) : 0;
+  const brigadeLimit = typeof triage?.brigade_time_limit === "number" && triage.brigade_time_limit > 0 ? triage.brigade_time_limit : 720;
+  const brigadePct = Math.min(100, (brigadeRem / brigadeLimit) * 100);
+  const brigadeTone = brigadeRem <= 0 ? "danger" : brigadePct <= 25 ? "danger" : brigadePct <= 50 ? "warning" : "ok";
 
   async function mark(key: string) {
     setErr("");
@@ -66,18 +80,39 @@ export default function TriageActionsPage() {
     }
   }
 
-  if (!triage) return <div className="container py-3">{err || "Загрузка…"}</div>;
+  if (!triage) return <div className="container-fluid triag-page-wide"><div className="triage-page-shell py-2 py-sm-3">{err || "Загрузка…"}</div></div>;
 
   return (
-    <div className="container py-3">
-      <Link to="/patients">← Пациенты</Link>
-      <h1 className="h4 mt-2">Действия по приоритету</h1>
-      {!red && triage.actions_started_at != null && (
-        <div className="alert alert-info py-2 small">Фаза действий: {formatTimer(phaseRem)}</div>
-      )}
-      {!red && triage.brigade_timer_ends_at != null && (
-        <div className="alert alert-warning py-2 small">
-          Таймер бригады: {formatTimer(Math.max(0, Math.floor((triage.brigade_timer_ends_at as number) - Date.now() / 1000)))}
+    <div className="container-fluid triag-page-wide">
+      <div className="triage-page-shell py-2 py-sm-3">
+      <div className="triage-page-head">
+        <Link to="/patients" className="triage-back-link">← Пациенты</Link>
+        <h1 className="h4 triage-page-title">Действия по приоритету</h1>
+      </div>
+      {!red && (triage.actions_started_at != null || triage.brigade_timer_ends_at != null) && (
+        <div className="triage-actions-top-grid">
+          {triage.actions_started_at != null && (
+            <div className={`triage-timer-card triage-timer-card--${phaseTone} ${phaseRem <= 0 ? "triage-timer-card--expired" : ""}`}>
+              <div className="triage-timer-row">
+                <span className="small text-muted">Фаза действий</span>
+                <span className="triage-timer-value">{formatTimer(phaseRem)}</span>
+              </div>
+              <div className="progress triage-timer-progress">
+                <div className={`progress-bar triage-timer-bar triage-timer-bar--${phaseTone}`} style={{ width: `${phasePct}%` }} />
+              </div>
+            </div>
+          )}
+          {triage.brigade_timer_ends_at != null && (
+            <div className={`triage-timer-card triage-timer-card--${brigadeTone} ${brigadeRem <= 0 ? "triage-timer-card--expired" : ""}`}>
+              <div className="triage-timer-row">
+                <span className="small text-muted">Таймер бригады</span>
+                <span className="triage-timer-value">{formatTimer(brigadeRem)}</span>
+              </div>
+              <div className="progress triage-timer-progress">
+                <div className={`progress-bar triage-timer-bar triage-timer-bar--${brigadeTone}`} style={{ width: `${brigadePct}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
       {err && <div className="alert alert-danger py-2">{err}</div>}
@@ -91,7 +126,7 @@ export default function TriageActionsPage() {
           setErr={setErr}
         />
       ) : (
-        <ul className="list-group">
+        <ul className="list-group triage-actions-list">
           {actions.map((a) => {
             const done = Boolean((actionsData as Record<string, unknown>)[a.key]);
             return (
@@ -111,6 +146,7 @@ export default function TriageActionsPage() {
           Завершить действия
         </button>
       )}
+      </div>
     </div>
   );
 }

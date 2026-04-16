@@ -13,6 +13,7 @@ class TriageStatePresenter
       timer_active: triage.timer_active,
       time_remaining: triage.time_remaining,
       timer_ends_at: triage.timer_ends_at,
+      max_time: triage.step_duration,
       expired: triage.expired?,
       step1_data: triage.step1_data || {},
       step2_data: triage.step2_data || {},

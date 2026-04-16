@@ -28,6 +28,7 @@ class MonitorPatientsService
       step: triage.step,
       step_name: triage.step_name,
       priority: triage.priority,
+      priority_name: triage.priority_name,
       is_in_actions: is_in_actions
     }
 
