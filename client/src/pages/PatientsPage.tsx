@@ -168,9 +168,7 @@ export default function PatientsPage() {
   }
 
   function editStepPath(patientId: number, stepNum: 1 | 2 | 3): string {
-    if (stepNum === 1) return `/patients/${patientId}/triage`;
-    if (stepNum === 2) return `/patients/${patientId}/triage/step2`;
-    return `/patients/${patientId}/triage/step3`;
+    return `/patients/${patientId}/triage/edit/${stepNum}`;
   }
 
   return (
@@ -276,9 +274,12 @@ export default function PatientsPage() {
                       Шаг {p.triage.step}
                     </Link>
                   )}
-                  {p.triage?.completed_at && !p.triage.actions_completed_at && (
-                    <Link to={`/patients/${p.id}/triage/actions`} className="btn btn-warning btn-sm">
-                      Действия
+                  {p.triage?.completed_at && (
+                    <Link
+                      to={p.triage.actions_completed_at ? `/patients/${p.id}/triage/actions/report` : `/patients/${p.id}/triage/actions`}
+                      className={`btn btn-sm ${p.triage.actions_completed_at ? "btn-outline-warning" : "btn-warning"}`}
+                    >
+                      {p.triage.actions_completed_at ? "Итог действий" : "Действия"}
                     </Link>
                   )}
                   <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void openDetails(p.id)}>
@@ -363,16 +364,22 @@ export default function PatientsPage() {
                           Шаг {details.triage.step}
                         </button>
                       )}
-                      {details.triage?.completed_at && !details.triage.actions_completed_at && (
+                      {details.triage?.completed_at && (
                         <button
                           type="button"
-                          className="btn btn-warning"
+                          className={`btn ${details.triage.actions_completed_at ? "btn-outline-warning" : "btn-warning"}`}
                           onClick={() => {
+                            const triageState = details.triage;
+                            if (!triageState) return;
                             closeDetails();
-                            nav(`/patients/${details.patient.id}/triage/actions`);
+                            nav(
+                              triageState.actions_completed_at
+                                ? `/patients/${details.patient.id}/triage/actions/report`
+                                : `/patients/${details.patient.id}/triage/actions`,
+                            );
                           }}
                         >
-                          Действия
+                          {details.triage.actions_completed_at ? "Итог действий" : "Действия"}
                         </button>
                       )}
                     </div>

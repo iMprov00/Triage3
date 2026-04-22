@@ -10,7 +10,7 @@ module Api
         triage = @patient.triage
         return render json: { error: "Триаж не начат" }, status: :not_found unless triage
 
-        render json: TriageStatePresenter.call(@patient, triage)
+        render json: TriageStatePresenter.call(@patient, triage, viewer: current_user)
       end
 
       def start
@@ -25,7 +25,7 @@ module Api
           type: "triage_started",
           payload: { performer_name: @patient.performer_name }
         )
-        render json: { ok: true, triage: TriageStatePresenter.call(@patient, triage.reload) }
+        render json: { ok: true, triage: TriageStatePresenter.call(@patient, triage.reload, viewer: current_user) }
       end
 
       def step1
@@ -56,7 +56,7 @@ module Api
           timer_expired: truthy?(params[:timer_expired]),
           acting_performer_name: acting_name)
 
-        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage) }
+        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage, viewer: current_user) }
       end
 
       def step2
@@ -83,7 +83,7 @@ module Api
           timer_expired: truthy?(params[:timer_expired]),
           acting_performer_name: acting_name)
 
-        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage) }
+        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage, viewer: current_user) }
       end
 
       def step3
@@ -113,14 +113,14 @@ module Api
           timer_expired: truthy?(params[:timer_expired]),
           acting_performer_name: acting_name)
 
-        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage) }
+        render json: { ok: true, result: result, triage: TriageStatePresenter.call(@patient, triage, viewer: current_user) }
       end
 
       def full_view
         triage = @patient.triage
         return render json: { error: "Триаж не найден" }, status: :not_found unless triage
 
-        render json: { patient: PatientListPresenter.to_list_hash(@patient, current_user), triage: TriageStatePresenter.call(@patient, triage) }
+        render json: { patient: PatientListPresenter.to_list_hash(@patient, current_user), triage: TriageStatePresenter.call(@patient, triage, viewer: current_user) }
       end
 
       private

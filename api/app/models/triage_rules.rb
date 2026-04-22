@@ -165,6 +165,63 @@ module TriageRules
       return 'Красный (остановка): манипуляция — назначено срочное кесарево сечение' if k == 'ra_manip_urgent_cesarean'
       return 'Красный (остановка): манипуляция — завершить СЛР' if k == 'ra_manip_slr_complete'
 
+      if k.start_with?("red_arrest_")
+        return "Красный (остановка): бригада вызвана" if k == "red_arrest_brigade_called"
+        Triage::RED_ARREST_TEAM.each do |entry|
+          return "Красный (остановка): вызов — #{entry[:label]}" if k == "red_arrest_team_#{entry[:key]}"
+        end
+        Triage::RED_ARREST_MANIPS.each do |entry|
+          return "Красный (остановка): манипуляция — #{entry[:label]}" if k == "red_arrest_manip_#{entry[:key]}"
+        end
+        return "Красный (остановка): показатель АД (замер 1)" if k == "red_arrest_vital_bp_1"
+        return "Красный (остановка): показатель АД (замер 2)" if k == "red_arrest_vital_bp_2"
+        return "Красный (остановка): показатель АД (замер 3)" if k == "red_arrest_vital_bp_3"
+        return "Красный (остановка): показатель Пульс (замер 1)" if k == "red_arrest_vital_pulse_1"
+        return "Красный (остановка): показатель Пульс (замер 2)" if k == "red_arrest_vital_pulse_2"
+        return "Красный (остановка): показатель Пульс (замер 3)" if k == "red_arrest_vital_pulse_3"
+        return "Красный (остановка): показатель Сатурация (замер 1)" if k == "red_arrest_vital_saturation_1"
+        return "Красный (остановка): показатель Сатурация (замер 2)" if k == "red_arrest_vital_saturation_2"
+        return "Красный (остановка): показатель Сатурация (замер 3)" if k == "red_arrest_vital_saturation_3"
+        return "Красный (остановка): сердцебиение плода — да" if k == "red_arrest_vital_fetal_heartbeat_yes"
+        return "Красный (остановка): сердцебиение плода — нет" if k == "red_arrest_vital_fetal_heartbeat_no"
+        return "Красный (остановка): активное кровотечение — да" if k == "red_arrest_vital_active_bleeding_yes"
+        return "Красный (остановка): активное кровотечение — нет" if k == "red_arrest_vital_active_bleeding_no"
+        return "Красный (остановка): манипуляция — введение адреналина 0,1% - 1,0 мл в/в (1)" if k == "red_arrest_manip_adrenaline_1"
+        return "Красный (остановка): манипуляция — введение адреналина 0,1% - 1,0 мл в/в (2)" if k == "red_arrest_manip_adrenaline_2"
+        return "Красный (остановка): манипуляция — введение адреналина 0,1% - 1,0 мл в/в (3)" if k == "red_arrest_manip_adrenaline_3"
+        return "Красный (остановка): манипуляция — выполнено кесарево сечение" if k == "red_arrest_manip_csection_done"
+        return "Красный (остановка): исход СЛР — восстановление сердечной деятельности / завершение СЛР" if k == "red_arrest_manip_resusc_outcome_recovery"
+        return "Красный (остановка): исход СЛР — смерть" if k == "red_arrest_manip_resusc_outcome_death"
+        return "Красный (остановка): манипуляция — назначено срочное кесарево сечение" if k == "red_arrest_manip_urgent_cesarean"
+        return "Красный (остановка): манипуляция — завершить СЛР" if k == "red_arrest_manip_slr_complete"
+      end
+
+      {
+        'red_seizures' => 'Красный (судороги)',
+        'red_bleeding' => 'Красный (кровотечение)'
+      }.each do |prefix, title|
+        team_const = prefix == 'red_seizures' ? Triage::RED_SEIZURES_TEAM : Triage::RED_BLEEDING_TEAM
+        manip_const = prefix == 'red_seizures' ? Triage::RED_SEIZURES_MANIPS : Triage::RED_BLEEDING_MANIPS
+        vital_const = prefix == 'red_seizures' ? Triage::RED_SEIZURES_VITALS : Triage::RED_BLEEDING_VITALS
+
+        return "#{title}: бригада вызвана" if k == "#{prefix}_brigade_called"
+
+        team_const.each do |entry|
+          return "#{title}: вызов — #{entry[:label]}" if k == "#{prefix}_team_#{entry[:key]}"
+        end
+
+        manip_const.each do |entry|
+          return "#{title}: манипуляция — #{entry[:label]}" if k == "#{prefix}_manip_#{entry[:key]}"
+        end
+
+        vital_const.each do |entry|
+          return "#{title}: показатель #{entry[:label]} (замер 1)" if k == "#{prefix}_vital_#{entry[:key]}_1"
+          return "#{title}: показатель #{entry[:label]} (замер 2)" if k == "#{prefix}_vital_#{entry[:key]}_2"
+          return "#{title}: показатель #{entry[:label]} (замер 3)" if k == "#{prefix}_vital_#{entry[:key]}_3"
+          return "#{title}: показатель #{entry[:label]} зафиксирован" if k == "#{prefix}_vital_#{entry[:key]}"
+        end
+      end
+
       [Triage::RED_PRIORITY_ACTIONS, Triage::YELLOW_PRIORITY_ACTIONS, Triage::PURPLE_PRIORITY_ACTIONS, Triage::GREEN_PRIORITY_ACTIONS].each do |arr|
         arr.each do |action|
           return action[:text] if action[:key] == k

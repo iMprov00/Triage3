@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiJson, formatTimer } from "../api";
 
-type RaSchemaItem = { key: string; label: string };
-type RedArrestSchema = { team: RaSchemaItem[]; manips: RaSchemaItem[]; vitals: RaSchemaItem[] };
+type SchemaItem = { key: string; label: string };
+type ActionsSchema = { team: SchemaItem[]; manips: SchemaItem[]; vitals: SchemaItem[] };
+type FlowKind = "red_arrest" | "red_seizures" | "red_bleeding";
 
-type RaManip = Record<string, number | string | undefined>;
-type RaTeam = Record<string, number | string | undefined>;
-type RaVitalEntry = { values?: string[]; value?: string; at?: number };
-type RaVitals = Record<string, RaVitalEntry | undefined>;
+type FlowManip = Record<string, number | string | undefined>;
+type FlowTeam = Record<string, number | string | undefined>;
+type FlowVitalEntry = { values?: string[]; value?: string; at?: number };
+type FlowVitals = Record<string, FlowVitalEntry | undefined>;
 
 export type RedArrestTriageView = {
   patient_full_name?: string;
@@ -22,21 +23,25 @@ export type RedArrestTriageView = {
   brigade_timer_label?: string;
   actions_data?: Record<string, unknown>;
   can_complete_red_arrest?: boolean;
-  red_arrest_schema?: RedArrestSchema;
+  can_complete_actions_flow?: boolean;
+  actions_flow_kind?: FlowKind | null;
+  actions_flow_schema?: ActionsSchema | null;
+  red_arrest_schema?: ActionsSchema;
 };
 
-function raBucket(data: Record<string, unknown> | undefined): {
-  team: RaTeam;
-  manip: RaManip;
-  vitals: RaVitals;
+function flowBucket(data: Record<string, unknown> | undefined, flowKind: FlowKind | null): {
+  team: FlowTeam;
+  manip: FlowManip;
+  vitals: FlowVitals;
 } {
-  const ra = data?.red_arrest;
-  if (!ra || typeof ra !== "object") return { team: {}, manip: {}, vitals: {} };
-  const h = ra as Record<string, unknown>;
+  if (!flowKind) return { team: {}, manip: {}, vitals: {} };
+  const flow = data?.[flowKind];
+  if (!flow || typeof flow !== "object") return { team: {}, manip: {}, vitals: {} };
+  const h = flow as Record<string, unknown>;
   return {
-    team: (h.team as RaTeam) || {},
-    manip: (h.manip as RaManip) || {},
-    vitals: (h.vitals as RaVitals) || {},
+    team: (h.team as FlowTeam) || {},
+    manip: (h.manip as FlowManip) || {},
+    vitals: (h.vitals as FlowVitals) || {},
   };
 }
 
@@ -47,7 +52,7 @@ function fmtAt(ts: unknown): string | null {
   return new Date(n * 1000).toLocaleString("ru-RU");
 }
 
-function vitalTriple(vitals: RaVitals, base: string): [string, string, string] {
+function vitalTriple(vitals: FlowVitals, base: string): [string, string, string] {
   const e = vitals[base];
   if (e && Array.isArray(e.values)) {
     const v = e.values.map((x) => (x == null ? "" : String(x)));
@@ -71,11 +76,17 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
   const [, setTick] = useState(0);
   const actionsLimit = triage.actions_time_limit ?? 300;
   const brigadeLimit = triage.brigade_time_limit ?? 720;
-  const schema = triage.red_arrest_schema ?? { team: [], manips: [], vitals: [] };
+  const flowKind = triage.actions_flow_kind ?? (triage.red_arrest_schema ? "red_arrest" : null);
+  const schema = triage.actions_flow_schema ?? triage.red_arrest_schema ?? { team: [], manips: [], vitals: [] };
   const done = Boolean(triage.actions_completed_at);
   const brigadeOk = Boolean(triage.brigade_called_at);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const requiresConfirm = flowKind === "red_seizures" || flowKind === "red_bleeding";
 
-  const { team, manip, vitals } = useMemo(() => raBucket(triage.actions_data), [triage.actions_data]);
+  const { team, manip, vitals } = useMemo(
+    () => flowBucket(triage.actions_data, flowKind),
+    [triage.actions_data, flowKind],
+  );
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 1000);
@@ -132,19 +143,33 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
   const bleedRaw = vitals.active_bleeding?.value;
   const bleedVal = bleedRaw == null || String(bleedRaw).trim() === "" ? "no" : String(bleedRaw).trim();
 
-  const canComplete = Boolean(triage.can_complete_red_arrest);
+  const canComplete = Boolean(
+    flowKind === "red_arrest" ? triage.can_complete_red_arrest : triage.can_complete_actions_flow,
+  );
+  const title =
+    flowKind === "red_seizures"
+      ? "Срочные меры (судороги)"
+      : flowKind === "red_bleeding"
+        ? "Срочные меры (кровотечение)"
+        : "Срочные меры (остановка сердца)";
+  const subtitle =
+    flowKind === "red_seizures"
+      ? "Сценарий шага 1: судороги"
+      : flowKind === "red_bleeding"
+        ? "Сценарий шага 1: активное кровотечение"
+        : "Нет дыхания и/или нет сердцебиения на шаге 1";
 
   return (
     <div>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
           <h1 className="h3 mb-1 text-danger">
-            Срочные меры (остановка сердца)
+            {title}
           </h1>
           <p className="text-muted mb-0">
             {triage.patient_full_name || `Пациент #${patientId}`} · Приоритет:{" "}
             <span className="badge bg-danger">{triage.priority_name || "красный"}</span>
-            <span className="text-muted small ms-2">Нет дыхания и/или нет сердцебиения на шаге 1</span>
+            <span className="text-muted small ms-2">{subtitle}</span>
           </p>
         </div>
       </div>
@@ -317,69 +342,73 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                             </div>
                           );
                         })}
-                        <hr className="my-3" />
-                        <div className="mb-2">
-                          <div className="small fw-semibold mb-1">Сердцебиение плода выслушивается</div>
-                          <div className="btn-group btn-group-sm" role="group">
-                            <input
-                              type="radio"
-                              className="btn-check"
-                              name={`ra_fetal_${patientId}`}
-                              id="ra_fetal_yes"
-                              checked={fetalVal === "yes"}
-                              disabled={done}
-                              onChange={() => void vital("fetal_heartbeat", "yes")}
-                            />
-                            <label className="btn btn-outline-secondary" htmlFor="ra_fetal_yes">
-                              Да
-                            </label>
-                            <input
-                              type="radio"
-                              className="btn-check"
-                              name={`ra_fetal_${patientId}`}
-                              id="ra_fetal_no"
-                              checked={fetalVal === "no"}
-                              disabled={done}
-                              onChange={() => void vital("fetal_heartbeat", "no")}
-                            />
-                            <label className="btn btn-outline-secondary" htmlFor="ra_fetal_no">
-                              Нет
-                            </label>
-                          </div>
-                        </div>
-                        <div className="mb-3">
-                          <div className="small fw-semibold mb-1">Наличие кровотечения</div>
-                          <div className="btn-group btn-group-sm" role="group">
-                            <input
-                              type="radio"
-                              className="btn-check"
-                              name={`ra_bleed_${patientId}`}
-                              id="ra_bleed_yes"
-                              checked={bleedVal === "yes"}
-                              disabled={done}
-                              onChange={() => void vital("active_bleeding", "yes")}
-                            />
-                            <label className="btn btn-outline-secondary" htmlFor="ra_bleed_yes">
-                              Да
-                            </label>
-                            <input
-                              type="radio"
-                              className="btn-check"
-                              name={`ra_bleed_${patientId}`}
-                              id="ra_bleed_no"
-                              checked={bleedVal === "no"}
-                              disabled={done}
-                              onChange={() => void vital("active_bleeding", "no")}
-                            />
-                            <label className="btn btn-outline-secondary" htmlFor="ra_bleed_no">
-                              Нет
-                            </label>
-                          </div>
-                        </div>
+                        {flowKind === "red_arrest" && (
+                          <>
+                            <hr className="my-3" />
+                            <div className="mb-2">
+                              <div className="small fw-semibold mb-1">Сердцебиение плода выслушивается</div>
+                              <div className="btn-group btn-group-sm" role="group">
+                                <input
+                                  type="radio"
+                                  className="btn-check"
+                                  name={`ra_fetal_${patientId}`}
+                                  id="ra_fetal_yes"
+                                  checked={fetalVal === "yes"}
+                                  disabled={done}
+                                  onChange={() => void vital("fetal_heartbeat", "yes")}
+                                />
+                                <label className="btn btn-outline-secondary" htmlFor="ra_fetal_yes">
+                                  Да
+                                </label>
+                                <input
+                                  type="radio"
+                                  className="btn-check"
+                                  name={`ra_fetal_${patientId}`}
+                                  id="ra_fetal_no"
+                                  checked={fetalVal === "no"}
+                                  disabled={done}
+                                  onChange={() => void vital("fetal_heartbeat", "no")}
+                                />
+                                <label className="btn btn-outline-secondary" htmlFor="ra_fetal_no">
+                                  Нет
+                                </label>
+                              </div>
+                            </div>
+                            <div className="mb-3">
+                              <div className="small fw-semibold mb-1">Наличие кровотечения</div>
+                              <div className="btn-group btn-group-sm" role="group">
+                                <input
+                                  type="radio"
+                                  className="btn-check"
+                                  name={`ra_bleed_${patientId}`}
+                                  id="ra_bleed_yes"
+                                  checked={bleedVal === "yes"}
+                                  disabled={done}
+                                  onChange={() => void vital("active_bleeding", "yes")}
+                                />
+                                <label className="btn btn-outline-secondary" htmlFor="ra_bleed_yes">
+                                  Да
+                                </label>
+                                <input
+                                  type="radio"
+                                  className="btn-check"
+                                  name={`ra_bleed_${patientId}`}
+                                  id="ra_bleed_no"
+                                  checked={bleedVal === "no"}
+                                  disabled={done}
+                                  onChange={() => void vital("active_bleeding", "no")}
+                                />
+                                <label className="btn btn-outline-secondary" htmlFor="ra_bleed_no">
+                                  Нет
+                                </label>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
 
-                    {k === "vein_catheter" && (
+                    {flowKind === "red_arrest" && k === "vein_catheter" && (
                       <div className="mb-3 mt-2">
                         <div className="small fw-semibold mb-2">Введение адреналина 0,1% - 1,0 мл в/в</div>
                         <div className="d-flex gap-2 flex-wrap">
@@ -413,65 +442,69 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                 );
               })}
 
-              <hr className="my-3" />
-              <div
-                className={`form-check mb-3 ${csectionChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
-              >
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="ra_csection"
-                  checked={csectionChecked}
-                  disabled={done}
-                  onChange={(e) => void toggle("manip", "csection_done", e.target.checked)}
-                />
-                <label className="form-check-label fw-semibold" htmlFor="ra_csection">
-                  Выполнено кесарево сечение
-                </label>
-                {csectionChecked && (
-                  <div className="small text-muted ms-4">
-                    {fmtAt(manip.csection_done || manip.urgent_cesarean)}
+              {flowKind === "red_arrest" && (
+                <>
+                  <hr className="my-3" />
+                  <div
+                    className={`form-check mb-3 ${csectionChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                  >
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      id="ra_csection"
+                      checked={csectionChecked}
+                      disabled={done}
+                      onChange={(e) => void toggle("manip", "csection_done", e.target.checked)}
+                    />
+                    <label className="form-check-label fw-semibold" htmlFor="ra_csection">
+                      Выполнено кесарево сечение
+                    </label>
+                    {csectionChecked && (
+                      <div className="small text-muted ms-4">
+                        {fmtAt(manip.csection_done || manip.urgent_cesarean)}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="mb-2">
-                <div className="small fw-semibold mb-1">Исход СЛР (выбрать один)</div>
-                <div className="d-grid gap-2">
-                  <div
-                    className={`form-check ${recoveryChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
-                  >
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name={`ra_resusc_${patientId}`}
-                      id="ra_out_recovery"
-                      checked={recoveryChecked}
-                      disabled={done}
-                      onChange={() => void toggle("manip", "resusc_outcome_recovery", true)}
-                    />
-                    <label className="form-check-label" htmlFor="ra_out_recovery">
-                      Восстановление сердечной деятельности. Завершение СЛР
-                    </label>
+                  <div className="mb-2">
+                    <div className="small fw-semibold mb-1">Исход СЛР (выбрать один)</div>
+                    <div className="d-grid gap-2">
+                      <div
+                        className={`form-check ${recoveryChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                      >
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name={`ra_resusc_${patientId}`}
+                          id="ra_out_recovery"
+                          checked={recoveryChecked}
+                          disabled={done}
+                          onChange={() => void toggle("manip", "resusc_outcome_recovery", true)}
+                        />
+                        <label className="form-check-label" htmlFor="ra_out_recovery">
+                          Восстановление сердечной деятельности. Завершение СЛР
+                        </label>
+                      </div>
+                      <div
+                        className={`form-check ${deathChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                      >
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name={`ra_resusc_${patientId}`}
+                          id="ra_out_death"
+                          checked={deathChecked}
+                          disabled={done}
+                          onChange={() => void toggle("manip", "resusc_outcome_death", true)}
+                        />
+                        <label className="form-check-label" htmlFor="ra_out_death">
+                          Смерть
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <div
-                    className={`form-check ${deathChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
-                  >
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name={`ra_resusc_${patientId}`}
-                      id="ra_out_death"
-                      checked={deathChecked}
-                      disabled={done}
-                      onChange={() => void toggle("manip", "resusc_outcome_death", true)}
-                    />
-                    <label className="form-check-label" htmlFor="ra_out_death">
-                      Смерть
-                    </label>
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -483,17 +516,62 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
             type="button"
             className="btn btn-success btn-lg me-2"
             disabled={done || !canComplete}
-            onClick={() => void onComplete()}
+            onClick={() => {
+              if (requiresConfirm) {
+                setConfirmOpen(true);
+                return;
+              }
+              void onComplete();
+            }}
           >
             Завершить действия
           </button>
           {!canComplete && !done && (
             <p className="text-muted small mt-2 mb-0">
-              Чтобы завершить: нажмите «Бригада вызвана», затем отметьте «Выполнено кесарево сечение» и/или один из исходов СЛР.
+              {flowKind === "red_arrest"
+                ? "Чтобы завершить: нажмите «Бригада вызвана», затем отметьте «Выполнено кесарево сечение» и/или один из исходов СЛР."
+                : "Завершение доступно в любой момент после подтверждения."}
             </p>
           )}
         </div>
       </div>
+
+      {confirmOpen && (
+        <>
+          <div className="modal d-block" tabIndex={-1} role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Подтвердите завершение</h5>
+                  <button type="button" className="btn-close" onClick={() => setConfirmOpen(false)} />
+                </div>
+                <div className="modal-body">
+                  <p className="mb-0">
+                    Завершить действия по сценарию{" "}
+                    {flowKind === "red_seizures" ? "«Судороги»" : "«Кровотечение»"}?
+                  </p>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => setConfirmOpen(false)}>
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={() => {
+                      setConfirmOpen(false);
+                      void onComplete();
+                    }}
+                  >
+                    Завершить
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop show" />
+        </>
+      )}
     </div>
   );
 }

@@ -68,7 +68,7 @@ module Api
 
           render json: {
             ok: true,
-            triage: TriageStatePresenter.call(@patient, @triage),
+            triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user),
             notice_hint: hint,
             next_step: @triage.completed_at ? nil : @triage.step
           }

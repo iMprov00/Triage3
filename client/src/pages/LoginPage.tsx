@@ -6,8 +6,8 @@ export default function LoginPage() {
   const nav = useNavigate();
   const loc = useLocation();
   const redirectTo = (loc.state as { from?: string } | null)?.from;
-  const [login, setLogin] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
 
   async function submit(e: React.FormEvent) {

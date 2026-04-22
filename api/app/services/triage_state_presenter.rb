@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class TriageStatePresenter
-  def self.call(patient, triage)
-    {
+  def self.call(patient, triage, viewer: nil)
+    h = {
       patient_id: patient.id,
       patient_full_name: patient.full_name,
       step: triage.step,
@@ -26,6 +26,19 @@ class TriageStatePresenter
       brigade_time_limit: triage.brigade_time_limit,
       brigade_timer_label: triage.brigade_timer_label,
       red_arrest_flow: triage.red_arrest_actions_flow?,
+      actions_flow_kind: triage.actions_flow_kind,
+      actions_flow_schema: begin
+        schema = triage.actions_flow_schema
+        if schema
+          {
+            team: schema[:team].map { |e| { key: e[:key].to_s, label: e[:label] } },
+            manips: schema[:manips].map { |e| { key: e[:key].to_s, label: e[:label] } },
+            vitals: schema[:vitals].map { |e| { key: e[:key].to_s, label: e[:label] } }
+          }
+        else
+          nil
+        end
+      end,
       red_arrest_schema: {
         team: Triage::RED_ARREST_TEAM.map { |e| { key: e[:key].to_s, label: e[:label] } },
         manips: Triage::RED_ARREST_MANIPS.map { |e| { key: e[:key].to_s, label: e[:label] } },
@@ -35,7 +48,13 @@ class TriageStatePresenter
       final_action: triage.final_action,
       can_complete_final: triage.can_complete_final_action?,
       brigade_timer_ends_at: triage.brigade_timer_ends_at,
-      can_complete_red_arrest: triage.can_complete_red_arrest?
+      can_complete_red_arrest: triage.can_complete_red_arrest?,
+      can_complete_actions_flow: triage.can_complete_actions_flow?
     }
+    if viewer
+      h[:can_edit_saved_steps] =
+        !PatientListPresenter.other_role?(viewer) || PatientListPresenter.patient_performer?(patient, viewer)
+    end
+    h
   end
 end

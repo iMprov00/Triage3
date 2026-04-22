@@ -1361,6 +1361,109 @@ html.triag-theme-soft .patient-timer-value {
   background: #fffdfa;
 }
 
+.triage-simple-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.triage-simple-action-row {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  background: #fffdfa;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: var(--triag-shadow);
+}
+
+.triage-simple-action-row--red {
+  border-left: 4px solid rgba(220, 38, 38, 0.42);
+}
+
+.triage-simple-action-row--yellow {
+  border-left: 4px solid rgba(245, 158, 11, 0.5);
+}
+
+.triage-simple-action-row--purple {
+  border-left: 4px solid rgba(139, 92, 246, 0.45);
+}
+
+.triage-simple-action-row--green {
+  border-left: 4px solid rgba(16, 185, 129, 0.45);
+}
+
+.triage-simple-action-row--neutral {
+  border-left: 4px solid rgba(148, 163, 184, 0.55);
+}
+
+.triage-simple-action-row--done {
+  background: #f4faf5;
+}
+
+.triage-simple-action-main {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.triage-simple-action-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.triage-simple-action-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #edf4fb;
+  color: #3f5f7f;
+  border: 1px solid #d7e3ef;
+}
+
+.triage-simple-action-badge--final {
+  background: #fff5e8;
+  color: #8a5a2b;
+  border-color: #f3dec2;
+}
+
+.triage-simple-action-title {
+  font-size: 1.06rem;
+  line-height: 1.45;
+  color: var(--triag-text);
+}
+
+.triage-simple-action-hint {
+  font-size: 0.88rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.35rem;
+  max-width: 42rem;
+}
+
+.triage-simple-action-time {
+  font-size: 0.88rem;
+  margin-top: 0.45rem;
+}
+
+.triage-simple-action-btn {
+  min-width: 118px;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+}
+
+.triage-simple-actions-complete {
+  padding: 0.55rem 1.25rem;
+  font-size: 1rem;
+}
+
 .triage-actions-top-grid {
   display: grid;
   gap: 0.6rem;
@@ -1555,4 +1658,63 @@ html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
   line-height: 1.1;
   margin: 0.2rem 0 0.1rem;
   color: #292524;
+}
+
+.triage-report-page .triage-report-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  border: 1px solid transparent;
+}
+
+.triage-report-page .triage-report-chip--ok {
+  background: #eef6ef;
+  color: #3e6144;
+  border-color: #d8e8da;
+}
+
+.triage-report-page .triage-report-chip--warn {
+  background: #fff5e8;
+  color: #8a5a2b;
+  border-color: #f3dec2;
+}
+
+.triage-report-page .triage-report-chip--danger {
+  background: #fdeeee;
+  color: #8d4343;
+  border-color: #f3d4d4;
+}
+
+.triage-report-page .triage-report-chip--info {
+  background: #edf4fb;
+  color: #3f5f7f;
+  border-color: #d7e3ef;
+}
+
+.triage-report-page .triage-report-chip--muted {
+  background: #f4f1ec;
+  color: #70665a;
+  border-color: #e3dbd0;
+}
+
+.triage-report-page .triage-report-row--warn > td {
+  background: #fffaf2;
+}
+
+.triage-report-page .triage-report-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.triage-report-page .triage-report-value-line {
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--triag-text);
 }

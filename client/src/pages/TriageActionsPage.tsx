@@ -37,7 +37,8 @@ export default function TriageActionsPage() {
   }, []);
 
   const actions = (triage?.priority_actions as ActionDef[]) || [];
-  const red = Boolean(triage?.red_arrest_flow);
+  const actionsFlowKind = (triage?.actions_flow_kind as string | null | undefined) || null;
+  const red = Boolean(actionsFlowKind);
   const actionsData = (triage?.actions_data as Record<string, unknown>) || {};
 
   const limit = (triage?.actions_time_limit as number) || 300;
@@ -57,6 +58,15 @@ export default function TriageActionsPage() {
   const brigadePct = Math.min(100, (brigadeRem / brigadeLimit) * 100);
   const brigadeTone = brigadeRem <= 0 ? "danger" : brigadePct <= 25 ? "danger" : brigadePct <= 50 ? "warning" : "ok";
 
+  const priorityClass = (() => {
+    const p = String(triage?.priority || "").toLowerCase();
+    if (p === "red") return "red";
+    if (p === "yellow") return "yellow";
+    if (p === "purple") return "purple";
+    if (p === "green") return "green";
+    return "neutral";
+  })();
+
   async function mark(key: string) {
     setErr("");
     try {
@@ -74,7 +84,7 @@ export default function TriageActionsPage() {
     setErr("");
     try {
       await apiJson(`/api/v1/patients/${patientId}/triage/actions/complete`, { method: "POST", json: {} });
-      nav("/patients");
+      nav(`/patients/${patientId}/triage/actions/report`);
     } catch {
       setErr("Не все действия выполнены");
     }
@@ -126,23 +136,47 @@ export default function TriageActionsPage() {
           setErr={setErr}
         />
       ) : (
-        <ul className="list-group triage-actions-list">
+        <div className="triage-simple-actions">
           {actions.map((a) => {
             const done = Boolean((actionsData as Record<string, unknown>)[a.key]);
+            const completedAt = (actionsData as Record<string, unknown>)[a.key];
             return (
-              <li key={a.key} className="list-group-item d-flex justify-content-between align-items-center">
-                <span>{a.text || a.key}</span>
-                <button type="button" className={`btn btn-sm ${done ? "btn-success" : "btn-outline-primary"}`} onClick={() => void mark(a.key)}>
-                  {done ? "Готово" : "Отметить"}
-                </button>
-              </li>
+              <div
+                key={a.key}
+                className={`triage-simple-action-row triage-simple-action-row--${priorityClass}${done ? " triage-simple-action-row--done" : ""}`}
+              >
+                <div className="triage-simple-action-main">
+                  <div className="triage-simple-action-badges">
+                    {a.starts_timer ? <span className="triage-simple-action-badge">Таймер</span> : null}
+                    {a.final ? <span className="triage-simple-action-badge triage-simple-action-badge--final">Финал</span> : null}
+                  </div>
+                  <div className="triage-simple-action-title">{a.text || a.key}</div>
+                  {a.final ? (
+                    <div className="triage-simple-action-hint">Завершающее действие фазы — отметьте после выполнения остальных пунктов.</div>
+                  ) : null}
+                  {done && completedAt != null && (
+                    <div className="triage-simple-action-time text-muted">
+                      Выполнено: {new Date(Number(completedAt) * 1000).toLocaleString("ru-RU")}
+                    </div>
+                  )}
+                </div>
+                {!triage.actions_completed_at && (
+                  <button
+                    type="button"
+                    className={`btn ${done ? "btn-success" : "btn-outline-primary"} triage-simple-action-btn`}
+                    onClick={() => void mark(a.key)}
+                  >
+                    {done ? "Готово" : "Отметить"}
+                  </button>
+                )}
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
-      {!red && (
-        <button type="button" className="btn btn-primary mt-3" onClick={() => void complete()}>
+      {!red && !triage.actions_completed_at && (
+        <button type="button" className="btn btn-primary mt-3 triage-simple-actions-complete" onClick={() => void complete()}>
           Завершить действия
         </button>
       )}

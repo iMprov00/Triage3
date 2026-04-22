@@ -14,11 +14,15 @@ module Api
           selected = Patient.find_by(id: prm[:patient_id])
           if selected
             audit_events = selected.triage_audit_events.includes(:triage).order(:occurred_at).map do |ev|
+              payload = ev.payload_hash
+              action_key = payload["action"].to_s
               {
                 id: ev.id,
                 event_type: ev.event_type,
+                event_label: TriageAuditEvent::EVENT_LABELS[ev.event_type.to_s] || ev.event_type.to_s,
                 occurred_at: ev.occurred_at,
-                payload: ev.payload_hash
+                payload: payload,
+                action_text: action_key.present? ? Triage.action_text_for_key(action_key) : nil
               }
             end
           end
@@ -34,7 +38,7 @@ module Api
         render json: {
           patients: for_select.map { |p| PatientListPresenter.to_list_hash(p, current_user) },
           selected_patient_id: selected&.id,
-          triage: selected&.triage ? TriageStatePresenter.call(selected, selected.triage) : nil,
+          triage: selected&.triage ? TriageStatePresenter.call(selected, selected.triage, viewer: current_user) : nil,
           audit_events: audit_events,
           step_timing: selected&.triage&.statistics_step_rows,
           actions_phase: selected&.triage&.statistics_actions_phase,

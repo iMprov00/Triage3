@@ -1,13 +1,23 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
-import { triageStepMaxSeconds } from "../triageUi";
+import TriageStepEditConfirmDialog from "../components/TriageStepEditConfirmDialog";
+import {
+  triageActiveStepPath,
+  triageHasSavedStepData,
+  triagePathIsEditMode,
+  triageStepMaxSeconds,
+  type TriageStepEditPreview,
+  type TriageStepEditUpdateResponse,
+} from "../triageUi";
 
 type Options = { positions: string[]; urgency_criteria: string[]; infection_signs: string[] };
 
 export default function TriageStep2Page() {
   const { patientId } = useParams();
   const nav = useNavigate();
+  const location = useLocation();
+  const isEditMode = triagePathIsEditMode(location.pathname, 2);
   const [opts, setOpts] = useState<Options | null>(null);
   const [triage, setTriage] = useState<Record<string, unknown> | null>(null);
   const [position, setPosition] = useState("");
@@ -15,6 +25,9 @@ export default function TriageStep2Page() {
   const [infection, setInfection] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [, setTick] = useState(0);
+  const [editDialog, setEditDialog] = useState<{ title: string; body: ReactNode } | null>(null);
+  const [pendingEditPayload, setPendingEditPayload] = useState<Record<string, unknown> | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -53,16 +66,83 @@ export default function TriageStep2Page() {
     else set([...arr, v]);
   }
 
-  async function submit(e: React.FormEvent) {
+  function buildStep2Payload(): Record<string, unknown> {
+    if (!opts) return {};
+    const idxUrgency = urgency.map((label) => String(opts.urgency_criteria.indexOf(label))).filter((i) => i !== "-1");
+    const idxInf = infection.map((label) => String(opts.infection_signs.indexOf(label))).filter((i) => i !== "-1");
+    return { position, urgency_criteria: idxUrgency, infection_signs: idxInf };
+  }
+
+  async function runEditPreview() {
+    setErr("");
+    const payload = buildStep2Payload();
+    try {
+      const prev = await apiJson<TriageStepEditPreview>(`/api/v1/patients/${patientId}/triage/preview_step_update/2`, {
+        method: "POST",
+        json: payload,
+      });
+      if (!prev.ok) {
+        setErr(prev.error || "Не удалось проверить изменения");
+        return;
+      }
+      setPendingEditPayload(payload);
+      setEditDialog({
+        title: prev.priority_changed ? "Внимание — изменение приоритета" : "Подтверждение сохранения",
+        body: prev.priority_changed ? (
+          <p className="mb-0">
+            <strong>ВНИМАНИЕ!</strong> Внесённые изменения расходятся с текущим приоритетом (сейчас:{" "}
+            <strong>{prev.current_priority_label}</strong>). При сохранении последующие шаги и действия приоритета будут пересчитаны.
+            Новый приоритет: <strong>{prev.new_priority_label}</strong>. Сохранить?
+          </p>
+        ) : (
+          <p className="mb-0">Сохранить изменения шага 2?</p>
+        ),
+      });
+    } catch (ex: unknown) {
+      const er = ex as { body?: { error?: string } };
+      setErr(er.body?.error || "Ошибка проверки изменений");
+    }
+  }
+
+  async function confirmEditSave() {
+    if (!patientId || !pendingEditPayload) return;
+    setEditSaving(true);
+    setErr("");
+    try {
+      const r = await apiJson<TriageStepEditUpdateResponse>(`/api/v1/patients/${patientId}/triage/update_step/2`, {
+        method: "POST",
+        json: pendingEditPayload,
+      });
+      if (!r.ok) {
+        setErr((r as { error?: string }).error || "Ошибка сохранения");
+        return;
+      }
+      setEditDialog(null);
+      setPendingEditPayload(null);
+      const tri = r.triage || {};
+      if (tri.completed_at) nav(`/patients/${patientId}/triage/actions`);
+      else nav(triageActiveStepPath(patientId, Number(tri.step) || 2));
+    } catch (ex: unknown) {
+      const er = ex as { body?: { error?: string } };
+      setErr(er.body?.error || "Ошибка сохранения");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isEditMode) {
+      await runEditPreview();
+      return;
+    }
     setErr("");
     if (!opts) return;
     try {
-      const idxUrgency = urgency.map((label) => String(opts.urgency_criteria.indexOf(label))).filter((i) => i !== "-1");
-      const idxInf = infection.map((label) => String(opts.infection_signs.indexOf(label))).filter((i) => i !== "-1");
+      const payload = buildStep2Payload();
       const r = await apiJson<{ result?: string }>(`/api/v1/patients/${patientId}/triage/step2`, {
         method: "POST",
-        json: { position, urgency_criteria: idxUrgency, infection_signs: idxInf },
+        json: payload,
       });
       if (r.result === "priority_assigned") nav(`/patients/${patientId}/triage/actions`);
       else nav(`/patients/${patientId}/triage/step3`);
@@ -73,7 +153,46 @@ export default function TriageStep2Page() {
 
   if (!opts || !triage) return <div className="container-fluid triag-page-wide"><div className="triage-page-shell py-2 py-sm-3">{err || "Загрузка…"}</div></div>;
 
-  if ((triage.step as number) !== 2) {
+  if (isEditMode) {
+    if (triage.actions_completed_at) {
+      return (
+        <div className="container-fluid triag-page-wide">
+          <div className="triage-page-shell py-2 py-sm-3">
+            <p className="mb-2">Действия по приоритету уже завершены — редактирование шагов недоступно.</p>
+            <Link to="/patients" className="triage-back-link">
+              ← Пациенты
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    if (triage.can_edit_saved_steps !== true) {
+      return (
+        <div className="container-fluid triag-page-wide">
+          <div className="triage-page-shell py-2 py-sm-3">
+            <p className="mb-2">Недостаточно прав для редактирования сохранённых шагов этого пациента.</p>
+            <Link to="/patients" className="triage-back-link">
+              ← Пациенты
+            </Link>
+          </div>
+        </div>
+      );
+    }
+    if (!triageHasSavedStepData(triage, 2)) {
+      return (
+        <div className="container-fluid triag-page-wide">
+          <div className="triage-page-shell py-2 py-sm-3">
+            <p className="mb-2">Для шага 2 нет сохранённых данных.</p>
+            <Link to="/patients" className="triage-back-link">
+              ← Пациенты
+            </Link>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  if (!isEditMode && (triage.step as number) !== 2) {
     return (
       <div className="container-fluid triag-page-wide">
         <div className="triage-page-shell py-2 py-sm-3">
@@ -88,8 +207,9 @@ export default function TriageStep2Page() {
       <div className="triage-page-shell py-2 py-sm-3">
       <div className="triage-page-head">
         <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-        <h1 className="h4 triage-page-title">Шаг 2</h1>
+        <h1 className="h4 triage-page-title">{isEditMode ? "Редактирование шага 2" : "Шаг 2"}</h1>
       </div>
+      {!isEditMode && (
       <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
         <div className="triage-timer-row">
           <span className="small text-muted">Осталось времени</span>
@@ -99,8 +219,9 @@ export default function TriageStep2Page() {
           <div className={`progress-bar triage-timer-bar triage-timer-bar--${timerTone}`} style={{ width: `${timerPct}%` }} />
         </div>
       </div>
+      )}
       {err && <div className="alert alert-danger py-2">{err}</div>}
-      <form onSubmit={(e) => void submit(e)} className="card triage-form-card">
+      <form onSubmit={(e) => void handleSubmit(e)} className="card triage-form-card">
         <div className="card-body">
           <label className="form-label">Положение</label>
           <select
@@ -141,10 +262,23 @@ export default function TriageStep2Page() {
             ))}
           </div>
           <button type="submit" className="btn btn-primary mt-3">
-            Сохранить
+            {isEditMode ? "Сохранить изменения" : "Сохранить"}
           </button>
         </div>
       </form>
+      <TriageStepEditConfirmDialog
+        open={editDialog != null}
+        title={editDialog?.title || ""}
+        busy={editSaving}
+        onCancel={() => {
+          if (editSaving) return;
+          setEditDialog(null);
+          setPendingEditPayload(null);
+        }}
+        onConfirm={() => void confirmEditSave()}
+      >
+        {editDialog?.body}
+      </TriageStepEditConfirmDialog>
       </div>
     </div>
   );

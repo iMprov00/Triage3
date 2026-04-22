@@ -737,6 +737,11 @@ class Triage < ActiveRecord::Base
     d
   end
 
+  # Параметр из формы (строка "true") или из JSON API (boolean true)
+  def param_bool(value)
+    value == true || value.to_s == "true"
+  end
+
   # Та же логика, что в post /triage/update_step/:step (без save)
   def apply_update_step!(step_num, params)
     old_p = normalized_priority_key(priority)
@@ -751,10 +756,10 @@ class Triage < ActiveRecord::Base
         'eye_opening' => p[:eye_opening] || p['eye_opening'],
         'verbal_response' => p[:verbal_response] || p['verbal_response'],
         'motor_response' => p[:motor_response] || p['motor_response'],
-        'breathing' => (p[:breathing] || p['breathing']) == 'true',
-        'heartbeat' => (p[:heartbeat] || p['heartbeat']) == 'true',
-        'seizures' => (p[:seizures] || p['seizures']) == 'true',
-        'active_bleeding' => (p[:active_bleeding] || p['active_bleeding']) == 'true'
+        'breathing' => param_bool(p[:breathing] || p["breathing"]),
+        'heartbeat' => param_bool(p[:heartbeat] || p["heartbeat"]),
+        'seizures' => param_bool(p[:seizures] || p["seizures"]),
+        'active_bleeding' => param_bool(p[:active_bleeding] || p["active_bleeding"])
       }
 
       update_step_data(1, step_data)

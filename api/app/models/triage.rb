@@ -63,6 +63,63 @@ class Triage < ApplicationRecord
     { key: 'pulse', label: 'Пульс' },
     { key: 'saturation', label: 'Сатурация' }
   ].freeze
+
+  RED_SEIZURES_TEAM = [
+    { key: 'midwife_triage', label: 'Акушерка триажного поста' },
+    { key: 'junior_nurse_triage', label: 'Младшая медсестра триажного поста' },
+    { key: 'obgyn', label: 'Акушер-гинеколог' },
+    { key: 'anesthesiologist', label: 'Анестезиолог-реаниматолог' },
+    { key: 'nurse_anesthetist', label: 'Медицинская сестра-анестезист' },
+    { key: 'pediatric_resus', label: 'Детская реанимация' }
+  ].freeze
+
+  RED_SEIZURES_MANIPS = [
+    { key: 'airway_patency', label: 'Обеспечена проходимость верхних дыхательных путей (открытие рта, выдвижение нижней челюсти, введен ротоглоточный воздуховод)' },
+    { key: 'oxygen_inhalation', label: 'Ингаляционное введение кислорода через носовые канюли' },
+    { key: 'vein_catheter', label: 'Катетеризация вены' },
+    { key: 'magnesium_bolus', label: 'Введение сульфата магния 25%-16,0 в/в болюсно' },
+    { key: 'magnesium_infusion', label: 'Введение сульфата магния 25%-4,0 мл/час инфузоматом' },
+    { key: 'intubation', label: 'Интубация трахеи' },
+    { key: 'fetal_heartbeat_check', label: 'Выслушивание сердцебиения плода фетальным датчиком' },
+    { key: 'transport_or', label: 'Транспортировка в операционную' },
+    { key: 'lab_material_sampling', label: 'Забор биологического материала на лабораторные исследования (кровь/моча)' },
+    { key: 'emergency_c_section', label: 'Выполнено экстренное кесарево' }
+  ].freeze
+
+  RED_SEIZURES_VITALS = [
+    { key: 'bp', label: 'АД' },
+    { key: 'pulse', label: 'ЧСС' },
+    { key: 'respiratory_rate', label: 'ЧДД' },
+    { key: 'saturation', label: 'SpO2' }
+  ].freeze
+
+  RED_BLEEDING_TEAM = [
+    { key: 'midwife_triage', label: 'Акушерка триажного поста' },
+    { key: 'junior_nurse_triage', label: 'Младшая медицинская сестра триажного поста' },
+    { key: 'anesthesiologist', label: 'Анестезиолог-реаниматолог' },
+    { key: 'obgyn_po', label: 'Врач-акушер-гинеколог ПО' },
+    { key: 'obgyn_2', label: 'Врач акушер-гинеколог №2' },
+    { key: 'nurse_anesthetist', label: 'Медицинская сестра-анестезист' },
+    { key: 'lab_technician', label: 'Лаборант' },
+    { key: 'pediatric_resus', label: 'Детская реанимация' }
+  ].freeze
+
+  RED_BLEEDING_MANIPS = [
+    { key: 'venous_access_g16', label: 'Обеспечение венозного доступа G16' },
+    { key: 'blood_sampling', label: 'Забор крови на анализ' },
+    { key: 'crystalloid_bolus_500', label: 'Начато введение кристаллоидного раствора 500 мл в/в струйно' },
+    { key: 'second_vein_catheter_g16', label: 'Катетеризация второй вены G16' },
+    { key: 'urinary_catheter', label: 'Катетеризация мочевого пузыря' },
+    { key: 'humidified_oxygen', label: 'Подача увлажненного кислорода' },
+    { key: 'transport_or', label: 'Транспортировка в операционную' },
+    { key: 'emergency_c_section', label: 'Экстренное кесарево сечение' }
+  ].freeze
+
+  RED_BLEEDING_VITALS = [
+    { key: 'bp', label: 'АД' },
+    { key: 'pulse', label: 'ЧСС' },
+    { key: 'saturation', label: 'SpO2' }
+  ].freeze
   
   # Действия для желтого приоритета
   YELLOW_PRIORITY_ACTIONS = [
@@ -337,6 +394,40 @@ class Triage < ApplicationRecord
     priority.to_s == 'red' && self.class.step1_data_implies_red_arrest?(step1_data)
   end
 
+  def red_seizures_actions_flow?
+    actions_flow_kind == 'red_seizures'
+  end
+
+  def red_bleeding_actions_flow?
+    actions_flow_kind == 'red_bleeding'
+  end
+
+  def actions_flow_kind
+    return nil unless priority.to_s == 'red'
+
+    s1 = step1_data || {}
+    no_breathing_or_heartbeat =
+      self.class.step1_explicitly_no?(s1['breathing']) || self.class.step1_explicitly_no?(s1['heartbeat'])
+    return 'red_arrest' if no_breathing_or_heartbeat
+    return 'red_seizures' if truthy_step1_flag?(s1['seizures'])
+    return 'red_bleeding' if truthy_step1_flag?(s1['active_bleeding'])
+
+    nil
+  end
+
+  def actions_flow_schema
+    case actions_flow_kind
+    when 'red_arrest'
+      { team: RED_ARREST_TEAM, manips: RED_ARREST_MANIPS, vitals: RED_ARREST_VITALS, bucket: 'red_arrest' }
+    when 'red_seizures'
+      { team: RED_SEIZURES_TEAM, manips: RED_SEIZURES_MANIPS, vitals: RED_SEIZURES_VITALS, bucket: 'red_seizures' }
+    when 'red_bleeding'
+      { team: RED_BLEEDING_TEAM, manips: RED_BLEEDING_MANIPS, vitals: RED_BLEEDING_VITALS, bucket: 'red_bleeding' }
+    else
+      nil
+    end
+  end
+
   def check_step1_priority
     next_priority = self.class.priority_strategy.evaluate_step1(self)
     if next_priority.present?
@@ -453,8 +544,9 @@ class Triage < ApplicationRecord
   def start_actions!
     return if actions_started_at
     data = {}
-    if red_arrest_actions_flow?
-      data['red_arrest'] = { 'team' => {}, 'manip' => {}, 'vitals' => {} }
+    schema = actions_flow_schema
+    if schema
+      data[schema[:bucket]] = { 'team' => {}, 'manip' => {}, 'vitals' => {} }
     end
     update(
       actions_started_at: Time.now,
@@ -462,42 +554,60 @@ class Triage < ApplicationRecord
     )
   end
 
-  def ensure_red_arrest_bucket!
+  def ensure_actions_flow_bucket!
+    schema = actions_flow_schema
+    return false unless schema
+
     self.actions_data ||= {}
-    self.actions_data['red_arrest'] ||= { 'team' => {}, 'manip' => {}, 'vitals' => {} }
-    h = actions_data['red_arrest']
+    self.actions_data[schema[:bucket]] ||= { 'team' => {}, 'manip' => {}, 'vitals' => {} }
+    h = actions_data[schema[:bucket]]
     h['team'] ||= {}
     h['manip'] ||= {}
     h['vitals'] ||= {}
+    true
+  end
+
+  def actions_flow_data
+    schema = actions_flow_schema
+    return {} unless schema
+
+    d = actions_data && actions_data[schema[:bucket]]
+    d.is_a?(Hash) ? d : {}
+  end
+
+  def ensure_red_arrest_bucket!
+    ensure_actions_flow_bucket!
   end
 
   def red_arrest_data
-    d = actions_data && actions_data['red_arrest']
-    d.is_a?(Hash) ? d : {}
+    actions_flow_data
   end
 
   # @return [Symbol] :ok_new, :ok_already, :invalid
   def mark_red_arrest_brigade!
-    return :invalid unless red_arrest_actions_flow?
+    return :invalid unless actions_flow_schema
     return :ok_already if brigade_called_at
 
-    ensure_red_arrest_bucket!
+    return :invalid unless ensure_actions_flow_bucket!
     now = Time.now
     self.brigade_called_at = now
-    actions_data['red_arrest']['brigade_called_at'] = now.to_i
+    actions_data[actions_flow_schema[:bucket]]['brigade_called_at'] = now.to_i
     save ? :ok_new : :invalid
   end
 
   # group: "team" | "manip"
   def toggle_red_arrest_item!(group, key, checked)
-    return false unless red_arrest_actions_flow?
+    schema = actions_flow_schema
+    return false unless schema
 
     g = group.to_s
     raise ArgumentError, 'group' unless %w[team manip].include?(g)
 
     k = key.to_s
-    allowed_team = RED_ARREST_TEAM.map { |e| e[:key].to_s }
-    allowed_manip = RED_ARREST_MANIPS.map { |e| e[:key].to_s } + %w[
+    allowed_team = schema[:team].map { |e| e[:key].to_s }
+    allowed_manip = schema[:manips].map { |e| e[:key].to_s }
+    if schema[:bucket] == 'red_arrest'
+      allowed_manip += %w[
       adrenaline_1 adrenaline_2 adrenaline_3
       csection_done
       resusc_outcome_recovery
@@ -505,36 +615,42 @@ class Triage < ApplicationRecord
       urgent_cesarean
       slr_complete
     ]
+    end
     return false if g == 'team' && !allowed_team.include?(k)
     return false if g == 'manip' && !allowed_manip.include?(k)
 
-    ensure_red_arrest_bucket!
-    actions_data['red_arrest'][g] ||= {}
+    return false unless ensure_actions_flow_bucket!
+    actions_data[schema[:bucket]][g] ||= {}
     if ActiveModel::Type::Boolean.new.cast(checked)
       # Взаимоисключающие исходы СЛР: при выборе одного автоматически снимаем второй.
       if g == 'manip' && %w[resusc_outcome_recovery resusc_outcome_death].include?(k)
         other = k == 'resusc_outcome_recovery' ? 'resusc_outcome_death' : 'resusc_outcome_recovery'
-        actions_data['red_arrest'][g].delete(other)
+        actions_data[schema[:bucket]][g].delete(other)
       end
-      actions_data['red_arrest'][g][key.to_s] = Time.now.to_i
+      actions_data[schema[:bucket]][g][key.to_s] = Time.now.to_i
     else
-      actions_data['red_arrest'][g].delete(key.to_s)
+      actions_data[schema[:bucket]][g].delete(key.to_s)
     end
     save
   end
 
   def set_red_arrest_vital!(vkey, value)
-    return false unless red_arrest_actions_flow?
+    schema = actions_flow_schema
+    return false unless schema
 
-    ensure_red_arrest_bucket!
+    return false unless ensure_actions_flow_bucket!
+    vitals_keys = schema[:vitals].map { |e| e[:key].to_s }
+    return false unless vital_allowed_key?(vkey.to_s, vitals_keys)
+
     vkey = vkey.to_s
     val = value.to_s.strip
     # Поддержка 3 последовательных замеров для AD/пульса/сатурации:
     # ключи приходят как bp_1..bp_3, pulse_1..pulse_3, saturation_1..saturation_3.
-    if vkey =~ /\A(bp|pulse|saturation)_(1|2|3)\z/
+    if vkey =~ /\A([a-z_]+)_(1|2|3)\z/
       base = Regexp.last_match(1)
+      return false unless vitals_keys.include?(base)
       idx = Regexp.last_match(2).to_i - 1
-      entry = actions_data['red_arrest']['vitals'][base]
+      entry = actions_data[schema[:bucket]]['vitals'][base]
       values = if entry.is_a?(Hash) && entry['values'].is_a?(Array)
                  entry['values']
                else
@@ -543,27 +659,36 @@ class Triage < ApplicationRecord
                end
       values[idx] = val
       if values.all?(&:blank?)
-        actions_data['red_arrest']['vitals'].delete(base)
+        actions_data[schema[:bucket]]['vitals'].delete(base)
       else
-        actions_data['red_arrest']['vitals'][base] = { 'values' => values, 'at' => Time.now.to_i }
+        actions_data[schema[:bucket]]['vitals'][base] = { 'values' => values, 'at' => Time.now.to_i }
       end
       return save
     end
 
-    actions_data['red_arrest']['vitals'] ||= {}
+    return false unless vitals_keys.include?(vkey)
+
+    actions_data[schema[:bucket]]['vitals'] ||= {}
     if val.empty?
-      actions_data['red_arrest']['vitals'].delete(vkey)
+      actions_data[schema[:bucket]]['vitals'].delete(vkey)
     else
-      actions_data['red_arrest']['vitals'][vkey] = { 'value' => val, 'at' => Time.now.to_i }
+      actions_data[schema[:bucket]]['vitals'][vkey] = { 'value' => val, 'at' => Time.now.to_i }
     end
     save
   end
 
+  def vital_allowed_key?(key, allowed_base_keys)
+    return true if allowed_base_keys.include?(key)
+    return false unless key =~ /\A([a-z_]+)_(1|2|3)\z/
+
+    allowed_base_keys.include?(Regexp.last_match(1))
+  end
+
   def can_complete_red_arrest?
-    return false unless red_arrest_actions_flow?
+    return false unless actions_flow_kind == 'red_arrest'
     return false unless brigade_called_at
 
-    manip = red_arrest_data['manip'] || {}
+    manip = actions_flow_data['manip'] || {}
     manip['csection_done'].present? ||
       manip['resusc_outcome_recovery'].present? ||
       manip['resusc_outcome_death'].present? ||
@@ -571,8 +696,19 @@ class Triage < ApplicationRecord
       manip['slr_complete'].present?
   end
 
+  def can_complete_actions_flow?
+    kind = actions_flow_kind
+    return false unless kind
+    return can_complete_red_arrest? if kind == 'red_arrest'
+
+    true
+  end
+
   def red_arrest_actions_progress_for_monitor
-    ra = red_arrest_data
+    schema = actions_flow_schema
+    return { completed: 0, total: 0 } unless schema
+
+    ra = actions_flow_data
     team_n = (ra['team'] || {}).size
     manip_n = (ra['manip'] || {}).size
     vit_n = (ra['vitals'] || {}).sum do |_, d|
@@ -585,13 +721,14 @@ class Triage < ApplicationRecord
       end
     end
     done = (brigade_called_at ? 1 : 0) + team_n + manip_n + vit_n
-    total = 1 + RED_ARREST_TEAM.size + RED_ARREST_MANIPS.size + 7 + (RED_ARREST_VITALS.size * 3)
+    total = 1 + schema[:team].size + schema[:manips].size + (schema[:vitals].size * 3)
+    total += 7 if schema[:bucket] == 'red_arrest'
     { completed: done, total: total }
   end
   
   # Отметить действие как выполненное
   def mark_action!(action_key)
-    return false if red_arrest_actions_flow?
+    return false if actions_flow_kind.present?
 
     self.actions_data ||= {}
     return if actions_data[action_key]
@@ -609,7 +746,7 @@ class Triage < ApplicationRecord
   
   # Снять отметку с действия
   def unmark_action!(action_key)
-    return false if red_arrest_actions_flow?
+    return false if actions_flow_kind.present?
 
     self.actions_data ||= {}
     actions_data.delete(action_key)
@@ -641,8 +778,8 @@ class Triage < ApplicationRecord
   
   # Завершить все действия
   def complete_actions!
-    if red_arrest_actions_flow?
-      return false unless can_complete_red_arrest?
+    if actions_flow_kind.present?
+      return false unless can_complete_actions_flow?
       update(actions_completed_at: Time.now)
       return true
     end
@@ -739,6 +876,11 @@ class Triage < ApplicationRecord
     d
   end
 
+  # Параметр из формы (строка "true") или из JSON API (boolean true)
+  def param_bool(value)
+    value == true || value.to_s == "true"
+  end
+
   # Та же логика, что в post /triage/update_step/:step (без save)
   def apply_update_step!(step_num, params)
     old_p = normalized_priority_key(priority)
@@ -753,10 +895,10 @@ class Triage < ApplicationRecord
         'eye_opening' => p[:eye_opening] || p['eye_opening'],
         'verbal_response' => p[:verbal_response] || p['verbal_response'],
         'motor_response' => p[:motor_response] || p['motor_response'],
-        'breathing' => (p[:breathing] || p['breathing']) == 'true',
-        'heartbeat' => (p[:heartbeat] || p['heartbeat']) == 'true',
-        'seizures' => (p[:seizures] || p['seizures']) == 'true',
-        'active_bleeding' => (p[:active_bleeding] || p['active_bleeding']) == 'true'
+        'breathing' => param_bool(p[:breathing] || p["breathing"]),
+        'heartbeat' => param_bool(p[:heartbeat] || p["heartbeat"]),
+        'seizures' => param_bool(p[:seizures] || p["seizures"]),
+        'active_bleeding' => param_bool(p[:active_bleeding] || p["active_bleeding"])
       }
 
       update_step_data(1, step_data)

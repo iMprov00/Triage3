@@ -9,6 +9,7 @@ import TriageStep1Page from "./pages/TriageStep1Page";
 import TriageStep2Page from "./pages/TriageStep2Page";
 import TriageStep3Page from "./pages/TriageStep3Page";
 import TriageActionsPage from "./pages/TriageActionsPage";
+import TriageActionsReportPage from "./pages/TriageActionsReportPage";
 import AdministrationPage from "./pages/AdministrationPage";
 import MainLayout from "./layouts/MainLayout";
 import type { AuthOutletContext, SessionUser } from "./sessionTypes";
@@ -60,10 +61,14 @@ export default function App() {
           <Route path="/patients" element={<PatientsPage />} />
           <Route path="/patients/new" element={<PatientFormPage mode="new" />} />
           <Route path="/patients/:patientId/edit" element={<PatientFormPage mode="edit" />} />
+          <Route path="/patients/:patientId/triage/edit/1" element={<TriageStep1Page />} />
+          <Route path="/patients/:patientId/triage/edit/2" element={<TriageStep2Page />} />
+          <Route path="/patients/:patientId/triage/edit/3" element={<TriageStep3Page />} />
           <Route path="/patients/:patientId/triage" element={<TriageStep1Page />} />
           <Route path="/patients/:patientId/triage/step2" element={<TriageStep2Page />} />
           <Route path="/patients/:patientId/triage/step3" element={<TriageStep3Page />} />
           <Route path="/patients/:patientId/triage/actions" element={<TriageActionsPage />} />
+          <Route path="/patients/:patientId/triage/actions/report" element={<TriageActionsReportPage />} />
           <Route path="/admin" element={<AdministrationPage />} />
           <Route path="/" element={<Navigate to="/patients" replace />} />
         </Route>

@@ -100,7 +100,7 @@ module Api
             created_by_user_id: patient.created_by_user_id,
             performer_user_id: patient.performer_user_id
           ),
-          triage: t ? TriageStatePresenter.call(patient, t) : nil
+          triage: t ? TriageStatePresenter.call(patient, t, viewer: current_user) : nil
         }
       end
     end
