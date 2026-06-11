@@ -6,7 +6,9 @@ class Patient < ApplicationRecord
   belongs_to :performer_user, class_name: 'User', optional: true
 
   has_one :triage, dependent: :destroy
+  has_one :stage2_case, dependent: :destroy
   has_many :triage_audit_events, dependent: :delete_all
+  has_many :stage2_audit_events, dependent: :delete_all
 
   before_validation :sync_performer_name_from_user
 

@@ -1718,3 +1718,357 @@ html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
   line-height: 1.4;
   color: var(--triag-text);
 }
+
+/* Статистика отделения: быстрая / полная */
+.triage-stats-page .triage-page-title {
+  margin-top: 0.15rem;
+}
+
+.triage-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.triage-stat-grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+.triage-stat-kpi {
+  border-radius: var(--triag-radius-lg);
+  border: 1px solid var(--triag-border);
+  background: #fff;
+  box-shadow: var(--triag-shadow);
+  padding: 0.65rem 0.75rem;
+  min-height: 4.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.triage-stat-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--triag-text);
+}
+
+.triage-stat-kpi-label {
+  font-size: 0.78rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.2rem;
+  line-height: 1.25;
+}
+
+.triage-stat-kpi--neutral {
+  border-color: #e5e7eb;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+}
+
+.triage-stat-kpi--ok {
+  border-color: #c6ead6;
+  background: linear-gradient(180deg, #f4fdf8 0%, #ecf9f1 100%);
+}
+
+.triage-stat-kpi--ok .triage-stat-kpi-value {
+  color: #0f6b4a;
+}
+
+.triage-stat-kpi--warn {
+  border-color: #f3dec2;
+  background: linear-gradient(180deg, #fffdf9 0%, #fff5e8 100%);
+}
+
+.triage-stat-kpi--warn .triage-stat-kpi-value {
+  color: #92400e;
+}
+
+.triage-stat-kpi--danger {
+  border-color: #f3c4c4;
+  background: linear-gradient(180deg, #fffafa 0%, #fdeeee 100%);
+}
+
+.triage-stat-kpi--danger .triage-stat-kpi-value {
+  color: #b91c1c;
+}
+
+.triage-stats-table thead th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--triag-text-muted);
+}
+
+/* Быстрая статистика: донут + воронка + плитки */
+.triage-quick-page .triage-quick-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--triag-radius);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.triage-quick-page .triage-quick-strip i {
+  font-size: 1.1rem;
+}
+
+.triage-quick-strip--ok {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.triage-quick-strip--bad {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.triage-quick-strip-meta {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.triage-quick-donut-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-quick-donut {
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 6px #fff;
+}
+
+.triage-quick-donut-hole {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--triag-shadow);
+}
+
+.triage-quick-donut-pct {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--triag-text);
+}
+
+.triage-quick-donut-cap {
+  font-size: 0.72rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.15rem;
+}
+
+.triage-quick-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.triage-quick-mini {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--triag-radius);
+  border: 1px solid #e8eaef;
+  background: #fafbfc;
+}
+
+.triage-quick-mini i {
+  font-size: 1.1rem;
+  color: var(--triag-primary-hover);
+  margin-top: 0.1rem;
+}
+
+.triage-quick-mini-val {
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.triage-quick-mini-lbl {
+  font-size: 0.68rem;
+  color: var(--triag-text-muted);
+  line-height: 1.2;
+}
+
+.triage-quick-funnel-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-quick-funnel-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.triage-quick-funnel-fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 4px;
+  transition: width 0.25s ease;
+}
+
+.triage-quick-funnel-ico {
+  font-size: 1rem;
+}
+
+.triage-quick-c-total {
+  color: #374151;
+  background: #9ca3af;
+}
+
+.triage-quick-c-warn {
+  color: #92400e;
+  background: #fbbf24;
+}
+
+.triage-quick-c-open {
+  color: #1e40af;
+  background: #60a5fa;
+}
+
+.triage-quick-c-act {
+  color: #7c2d12;
+  background: #fb923c;
+}
+
+.triage-quick-c-done {
+  color: #065f46;
+  background: #34d399;
+}
+
+.triage-quick-s1 {
+  background: var(--triag-step-1);
+}
+
+.triage-quick-s2 {
+  background: var(--triag-step-2);
+}
+
+.triage-quick-s3 {
+  background: var(--triag-step-3);
+}
+
+/* Полная статистика: диаграммы (recharts) */
+.triage-full-charts .recharts-default-legend {
+  font-size: 0.78rem;
+}
+
+.triage-full-charts .recharts-cartesian-grid-horizontal line,
+.triage-full-charts .recharts-cartesian-grid-vertical line {
+  stroke: #e8eaef;
+}
+
+.triage-full-chart-box {
+  border-radius: var(--triag-radius);
+  border: 1px solid var(--triag-border);
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+  padding: 0.35rem;
+}
+
+.triage-full-chart-box--wide {
+  height: 140px;
+}
+
+.triage-full-chart-box--pie {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.triage-full-chart-box--pie .recharts-responsive-container {
+  flex: 1;
+  min-height: 200px;
+}
+
+.triage-full-priority-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.triage-full-cohort-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-full-cohort-strip {
+  display: flex;
+  width: 100%;
+  height: 0.65rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef0f3;
+}
+
+.triage-full-cohort-seg {
+  min-width: 0;
+  transition: opacity 0.15s ease;
+}
+
+.triage-full-cohort-seg:hover {
+  opacity: 0.88;
+}
+
+.triage-full-cohort-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.triage-full-row-priority > td {
+  border-left: 4px solid transparent;
+}
+
+.triage-full-row-priority--red > td {
+  background: rgba(254, 242, 242, 0.75);
+  border-left-color: var(--triag-priority-red);
+}
+
+.triage-full-row-priority--yellow > td {
+  background: rgba(255, 251, 235, 0.85);
+  border-left-color: var(--triag-priority-yellow);
+}
+
+.triage-full-row-priority--purple > td {
+  background: rgba(245, 243, 255, 0.9);
+  border-left-color: var(--triag-priority-purple);
+}
+
+.triage-full-row-priority--green > td {
+  background: rgba(236, 253, 245, 0.85);
+  border-left-color: var(--triag-priority-green);
+}
+
+.triage-full-row-priority--pending > td {
+  background: rgba(249, 250, 251, 0.95);
+  border-left-color: #9ca3af;
+}
+
+.triage-full-chart-box--mid {
+  height: 220px;
+}
+
+@media (min-width: 1200px) {
+  .triage-full-chart-box--wide {
+    height: 160px;
+  }
+}

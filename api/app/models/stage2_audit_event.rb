@@ -1,0 +1,25 @@
+# frozen_string_literal: true
+
+class Stage2AuditEvent < ApplicationRecord
+  belongs_to :patient
+  belongs_to :stage2_case, optional: true
+
+  EVENT_LABELS = {
+    "transferred" => "Пациент принят на этап 2",
+    "phase_advanced" => "Переход на следующую фазу",
+    "case_removed" => "Пациент снят с этапа 2",
+    "patient_edited" => "Карта пациента изменена",
+    "pre_doctor_submitted" => "Доврачебный этап заполнен",
+    "priority_assigned" => "Назначен приоритет этапа 2"
+  }.freeze
+
+  def self.log!(patient:, stage2_case: nil, type:, payload: {})
+    create!(
+      patient: patient,
+      stage2_case: stage2_case,
+      event_type: type.to_s,
+      payload: payload.is_a?(Hash) ? payload.to_json : payload.to_s,
+      occurred_at: Time.current
+    )
+  end
+end

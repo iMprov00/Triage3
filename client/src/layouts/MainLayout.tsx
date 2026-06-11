@@ -3,6 +3,8 @@ import { Link, Outlet, useNavigate, useOutletContext } from "react-router-dom";
 import { apiJson } from "../api";
 import type { AuthOutletContext } from "../sessionTypes";
 
+const STAGE2_APP_URL = import.meta.env.VITE_STAGE2_APP_URL || "http://localhost:5174";
+
 const SOFT_THEME_CLASS = "triag-theme-soft";
 
 export default function MainLayout() {
@@ -47,9 +49,33 @@ export default function MainLayout() {
               <i className="bi bi-people-fill" aria-hidden />
               <span>Пациенты</span>
             </Link>
+            <a
+              href={STAGE2_APP_URL}
+              className="btn btn-outline-light btn-sm app-nav-btn d-inline-flex align-items-center gap-1"
+              title="Триаж этапа 2"
+            >
+              <i className="bi bi-2-circle-fill" aria-hidden />
+              <span className="d-none d-sm-inline">Этап 2</span>
+            </a>
             <Link to="/monitor" className="btn btn-outline-light btn-sm app-nav-btn d-inline-flex align-items-center gap-1">
               <i className="bi bi-grid-1x2-fill" aria-hidden />
               <span>Монитор</span>
+            </Link>
+            <Link
+              to="/statistics/quick"
+              className="btn btn-outline-light btn-sm app-nav-btn d-inline-flex align-items-center gap-1"
+              title="Быстрая статистика"
+            >
+              <i className="bi bi-speedometer2" aria-hidden />
+              <span className="d-none d-sm-inline">Сводка</span>
+            </Link>
+            <Link
+              to="/statistics/full"
+              className="btn btn-outline-light btn-sm app-nav-btn d-inline-flex align-items-center gap-1"
+              title="Полная статистика"
+            >
+              <i className="bi bi-table" aria-hidden />
+              <span className="d-none d-sm-inline">Статистика</span>
             </Link>
             {user.role === "admin" ? (
               <Link to="/admin" className="btn btn-outline-light btn-sm app-nav-btn d-inline-flex align-items-center gap-1">

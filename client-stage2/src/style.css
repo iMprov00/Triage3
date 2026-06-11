@@ -1,0 +1,2128 @@
+/**
+ * TriagV3 SPA — палитра и UX как в legacy public/css/app.css,
+ * адаптация под PWA / планшеты / смартфоны (safe-area, touch).
+ */
+
+:root {
+  --triag-primary: #54c654;
+  --triag-primary-hover: #43a843;
+  --triag-primary-light: #e8f7e8;
+  --triag-primary-bg: #f4faf4;
+
+  --triag-priority-red: #dc2626;
+  --triag-priority-yellow: #f59e0b;
+  --triag-priority-purple: #8b5cf6;
+  --triag-priority-green: #10b981;
+
+  --triag-step-1: #3b82f6;
+  --triag-step-2: #f59e0b;
+  --triag-step-3: #10b981;
+
+  --triag-text: #1f2937;
+  --triag-text-muted: #6b7280;
+  --triag-border: #e5e7eb;
+  --triag-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --triag-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --triag-radius: 0.5rem;
+  --triag-radius-lg: 0.75rem;
+  --triag-touch: 44px;
+
+  /* Bootstrap 5.3 */
+  --bs-primary: #54c654;
+  --bs-primary-rgb: 84, 198, 84;
+  --bs-link-color: #3a9a3a;
+  --bs-link-hover-color: #2d7a2d;
+  --bs-body-bg: #f3f4f6;
+  --bs-body-color: #1f2937;
+  --bs-border-radius: var(--triag-radius);
+  --bs-border-radius-lg: var(--triag-radius-lg);
+  --bs-success: #10b981;
+  --bs-warning: #f59e0b;
+  --bs-danger: #dc2626;
+  /* Карточки всегда светлые: иначе при системной тёмной теме текст страницы становится светлым, а фон карточки остаётся белым — строки «пропадают». */
+  --bs-card-bg: #ffffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+}
+
+.app-layout {
+  min-height: 100dvh;
+}
+
+/* ---------- Шапка (как legacy .app-header) ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: linear-gradient(180deg, #5ed15e 0%, var(--triag-primary) 45%, #4ab84a 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(env(safe-area-inset-left, 0px), 0px);
+  padding-right: max(env(safe-area-inset-right, 0px), 0px);
+}
+
+.app-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem 0.65rem;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .app-header-inner {
+    padding: 0.75rem 1rem;
+  }
+}
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  border-radius: var(--triag-radius);
+  padding: 0.2rem 0.35rem;
+  margin: -0.2rem;
+  transition: background 0.2s;
+}
+
+.app-brand:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.app-brand-logo {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  object-fit: cover;
+}
+
+.app-brand-text {
+  line-height: 1.2;
+}
+
+.app-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: min(100%, 14rem);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+
+@media (min-width: 576px) {
+  .app-user-badge {
+    max-width: 18rem;
+  }
+}
+
+.app-nav-btn {
+  min-height: var(--triag-touch);
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 400px) {
+  .app-nav {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .app-nav .app-nav-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---------- Контент ---------- */
+.app-main {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0.75rem max(0.75rem, env(safe-area-inset-left, 12px)) calc(0.85rem + env(safe-area-inset-bottom, 0px))
+    max(0.75rem, env(safe-area-inset-right, 12px));
+}
+
+@media (min-width: 576px) {
+  .app-main {
+    padding: 1rem max(1rem, env(safe-area-inset-left, 12px)) calc(1rem + env(safe-area-inset-bottom, 0px))
+      max(1rem, env(safe-area-inset-right, 12px));
+  }
+}
+
+@media (min-width: 992px) {
+  .app-main {
+    padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Контейнеры страниц: чуть шире на планшете */
+.triag-page-inner {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.triag-page-wide {
+  max-width: 100%;
+}
+
+/* ---------- Кнопки / формы: удобнее на тач ---------- */
+@media (pointer: coarse) {
+  .btn:not(.btn-link) {
+    min-height: var(--triag-touch);
+  }
+  .form-control:not(textarea),
+  .form-select {
+    min-height: var(--triag-touch);
+    font-size: 16px; /* снижает авто-зум iOS */
+  }
+}
+
+/* ---------- Карточки ---------- */
+.card {
+  border: 1px solid var(--triag-border);
+  border-radius: var(--triag-radius-lg);
+  box-shadow: var(--triag-shadow);
+  background-color: var(--bs-card-bg);
+  color: var(--triag-text);
+}
+
+.card .card-body {
+  color: var(--triag-text);
+}
+
+.card .text-muted {
+  color: var(--triag-text-muted) !important;
+}
+
+.card-header {
+  border-bottom-color: var(--triag-border);
+}
+
+.patient-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.patient-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.patient-tag--status {
+  background: rgba(84, 198, 84, 0.12);
+  color: #2f6f2f;
+  border-color: rgba(84, 198, 84, 0.35);
+}
+
+.patient-tag--priority {
+  background: #f5f5f4;
+  color: #44403c;
+  border-color: #d6d3d1;
+}
+
+.patient-tag--red {
+  background: rgba(220, 38, 38, 0.12);
+  color: #991b1b;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.patient-tag--yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.patient-tag--purple {
+  background: rgba(139, 92, 246, 0.14);
+  color: #5b21b6;
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.patient-tag--green {
+  background: rgba(16, 185, 129, 0.14);
+  color: #065f46;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.patient-tag--done {
+  background: rgba(71, 85, 105, 0.12);
+  color: #334155;
+  border-color: rgba(71, 85, 105, 0.35);
+}
+
+.patient-timer-box {
+  padding: 0.55rem 0.65rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(214, 211, 209, 0.7);
+}
+
+.patient-timer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.patient-timer-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.03rem;
+  letter-spacing: 0.01em;
+  color: #1f2937;
+}
+
+.patient-timer-progress {
+  background: rgba(214, 211, 209, 0.55);
+}
+
+.patient-timer-bar {
+  transition: width 0.35s linear;
+}
+
+.patient-timer-bar--neutral,
+.patient-timer-bar--green {
+  background: #54c654;
+}
+
+.patient-timer-bar--yellow {
+  background: #f59e0b;
+}
+
+.patient-timer-bar--purple {
+  background: #8b5cf6;
+}
+
+.patient-timer-bar--red {
+  background: #dc2626;
+}
+
+/* ---------- Карточки пациентов (классы с API) ---------- */
+.card.patient-b-card,
+.patient-b-card.card {
+  border-width: 1px;
+}
+
+.card[class*="patient-b-card--"],
+.patient-b-card[class*="patient-b-card--"] {
+  border-width: 2px;
+}
+
+.patient-b-card--done {
+  border-color: #d1d5db !important;
+  background: #f3f4f6;
+  opacity: 0.97;
+}
+
+.patient-b-card--notriage {
+  border-color: rgba(59, 130, 246, 0.55);
+  animation: patient-b-pulse-blue 2.2s ease-in-out infinite;
+}
+
+.patient-b-card--triage-active {
+  border-color: rgba(84, 198, 84, 0.65);
+  animation: patient-b-pulse-green 2.2s ease-in-out infinite;
+}
+
+.patient-b-card--priority-red {
+  border-color: rgba(220, 38, 38, 0.65);
+  animation: patient-b-pulse-red 1.6s ease-in-out infinite;
+}
+
+.patient-b-card--priority-yellow {
+  border-color: rgba(245, 158, 11, 0.65);
+  animation: patient-b-pulse-yellow 2.4s ease-in-out infinite;
+}
+
+.patient-b-card--priority-purple {
+  border-color: rgba(139, 92, 246, 0.65);
+  animation: patient-b-pulse-purple 2.4s ease-in-out infinite;
+}
+
+.patient-b-card--priority-green {
+  border-color: rgba(16, 185, 129, 0.65);
+  animation: patient-b-pulse-green-priority 2.4s ease-in-out infinite;
+}
+
+@keyframes patient-b-pulse-blue {
+  0%,
+  100% {
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 4px 14px rgba(59, 130, 246, 0.12);
+  }
+  50% {
+    border-color: rgba(37, 99, 235, 0.95);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45), 0 6px 22px rgba(59, 130, 246, 0.35);
+  }
+}
+
+@keyframes patient-b-pulse-green {
+  0%,
+  100% {
+    border-color: rgba(84, 198, 84, 0.45);
+    box-shadow: 0 0 0 1px rgba(84, 198, 84, 0.2), 0 4px 14px rgba(84, 198, 84, 0.12);
+  }
+  50% {
+    border-color: rgba(67, 168, 67, 0.95);
+    box-shadow: 0 0 0 2px rgba(84, 198, 84, 0.45), 0 6px 22px rgba(84, 198, 84, 0.32);
+  }
+}
+
+@keyframes patient-b-pulse-red {
+  0%,
+  100% {
+    border-color: rgba(220, 38, 38, 0.5);
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.25), 0 4px 16px rgba(220, 38, 38, 0.18);
+  }
+  50% {
+    border-color: rgba(185, 28, 28, 1);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.55), 0 6px 26px rgba(220, 38, 38, 0.45);
+  }
+}
+
+@keyframes patient-b-pulse-yellow {
+  0%,
+  100% {
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.18), 0 4px 14px rgba(245, 158, 11, 0.12);
+  }
+  50% {
+    border-color: rgba(217, 119, 6, 0.95);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 6px 22px rgba(245, 158, 11, 0.28);
+  }
+}
+
+@keyframes patient-b-pulse-purple {
+  0%,
+  100% {
+    border-color: rgba(139, 92, 246, 0.45);
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.18), 0 4px 14px rgba(139, 92, 246, 0.12);
+  }
+  50% {
+    border-color: rgba(124, 58, 237, 0.95);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4), 0 6px 22px rgba(139, 92, 246, 0.28);
+  }
+}
+
+@keyframes patient-b-pulse-green-priority {
+  0%,
+  100% {
+    border-color: rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 4px 14px rgba(16, 185, 129, 0.12);
+  }
+  50% {
+    border-color: rgba(5, 150, 105, 0.95);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4), 0 6px 22px rgba(16, 185, 129, 0.26);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-b-card--notriage,
+  .patient-b-card--triage-active,
+  .patient-b-card--priority-red,
+  .patient-b-card--priority-yellow,
+  .patient-b-card--priority-purple,
+  .patient-b-card--priority-green {
+    animation: none;
+  }
+}
+
+/* ---------- Экран входа ---------- */
+.app-login-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem max(1rem, env(safe-area-inset-left)) calc(1.5rem + env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-right));
+  background: radial-gradient(1200px 600px at 50% -20%, rgba(84, 198, 84, 0.22), transparent 55%),
+    linear-gradient(180deg, var(--triag-primary-bg) 0%, var(--bs-body-bg) 45%);
+}
+
+.triag-login-wrap {
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---------- Монитор (ТВ): без шапки приложения, крупная вёрстка ---------- */
+.triag-monitor-page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: clamp(0.75rem, 1.8vw, 2rem) clamp(0.75rem, 2vw, 2.5rem) calc(clamp(0.75rem, 1.8vw, 2rem) + env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -30%, rgba(84, 198, 84, 0.14), transparent 55%),
+    linear-gradient(168deg, #0b1220 0%, #111827 38%, #0f172a 100%);
+  color: #f1f5f9;
+}
+
+.monitor-tv {
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.monitor-tv-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  margin-bottom: clamp(1rem, 2.2vw, 2rem);
+  padding-bottom: clamp(0.75rem, 1.5vw, 1.25rem);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.monitor-tv-brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  min-width: 0;
+}
+
+.monitor-tv-logo {
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.monitor-tv-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 3.2vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.monitor-tv-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: clamp(0.85rem, 1.35vw, 1.1rem);
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.monitor-tv-clock-block {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.monitor-tv-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 4.25rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(84, 198, 84, 0.25);
+}
+
+.monitor-tv-date {
+  margin-top: 0.35rem;
+  font-size: clamp(0.8rem, 1.2vw, 1rem);
+  color: rgba(203, 213, 225, 0.88);
+  text-transform: capitalize;
+}
+
+.monitor-tv-live {
+  margin-top: 0.4rem;
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.monitor-tv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: clamp(0.85rem, 1.8vw, 1.75rem);
+}
+
+@media (min-width: 1400px) {
+  .monitor-tv-grid {
+    grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr));
+  }
+}
+
+@media (min-width: 2200px) {
+  .monitor-tv-grid {
+    grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+  }
+}
+
+.monitor-tv-card {
+  position: relative;
+  border-radius: clamp(14px, 1.2vw, 22px);
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  min-height: clamp(12rem, 28vw, 20rem);
+}
+
+.monitor-tv-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: clamp(6px, 0.7vw, 10px);
+  background: rgba(100, 116, 139, 0.85);
+}
+
+.monitor-tv-card--priority-red .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #f87171, #b91c1c);
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.45);
+}
+
+.monitor-tv-card--priority-yellow .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #fbbf24, #b45309);
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.35);
+}
+
+.monitor-tv-card--priority-purple .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #c084fc, #6d28d9);
+  box-shadow: 0 0 18px rgba(192, 132, 252, 0.35);
+}
+
+.monitor-tv-card--priority-green .monitor-tv-card-accent {
+  background: linear-gradient(180deg, #4ade80, #15803d);
+  box-shadow: 0 0 18px rgba(74, 222, 128, 0.3);
+}
+
+.monitor-tv-card-inner {
+  padding: clamp(0.85rem, 1.5vw, 1.35rem) clamp(0.85rem, 1.5vw, 1.35rem) clamp(0.85rem, 1.5vw, 1.35rem)
+    clamp(1rem, 1.6vw, 1.5rem);
+}
+
+.monitor-tv-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.monitor-tv-name {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.65rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #fff;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.monitor-tv-pill {
+  flex-shrink: 0;
+  font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+  font-weight: 700;
+  padding: 0.35em 0.75em;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+}
+
+.monitor-tv-pill--red {
+  background: rgba(127, 29, 29, 0.55);
+  border-color: rgba(252, 165, 165, 0.45);
+  color: #fecaca;
+}
+
+.monitor-tv-pill--yellow {
+  background: rgba(120, 53, 15, 0.5);
+  border-color: rgba(253, 224, 71, 0.4);
+  color: #fef9c3;
+}
+
+.monitor-tv-pill--purple {
+  background: rgba(76, 29, 149, 0.45);
+  border-color: rgba(196, 181, 253, 0.4);
+  color: #ede9fe;
+}
+
+.monitor-tv-pill--green {
+  background: rgba(20, 83, 45, 0.5);
+  border-color: rgba(134, 239, 172, 0.4);
+  color: #dcfce7;
+}
+
+.monitor-tv-meta {
+  margin-top: clamp(0.5rem, 1vw, 0.85rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: clamp(0.78rem, 1.15vw, 1rem);
+  color: rgba(203, 213, 225, 0.88);
+}
+
+.monitor-tv-meta-item {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-tv-phase {
+  margin-top: clamp(0.55rem, 1vw, 0.9rem);
+  font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+  font-weight: 600;
+  color: rgba(148, 197, 255, 0.95);
+}
+
+.monitor-tv-phase--actions {
+  color: rgba(251, 191, 36, 0.95);
+}
+
+.monitor-tv-actions-progress {
+  margin-top: 0.65rem;
+}
+
+.monitor-tv-actions-progress-label {
+  font-size: clamp(0.75rem, 1.05vw, 0.95rem);
+  color: rgba(226, 232, 240, 0.85);
+  margin-bottom: 0.35rem;
+}
+
+.monitor-tv-timer-block {
+  margin-top: clamp(0.65rem, 1.2vw, 1rem);
+}
+
+.monitor-tv-timer-block--secondary {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(71, 85, 105, 0.65);
+}
+
+.monitor-tv-timer-label {
+  font-size: clamp(0.68rem, 1vw, 0.88rem);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(148, 163, 184, 0.95);
+  margin-bottom: 0.25rem;
+}
+
+.monitor-tv-digits {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  margin: 0.15rem 0 0.5rem;
+}
+
+.monitor-tv-digits--sm {
+  font-size: clamp(1.35rem, 3vw, 2.25rem);
+}
+
+.monitor-tv-digits--ok {
+  color: #86efac;
+  text-shadow: 0 0 28px rgba(74, 222, 128, 0.25);
+}
+
+.monitor-tv-digits--warning {
+  color: #fcd34d;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.28);
+}
+
+.monitor-tv-digits--danger {
+  color: #fca5a5;
+  text-shadow: 0 0 26px rgba(248, 113, 113, 0.35);
+}
+
+.monitor-tv-bar.track {
+  height: clamp(8px, 1vw, 12px);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.95);
+  overflow: hidden;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+}
+
+.monitor-tv-bar-tall {
+  height: clamp(10px, 1.2vw, 16px);
+}
+
+.monitor-tv-bar.fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.35s ease-out;
+}
+
+.monitor-tv-bar--ok {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.monitor-tv-bar--warning {
+  background: linear-gradient(90deg, #ca8a04, #facc15);
+}
+
+.monitor-tv-bar--danger {
+  background: linear-gradient(90deg, #b91c1c, #f87171);
+}
+
+.monitor-tv-bar--muted {
+  background: linear-gradient(90deg, #475569, #94a3b8);
+}
+
+.monitor-tv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: clamp(16rem, 42vh, 28rem);
+  padding: 2rem;
+  border-radius: clamp(16px, 1.5vw, 24px);
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.monitor-tv-empty-icon {
+  width: clamp(3rem, 6vw, 5rem);
+  height: clamp(3rem, 6vw, 5rem);
+  border-radius: 50%;
+  margin-bottom: 1rem;
+  background: rgba(51, 65, 85, 0.5);
+  border: 2px solid rgba(148, 163, 184, 0.25);
+}
+
+.monitor-tv-empty-title {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.monitor-tv-empty-text {
+  margin: 0.75rem 0 0;
+  max-width: 36rem;
+  font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+  color: rgba(148, 163, 184, 0.95);
+  line-height: 1.45;
+}
+
+/* ---------- Загрузка сессии ---------- */
+.app-auth-loading {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem env(safe-area-inset-left) env(safe-area-inset-right);
+  color: var(--triag-text-muted);
+}
+
+/* ---------- Утилиты ---------- */
+.btn-primary {
+  --bs-btn-bg: var(--triag-primary);
+  --bs-btn-border-color: var(--triag-primary);
+  --bs-btn-hover-bg: var(--triag-primary-hover);
+  --bs-btn-hover-border-color: var(--triag-primary-hover);
+  --bs-btn-active-bg: var(--triag-primary-hover);
+  --bs-btn-active-border-color: var(--triag-primary-hover);
+}
+
+.text-triag-muted {
+  color: var(--triag-text-muted) !important;
+}
+
+.triag-admin-hint {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(231, 213, 207, 0.95) !important;
+  color: var(--triag-text);
+}
+
+/* Страница администрирования: единая сетка типографики и кнопок */
+.triag-admin-page {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--triag-text);
+}
+
+.triag-admin-page .triag-admin-page-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.triag-admin-page .triag-admin-card-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.triag-admin-page .triag-admin-lead {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--triag-text-muted);
+  margin-bottom: 1rem;
+}
+
+.triag-admin-page .triag-admin-hint {
+  font-size: 0.875rem;
+}
+
+.triag-admin-page .triag-admin-hint ul {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.triag-admin-page .triag-admin-hint p.small {
+  font-size: 0.8125rem !important;
+}
+
+.triag-admin-form-panel {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: var(--triag-radius-lg);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(250, 250, 249, 0.65);
+}
+
+.triag-admin-page .triag-admin-form-panel .form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--triag-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.triag-admin-page .triag-admin-form-panel--inline .form-control,
+.triag-admin-page .triag-admin-form-panel--inline .form-select {
+  font-size: 0.9375rem;
+}
+
+.triag-admin-page .triag-admin-compact-btn {
+  font-size: 0.75rem;
+  padding: 0.33rem 0.55rem;
+  min-height: 2rem;
+}
+
+.triag-admin-table-wrap {
+  border: 1px solid rgba(231, 213, 207, 0.85);
+  border-radius: var(--triag-radius-lg);
+  overflow: hidden;
+}
+
+.triag-admin-page .triag-admin-table {
+  font-size: 0.9375rem;
+  margin-bottom: 0;
+}
+
+.triag-admin-page .triag-admin-table thead th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--triag-text-muted);
+  border-bottom-width: 1px;
+  white-space: nowrap;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.triag-admin-page .triag-admin-table tbody td {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  vertical-align: middle;
+}
+
+.triag-admin-page .triag-admin-table .triag-admin-col-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.triag-admin-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.triag-admin-page .triag-admin-actions .btn {
+  min-width: 6.25rem;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.triag-admin-page .triag-admin-table .font-monospace {
+  font-size: inherit;
+}
+
+.triag-admin-page .triag-admin-empty {
+  font-size: 0.875rem;
+  color: var(--triag-text-muted);
+}
+
+.triag-admin-modal .modal-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.triag-admin-modal .form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--triag-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.triag-admin-modal .form-control,
+.triag-admin-modal .form-select {
+  font-size: 0.9375rem;
+}
+
+.triag-admin-modal .modal-footer .btn {
+  min-width: 6.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ---------- Тема «Soft D» — тёплый фон, мягкие карточки; сетка пациентов как в основном макете (несколько в ряд) ---------- */
+html.triag-theme-soft {
+  --triag-text: #292524;
+  --triag-text-muted: #78716c;
+  --triag-border: rgba(231, 213, 207, 0.95);
+  --triag-primary-bg: #fff7ed;
+  --triag-primary-light: #d8f5d8;
+  --bs-body-bg: #faf7f2;
+  --bs-body-color: #292524;
+  --bs-card-bg: #fffcfa;
+  --triag-radius: 12px;
+  --triag-radius-lg: 16px;
+  --triag-shadow: 0 10px 36px rgba(87, 83, 78, 0.07);
+  --triag-shadow-md: 0 14px 44px rgba(87, 83, 78, 0.09);
+  --bs-link-color: #3d8f3d;
+  --bs-link-hover-color: #2f6f2f;
+}
+
+html.triag-theme-soft .app-header {
+  background: var(--triag-primary);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(84, 198, 84, 0.36);
+  border-bottom: 1px solid rgba(67, 168, 67, 0.9);
+}
+
+html.triag-theme-soft .app-brand {
+  color: #ffffff !important;
+}
+
+html.triag-theme-soft .app-brand:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html.triag-theme-soft .app-brand-logo {
+  border-radius: 30% 70% 65% 35% / 40% 45% 55% 60%;
+  box-shadow: 0 2px 10px rgba(84, 198, 84, 0.35);
+}
+
+html.triag-theme-soft .app-user-badge {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+html.triag-theme-soft .app-nav .btn-outline-light {
+  --bs-btn-color: #ffffff;
+  --bs-btn-border-color: rgba(255, 255, 255, 0.74);
+  --bs-btn-hover-bg: rgba(255, 255, 255, 0.2);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.95);
+  --bs-btn-active-bg: rgba(255, 255, 255, 0.25);
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-border-color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.triag-theme-soft .card {
+  border-color: rgba(231, 213, 207, 0.9);
+  box-shadow: var(--triag-shadow);
+}
+
+html.triag-theme-soft .form-control,
+html.triag-theme-soft .form-select {
+  border-color: #d6d3d1;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .form-control:focus,
+html.triag-theme-soft .form-select:focus {
+  border-color: rgba(84, 198, 84, 0.55);
+  box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.18);
+}
+
+html.triag-theme-soft .btn-primary {
+  box-shadow: 0 2px 14px rgba(84, 198, 84, 0.32);
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-outline-secondary {
+  --bs-btn-border-color: #d6d3d1;
+  --bs-btn-color: #44403c;
+  --bs-btn-hover-bg: #fafaf9;
+  --bs-btn-hover-color: #292524;
+  --bs-btn-hover-border-color: #a8a29e;
+  --bs-btn-active-color: #292524;
+  --bs-btn-active-bg: #f5f5f4;
+  --bs-btn-active-border-color: #a8a29e;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-warning {
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .btn-outline-primary {
+  --bs-btn-color: #2f6f2f;
+  --bs-btn-border-color: rgba(84, 198, 84, 0.7);
+  --bs-btn-hover-bg: rgba(84, 198, 84, 0.14);
+  --bs-btn-hover-color: #1c1917;
+  --bs-btn-hover-border-color: #54c654;
+  --bs-btn-active-bg: rgba(84, 198, 84, 0.2);
+  --bs-btn-active-color: #1c1917;
+}
+
+html.triag-theme-soft .btn-soft-danger {
+  --bs-btn-bg: rgba(239, 68, 68, 0.12);
+  --bs-btn-border-color: rgba(220, 38, 38, 0.35);
+  --bs-btn-color: #991b1b;
+  --bs-btn-hover-bg: #dc2626;
+  --bs-btn-hover-border-color: #dc2626;
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-active-bg: #b91c1c;
+  --bs-btn-active-border-color: #b91c1c;
+  --bs-btn-active-color: #ffffff;
+  border-radius: 12px;
+}
+
+html.triag-theme-soft .patient-b-card .card-body h2,
+html.triag-theme-soft .patient-b-card .card-body .h6 {
+  font-family: Georgia, "Times New Roman", ui-serif, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1c1917;
+}
+
+html.triag-theme-soft .patient-b-card--done {
+  background: #f5f0eb !important;
+  border-color: #d6d3d1 !important;
+  opacity: 1;
+}
+
+html.triag-theme-soft .patient-tag--status {
+  background: rgba(84, 198, 84, 0.15);
+}
+
+html.triag-theme-soft .patient-timer-box {
+  background: #fffdfa;
+  border-color: rgba(231, 213, 207, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html.triag-theme-soft .patient-timer-value {
+  color: #292524;
+}
+
+/* Модалка подтверждения удаления — поверх «Подробнее» */
+.patient-delete-backdrop {
+  z-index: 1060;
+}
+
+.patient-delete-modal {
+  z-index: 1065;
+}
+
+/* ---------- Модалка "Подробнее" ---------- */
+.patient-details-modal .modal-dialog {
+  width: min(680px, calc(100% - 1rem));
+  max-width: min(680px, calc(100% - 1rem));
+}
+
+.patient-details-modal .modal-content {
+  border-radius: 14px;
+  border: 1px solid rgba(231, 213, 207, 0.95);
+}
+
+.patient-details-modal .modal-body {
+  text-align: left;
+}
+
+.patient-details-grid {
+  justify-items: start;
+}
+
+.patient-details-facts > div + div {
+  margin-top: 0.15rem;
+}
+
+.patient-details-modal .modal-footer.patient-details-footer {
+  display: block;
+  padding-top: 0.5rem;
+}
+
+.patient-details-main-action,
+.patient-details-step-actions {
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.patient-details-bottom-actions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.patient-details-bottom-actions .btn {
+  min-width: 9.75rem;
+}
+
+@media (max-width: 575.98px) {
+  .patient-details-bottom-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ---------- Экраны шагов/действий триажа ---------- */
+.triage-page-shell {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.triage-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.triage-page-title {
+  margin: 0;
+}
+
+.triage-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--triag-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.triage-back-link:hover {
+  color: var(--triag-text);
+}
+
+.triage-timer-card {
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  background: #fffdfa;
+  margin-bottom: 0.8rem;
+}
+
+.triage-timer-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.triage-timer-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #292524;
+}
+
+.triage-timer-progress {
+  margin-top: 0.4rem;
+  height: 7px;
+  background: rgba(214, 211, 209, 0.55);
+}
+
+.triage-timer-progress .progress-bar {
+  background: var(--triag-primary);
+}
+
+.triage-timer-card--ok .triage-timer-value {
+  color: #2f6f2f;
+}
+
+.triage-timer-card--warning .triage-timer-value {
+  color: #92400e;
+}
+
+.triage-timer-card--danger .triage-timer-value {
+  color: #b91c1c;
+}
+
+.triage-timer-bar--ok {
+  background: #54c654 !important;
+}
+
+.triage-timer-bar--warning {
+  background: #f59e0b !important;
+}
+
+.triage-timer-bar--danger {
+  background: #dc2626 !important;
+}
+
+.triage-timer-card--expired {
+  border-color: rgba(220, 38, 38, 0.85);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.16);
+  animation: triage-expired-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes triage-expired-blink {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.42);
+  }
+}
+
+.triage-form-card .card-body {
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+.triage-form-card .form-label,
+.triage-form-card .form-check-label,
+.triage-form-card .triage-check-label,
+.triage-form-card .triage-yn-label {
+  font-size: 1rem;
+}
+
+.triage-form-card .btn {
+  font-size: 1rem;
+}
+
+.triage-actions-list .list-group-item {
+  border-color: rgba(231, 213, 207, 0.95);
+  background: #fffdfa;
+}
+
+.triage-simple-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.triage-simple-action-row {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  background: #fffdfa;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: var(--triag-shadow);
+}
+
+.triage-simple-action-row--red {
+  border-left: 4px solid rgba(220, 38, 38, 0.42);
+}
+
+.triage-simple-action-row--yellow {
+  border-left: 4px solid rgba(245, 158, 11, 0.5);
+}
+
+.triage-simple-action-row--purple {
+  border-left: 4px solid rgba(139, 92, 246, 0.45);
+}
+
+.triage-simple-action-row--green {
+  border-left: 4px solid rgba(16, 185, 129, 0.45);
+}
+
+.triage-simple-action-row--neutral {
+  border-left: 4px solid rgba(148, 163, 184, 0.55);
+}
+
+.triage-simple-action-row--done {
+  background: #f4faf5;
+}
+
+.triage-simple-action-main {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.triage-simple-action-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.triage-simple-action-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: #edf4fb;
+  color: #3f5f7f;
+  border: 1px solid #d7e3ef;
+}
+
+.triage-simple-action-badge--final {
+  background: #fff5e8;
+  color: #8a5a2b;
+  border-color: #f3dec2;
+}
+
+.triage-simple-action-title {
+  font-size: 1.06rem;
+  line-height: 1.45;
+  color: var(--triag-text);
+}
+
+.triage-simple-action-hint {
+  font-size: 0.88rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.35rem;
+  max-width: 42rem;
+}
+
+.triage-simple-action-time {
+  font-size: 0.88rem;
+  margin-top: 0.45rem;
+}
+
+.triage-simple-action-btn {
+  min-width: 118px;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+}
+
+.triage-simple-actions-complete {
+  padding: 0.55rem 1.25rem;
+  font-size: 1rem;
+}
+
+.triage-actions-top-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+@media (min-width: 640px) {
+  .triage-actions-top-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.triage-yn-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .triage-yn-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.triage-yn-item {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background: #fffdfa;
+}
+
+.triage-yn-label {
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  color: #292524;
+}
+
+/* Шаг 1: «Да/Нет» — серая неактивная опция; цвет только у выбранной */
+.triage-yn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.triage-yn-slot {
+  flex: 1 1 calc(50% - 0.3rem);
+  min-width: 5.5rem;
+  min-height: var(--triag-touch);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #d1d5db;
+  color: #6b7280;
+  background: #f3f4f6;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.triage-yn-row .btn-check:not(:checked) + .triage-yn-slot:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: #4b5563;
+}
+
+.triage-yn-row .btn-check:focus-visible + .triage-yn-slot {
+  box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.25);
+}
+
+.triage-yn-row .btn-check:checked + .triage-yn-slot-yes-good,
+.triage-yn-row .btn-check:checked + .triage-yn-slot-no-good {
+  color: #fff;
+  background: var(--triag-primary);
+  border-color: var(--triag-primary-hover);
+  box-shadow: 0 2px 10px rgba(84, 198, 84, 0.32);
+}
+
+.triage-yn-row .btn-check:checked + .triage-yn-slot-yes-bad,
+.triage-yn-row .btn-check:checked + .triage-yn-slot-no-bad {
+  color: #fff;
+  background: #dc2626;
+  border-color: #b91c1c;
+  box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
+}
+
+.triage-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(231, 213, 207, 0.9);
+  border-radius: 10px;
+  background: #fffdfa;
+}
+
+.triage-check-input {
+  margin-top: 0.15rem;
+  margin-right: 0.1rem;
+  transform: scale(1.15);
+}
+
+.triage-check-label {
+  font-size: 0.96rem;
+  line-height: 1.35;
+  color: #292524;
+}
+
+.triage-check-item--yellow {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-check-item--purple {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+.triage-select-yellow {
+  border-color: rgba(245, 158, 11, 0.7) !important;
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-input-yellow {
+  border-color: rgba(245, 158, 11, 0.7) !important;
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-input-purple {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  background: rgba(245, 243, 255, 0.95);
+}
+
+/* Шаг 3: жёлтая/фиолетовая подсветка только на полях с классами triage-input-*; фокус без зелёного кольца темы */
+.triage-step3-form .form-control:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.28);
+}
+
+.triage-step3-form .triage-input-yellow:focus {
+  border-color: rgba(217, 119, 6, 0.9) !important;
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.22);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+.triage-step3-form .triage-input-purple:focus {
+  border-color: rgba(124, 58, 237, 0.85) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+html.triag-theme-soft .triage-step3-form .form-control:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.28);
+}
+
+html.triag-theme-soft .triage-step3-form .triage-input-yellow:focus {
+  border-color: rgba(217, 119, 6, 0.9) !important;
+  box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.22);
+  background: rgba(255, 247, 237, 0.95);
+}
+
+html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
+  border-color: rgba(124, 58, 237, 0.85) !important;
+  box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
+  background: rgba(245, 243, 255, 0.95);
+}
+
+.triage-score-box {
+  border: 1px solid rgba(231, 213, 207, 0.95);
+  border-radius: 12px;
+  background: #fffdfa;
+  padding: 0.65rem 0.75rem;
+}
+
+.triage-score-box--alert {
+  border-color: rgba(220, 38, 38, 0.6);
+  background: rgba(254, 242, 242, 0.9);
+}
+
+.triage-score-total {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0.2rem 0 0.1rem;
+  color: #292524;
+}
+
+.triage-report-page .triage-report-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  border: 1px solid transparent;
+}
+
+.triage-report-page .triage-report-chip--ok {
+  background: #eef6ef;
+  color: #3e6144;
+  border-color: #d8e8da;
+}
+
+.triage-report-page .triage-report-chip--warn {
+  background: #fff5e8;
+  color: #8a5a2b;
+  border-color: #f3dec2;
+}
+
+.triage-report-page .triage-report-chip--danger {
+  background: #fdeeee;
+  color: #8d4343;
+  border-color: #f3d4d4;
+}
+
+.triage-report-page .triage-report-chip--info {
+  background: #edf4fb;
+  color: #3f5f7f;
+  border-color: #d7e3ef;
+}
+
+.triage-report-page .triage-report-chip--muted {
+  background: #f4f1ec;
+  color: #70665a;
+  border-color: #e3dbd0;
+}
+
+.triage-report-page .triage-report-row--warn > td {
+  background: #fffaf2;
+}
+
+.triage-report-page .triage-report-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.triage-report-page .triage-report-value-line {
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--triag-text);
+}
+
+/* Статистика отделения: быстрая / полная */
+.triage-stats-page .triage-page-title {
+  margin-top: 0.15rem;
+}
+
+.triage-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.triage-stat-grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+.triage-stat-kpi {
+  border-radius: var(--triag-radius-lg);
+  border: 1px solid var(--triag-border);
+  background: #fff;
+  box-shadow: var(--triag-shadow);
+  padding: 0.65rem 0.75rem;
+  min-height: 4.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.triage-stat-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--triag-text);
+}
+
+.triage-stat-kpi-label {
+  font-size: 0.78rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.2rem;
+  line-height: 1.25;
+}
+
+.triage-stat-kpi--neutral {
+  border-color: #e5e7eb;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+}
+
+.triage-stat-kpi--ok {
+  border-color: #c6ead6;
+  background: linear-gradient(180deg, #f4fdf8 0%, #ecf9f1 100%);
+}
+
+.triage-stat-kpi--ok .triage-stat-kpi-value {
+  color: #0f6b4a;
+}
+
+.triage-stat-kpi--warn {
+  border-color: #f3dec2;
+  background: linear-gradient(180deg, #fffdf9 0%, #fff5e8 100%);
+}
+
+.triage-stat-kpi--warn .triage-stat-kpi-value {
+  color: #92400e;
+}
+
+.triage-stat-kpi--danger {
+  border-color: #f3c4c4;
+  background: linear-gradient(180deg, #fffafa 0%, #fdeeee 100%);
+}
+
+.triage-stat-kpi--danger .triage-stat-kpi-value {
+  color: #b91c1c;
+}
+
+.triage-stats-table thead th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--triag-text-muted);
+}
+
+/* Быстрая статистика: донут + воронка + плитки */
+.triage-quick-page .triage-quick-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--triag-radius);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.triage-quick-page .triage-quick-strip i {
+  font-size: 1.1rem;
+}
+
+.triage-quick-strip--ok {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.triage-quick-strip--bad {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.triage-quick-strip-meta {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.triage-quick-donut-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-quick-donut {
+  width: 11rem;
+  height: 11rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 6px #fff;
+}
+
+.triage-quick-donut-hole {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--triag-shadow);
+}
+
+.triage-quick-donut-pct {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--triag-text);
+}
+
+.triage-quick-donut-cap {
+  font-size: 0.72rem;
+  color: var(--triag-text-muted);
+  margin-top: 0.15rem;
+}
+
+.triage-quick-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.triage-quick-mini {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--triag-radius);
+  border: 1px solid #e8eaef;
+  background: #fafbfc;
+}
+
+.triage-quick-mini i {
+  font-size: 1.1rem;
+  color: var(--triag-primary-hover);
+  margin-top: 0.1rem;
+}
+
+.triage-quick-mini-val {
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.1;
+}
+
+.triage-quick-mini-lbl {
+  font-size: 0.68rem;
+  color: var(--triag-text-muted);
+  line-height: 1.2;
+}
+
+.triage-quick-funnel-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-quick-funnel-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.triage-quick-funnel-fill {
+  height: 100%;
+  border-radius: 999px;
+  min-width: 4px;
+  transition: width 0.25s ease;
+}
+
+.triage-quick-funnel-ico {
+  font-size: 1rem;
+}
+
+.triage-quick-c-total {
+  color: #374151;
+  background: #9ca3af;
+}
+
+.triage-quick-c-warn {
+  color: #92400e;
+  background: #fbbf24;
+}
+
+.triage-quick-c-open {
+  color: #1e40af;
+  background: #60a5fa;
+}
+
+.triage-quick-c-act {
+  color: #7c2d12;
+  background: #fb923c;
+}
+
+.triage-quick-c-done {
+  color: #065f46;
+  background: #34d399;
+}
+
+.triage-quick-s1 {
+  background: var(--triag-step-1);
+}
+
+.triage-quick-s2 {
+  background: var(--triag-step-2);
+}
+
+.triage-quick-s3 {
+  background: var(--triag-step-3);
+}
+
+/* Полная статистика: диаграммы (recharts) */
+.triage-full-charts .recharts-default-legend {
+  font-size: 0.78rem;
+}
+
+.triage-full-charts .recharts-cartesian-grid-horizontal line,
+.triage-full-charts .recharts-cartesian-grid-vertical line {
+  stroke: #e8eaef;
+}
+
+.triage-full-chart-box {
+  border-radius: var(--triag-radius);
+  border: 1px solid var(--triag-border);
+  background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+  padding: 0.35rem;
+}
+
+.triage-full-chart-box--wide {
+  height: 140px;
+}
+
+.triage-full-chart-box--pie {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.triage-full-chart-box--pie .recharts-responsive-container {
+  flex: 1;
+  min-height: 200px;
+}
+
+.triage-full-priority-swatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.triage-full-cohort-card {
+  border-radius: var(--triag-radius-lg);
+}
+
+.triage-full-cohort-strip {
+  display: flex;
+  width: 100%;
+  height: 0.65rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #eef0f3;
+}
+
+.triage-full-cohort-seg {
+  min-width: 0;
+  transition: opacity 0.15s ease;
+}
+
+.triage-full-cohort-seg:hover {
+  opacity: 0.88;
+}
+
+.triage-full-cohort-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.triage-full-row-priority > td {
+  border-left: 4px solid transparent;
+}
+
+.triage-full-row-priority--red > td {
+  background: rgba(254, 242, 242, 0.75);
+  border-left-color: var(--triag-priority-red);
+}
+
+.triage-full-row-priority--yellow > td {
+  background: rgba(255, 251, 235, 0.85);
+  border-left-color: var(--triag-priority-yellow);
+}
+
+.triage-full-row-priority--purple > td {
+  background: rgba(245, 243, 255, 0.9);
+  border-left-color: var(--triag-priority-purple);
+}
+
+.triage-full-row-priority--green > td {
+  background: rgba(236, 253, 245, 0.85);
+  border-left-color: var(--triag-priority-green);
+}
+
+.triage-full-row-priority--pending > td {
+  background: rgba(249, 250, 251, 0.95);
+  border-left-color: #9ca3af;
+}
+
+.triage-full-chart-box--mid {
+  height: 220px;
+}
+
+@media (min-width: 1200px) {
+  .triage-full-chart-box--wide {
+    height: 160px;
+  }
+}
+
+/* --- Stage 2: доврачебный этап --- */
+.stage2-vas-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stage2-vas-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid var(--triag-border, #e5e7eb);
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.stage2-vas-btn:hover {
+  border-color: var(--bs-primary);
+  transform: translateY(-1px);
+}
+
+.stage2-vas-btn--active {
+  border-color: var(--bs-primary);
+  background: rgba(84, 198, 84, 0.12);
+  box-shadow: 0 0 0 2px rgba(84, 198, 84, 0.25);
+}
+
+.stage2-vas-emoji {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.stage2-vas-num {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--triag-muted, #6b7280);
+}
+
+.stage2-skin-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--triag-border, #e5e7eb);
+  cursor: pointer;
+  margin: 0;
+}

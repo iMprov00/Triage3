@@ -50,6 +50,7 @@ class PatientListPresenter
       can_delete: !other_role?(viewer),
       can_edit_saved_steps: !other_role?(viewer) || patient_performer?(patient, viewer),
       card_state_class: card_state_class(patient),
+      stage2_transferred: patient.stage2_case.present?,
       triage: t ? triage_hash(t, max_time) : nil
     }
   end

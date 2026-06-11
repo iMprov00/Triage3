@@ -23,6 +23,8 @@ Rails.application.routes.draw do
       get "meta/triage_options", to: "meta#triage_options"
 
       get "statistics", to: "statistics#show"
+      get "statistics/dashboard", to: "statistics#dashboard"
+      get "statistics/detailed", to: "statistics#detailed"
 
       resources :patients, param: :patient_id, only: %i[show create update destroy] do
         member do
@@ -41,6 +43,24 @@ Rails.application.routes.draw do
           post "triage/actions/red_arrest/vital", to: "triage_actions#red_arrest_vital"
           post "triage/preview_step_update/:step", to: "triage_step_edits#preview"
           post "triage/update_step/:step", to: "triage_step_edits#update"
+        end
+      end
+
+      namespace :stage2 do
+        get "patients_list", to: "patients#index"
+        get "eligible_from_stage1", to: "cases#eligible_from_stage1"
+        post "cases", to: "cases#create"
+        get "monitor/patients", to: "monitor#patients_payload"
+        get "statistics", to: "statistics#show"
+        get "meta/pre_doctor_options", to: "meta#pre_doctor_options"
+
+        resources :patients, param: :patient_id, only: %i[show update destroy] do
+          member do
+            get "stage1_summary", to: "patients#stage1_summary"
+            get "triage", to: "triages#show"
+            post "triage/pre_doctor", to: "triages#pre_doctor"
+            post "triage/advance", to: "triages#advance"
+          end
         end
       end
 

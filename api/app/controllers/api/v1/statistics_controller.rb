@@ -3,6 +3,19 @@
 module Api
   module V1
     class StatisticsController < ApplicationController
+      def dashboard
+        date = params[:admission_date].presence || Date.today
+        render json: TriageDepartmentDashboardService.call(admission_date: date)
+      end
+
+      def detailed
+        prm = params.permit(
+          :date_from, :date_to, :search, :appeal_type, :pregnancy_condition,
+          :performer_filter, :only_active, :priority, :page, :per_page
+        )
+        render json: TriageDepartmentDetailedService.call(params: prm.to_unsafe_h.symbolize_keys, viewer: current_user)
+      end
+
       def show
         prm = params.permit(:search, :admission_date, :appeal_type, :pregnancy_condition, :performer_filter, :only_active, :patient_id).to_h
         prm[:admission_date] ||= Date.today.to_s

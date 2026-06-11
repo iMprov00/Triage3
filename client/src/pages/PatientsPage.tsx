@@ -232,6 +232,7 @@ export default function PatientsPage() {
                     </span>
                   )}
                   {p.triage?.completed_at && p.triage.actions_completed_at && <span className="patient-tag patient-tag--done">Готово</span>}
+                  {p.stage2_transferred && <span className="patient-tag patient-tag--status">Этап 2</span>}
                 </div>
                 <div className="small text-muted">
                   Поступление: {formatAdmissionDate(p.admission_date)}

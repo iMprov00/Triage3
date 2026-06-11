@@ -83,6 +83,11 @@ module Api
           pname = acting_performer_name_for_user_id(action_uid) || @patient.performer_name
           TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "actions_completed",
             payload: { performer_name: pname, priority: @triage.priority })
+          begin
+            Stage2TransferService.transfer!(patient: @patient, source: :auto, user: current_user)
+          rescue Stage2TransferService::TransferError => e
+            Rails.logger.warn("[Stage2Transfer] patient=#{@patient.id}: #{e.message}")
+          end
           render json: { success: true, triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user) }
         else
           render json: { error: "Не все действия выполнены" }, status: :unprocessable_entity

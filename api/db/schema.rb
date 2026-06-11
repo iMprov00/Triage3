@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 12) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_05_120000) do
   create_table "job_positions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "kind", null: false
@@ -46,6 +46,50 @@ ActiveRecord::Schema[8.1].define(version: 12) do
     t.string "priority"
     t.integer "step"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "stage2_audit_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.datetime "occurred_at", null: false
+    t.integer "patient_id", null: false
+    t.text "payload"
+    t.integer "stage2_case_id"
+    t.datetime "updated_at", null: false
+    t.index ["event_type"], name: "index_stage2_audit_events_on_event_type"
+    t.index ["patient_id", "occurred_at"], name: "index_stage2_audit_events_on_patient_id_and_occurred_at"
+    t.index ["patient_id"], name: "index_stage2_audit_events_on_patient_id"
+    t.index ["stage2_case_id"], name: "index_stage2_audit_events_on_stage2_case_id"
+  end
+
+  create_table "stage2_cases", force: :cascade do |t|
+    t.date "admission_date"
+    t.time "admission_time"
+    t.datetime "created_at", null: false
+    t.integer "created_by_user_id"
+    t.integer "patient_id", null: false
+    t.string "performer_name"
+    t.integer "performer_user_id"
+    t.integer "stage1_triage_id"
+    t.string "transfer_source", default: "auto", null: false
+    t.datetime "transferred_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["patient_id"], name: "index_stage2_cases_on_patient_id", unique: true
+    t.index ["stage1_triage_id"], name: "index_stage2_cases_on_stage1_triage_id"
+  end
+
+  create_table "stage2_triages", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "current_phase", default: "pre_doctor", null: false
+    t.json "phase_data", default: {}
+    t.string "priority", default: "pending", null: false
+    t.integer "stage2_case_id", null: false
+    t.datetime "start_time"
+    t.datetime "started_at"
+    t.boolean "timer_active", default: false
+    t.datetime "updated_at", null: false
+    t.index ["stage2_case_id"], name: "index_stage2_triages_on_stage2_case_id", unique: true
   end
 
   create_table "triage_audit_events", force: :cascade do |t|
@@ -105,6 +149,11 @@ ActiveRecord::Schema[8.1].define(version: 12) do
     t.index ["login"], name: "index_users_on_login", unique: true
   end
 
+  add_foreign_key "stage2_audit_events", "patients"
+  add_foreign_key "stage2_audit_events", "stage2_cases"
+  add_foreign_key "stage2_cases", "patients"
+  add_foreign_key "stage2_cases", "triages", column: "stage1_triage_id"
+  add_foreign_key "stage2_triages", "stage2_cases"
   add_foreign_key "triage_audit_events", "patients"
   add_foreign_key "triage_audit_events", "triages"
 end

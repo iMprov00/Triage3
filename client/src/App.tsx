@@ -10,6 +10,8 @@ import TriageStep2Page from "./pages/TriageStep2Page";
 import TriageStep3Page from "./pages/TriageStep3Page";
 import TriageActionsPage from "./pages/TriageActionsPage";
 import TriageActionsReportPage from "./pages/TriageActionsReportPage";
+import QuickStatisticsPage from "./pages/QuickStatisticsPage";
+import FullStatisticsPage from "./pages/FullStatisticsPage";
 import AdministrationPage from "./pages/AdministrationPage";
 import MainLayout from "./layouts/MainLayout";
 import type { AuthOutletContext, SessionUser } from "./sessionTypes";
@@ -69,6 +71,8 @@ export default function App() {
           <Route path="/patients/:patientId/triage/step3" element={<TriageStep3Page />} />
           <Route path="/patients/:patientId/triage/actions" element={<TriageActionsPage />} />
           <Route path="/patients/:patientId/triage/actions/report" element={<TriageActionsReportPage />} />
+          <Route path="/statistics/quick" element={<QuickStatisticsPage />} />
+          <Route path="/statistics/full" element={<FullStatisticsPage />} />
           <Route path="/admin" element={<AdministrationPage />} />
           <Route path="/" element={<Navigate to="/patients" replace />} />
         </Route>

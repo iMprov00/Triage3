@@ -1,6 +1,84 @@
 # TriagV3
 
-Система триажа пациентов.
+Система триажа пациентов: **этап 1** (приёмный триаж) и **этап 2** (продолжение после завершения действий этапа 1).
+
+## Запуск (разработка)
+
+### Все три программы сразу (Windows)
+
+**Рекомендуемый способ** — `.cmd` (не требует менять политику PowerShell):
+
+```cmd
+cd C:\Projects\TriagV3
+start-dev.cmd
+```
+
+Из папки `scripts`:
+
+```cmd
+cd C:\Projects\TriagV3\scripts
+start-dev.cmd
+```
+
+Или в PowerShell из корня проекта:
+
+```powershell
+cd C:\Projects\TriagV3
+.\start-dev.cmd
+```
+
+Если нужно запустить именно `.ps1` (политика выполнения часто блокирует `.\start-dev.ps1`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-dev.ps1
+```
+
+> Не работает: `start-dev.ps1` без `.\` — PowerShell не ищет скрипты в текущей папке по короткому имени.  
+> Не работает: `.\start-dev.ps1` при `ExecutionPolicy Restricted` — используйте `start-dev.cmd` или `-ExecutionPolicy Bypass`.
+
+Скрипт открывает три окна PowerShell (API, этап 1, этап 2) и перед запуском Rails удаляет **устаревший** `api/tmp/pids/server.pid`, если процесс уже не работает (типичная проблема после Ctrl+C).
+
+Если порты 3000 / 5173 / 5174 всё ещё заняты:
+
+```cmd
+start-dev.cmd -ForceKillPorts
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-dev.ps1 -ForceKillPorts
+```
+
+### Вручную (три терминала)
+
+```bash
+# API (порт 3000)
+cd api
+bundle exec rails server
+
+# Этап 1 — UI (порт 5173)
+cd client
+npm install
+npm run dev
+
+# Этап 2 — UI (порт 5174)
+cd client-stage2
+npm install
+npm run dev
+```
+
+Оба фронтенда проксируют `/api` и `/cable` на Rails; вход и сессия общие (те же логины из seed).
+
+Переменные окружения (опционально):
+
+- `client/.env` — `VITE_STAGE2_APP_URL=http://localhost:5174`
+- `client-stage2/.env` — `VITE_STAGE1_APP_URL=http://localhost:5173`
+
+## Этап 2
+
+- Пациент попадает на этап 2 **автоматически** после завершения действий на этапе 1.
+- Если автоперенос не сработал — кнопка **«Принять с этапа 1»** в списке этапа 2.
+- Администрирование пользователей — только в приложении этапа 1.
+- Workflow и полная статистика этапа 2 — заглушки (будут доработаны).
 
 ## Доступ администратора (seed)
 

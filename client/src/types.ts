@@ -26,5 +26,6 @@ export type PatientListRow = {
   can_delete: boolean;
   can_edit_saved_steps: boolean;
   card_state_class: string;
+  stage2_transferred?: boolean;
   triage: TriageListTriage | null;
 };
