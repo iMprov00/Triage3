@@ -57,9 +57,15 @@ Rails.application.routes.draw do
         resources :patients, param: :patient_id, only: %i[show update destroy] do
           member do
             get "stage1_summary", to: "patients#stage1_summary"
+            get "decision_summary", to: "patients#decision_summary"
             get "triage", to: "triages#show"
             post "triage/pre_doctor", to: "triages#pre_doctor"
+            post "triage/decision", to: "triages#decision"
             post "triage/advance", to: "triages#advance"
+            get "triage/actions", to: "triage_actions#show"
+            post "triage/actions/mark", to: "triage_actions#mark"
+            post "triage/actions/unmark", to: "triage_actions#unmark"
+            post "triage/actions/complete", to: "triage_actions#complete"
           end
         end
       end

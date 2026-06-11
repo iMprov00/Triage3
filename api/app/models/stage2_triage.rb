@@ -14,20 +14,31 @@ class Stage2Triage < ApplicationRecord
   }.freeze
 
   PRIORITIES = %w[pending red yellow orange grey green].freeze
+  DECISION_PRIORITIES = Stage2Rules::DECISION_PRIORITIES
 
   PRE_DOCTOR_DISCHARGE_KEYS = Stage2Rules::DISCHARGE_OPTIONS.map { |o| o[:key] }.freeze
   PRE_DOCTOR_FHR_KEYS = Stage2Rules::FETAL_HEART_RATE_OPTIONS.map { |o| o[:key] }.freeze
   PRE_DOCTOR_UTERINE_KEYS = Stage2Rules::UTERINE_TONE_OPTIONS.map { |o| o[:key] }.freeze
   PRE_DOCTOR_SKIN_KEYS = Stage2Rules::SKIN_FINDING_OPTIONS.map { |o| o[:key] }.freeze
   PRE_DOCTOR_EDEMA_LOCATION_KEYS = Stage2Rules::EDEMA_LOCATION_OPTIONS.map { |o| o[:key] }.freeze
+  INVESTIGATION_KEYS = Stage2Rules::INVESTIGATION_OPTIONS.map { |o| o[:key] }.freeze
 
   belongs_to :stage2_case
 
   validates :current_phase, inclusion: { in: PHASES }
   validates :priority, inclusion: { in: PRIORITIES }
+  validates :suggested_priority, inclusion: { in: PRIORITIES }
 
   def self.pre_doctor_priority_strategy
     @pre_doctor_priority_strategy ||= Stage2Rules::PreDoctorPriorityStrategy.new
+  end
+
+  def self.actions_catalog
+    @actions_catalog ||= Stage2Rules::DefaultActionsCatalog.new
+  end
+
+  def self.action_text_for_key(key)
+    actions_catalog.action_text_for_key(key)
   end
 
   def phase_label
@@ -36,6 +47,10 @@ class Stage2Triage < ApplicationRecord
 
   def priority_name
     Stage2Rules::PRIORITY_NAMES[priority] || "не определён"
+  end
+
+  def suggested_priority_name
+    Stage2Rules::PRIORITY_NAMES[suggested_priority] || "не определён"
   end
 
   def phase_data_hash
@@ -47,39 +62,148 @@ class Stage2Triage < ApplicationRecord
     phase_data_hash["pre_doctor"] || {}
   end
 
+  def decision_data
+    phase_data_hash["decision"] || {}
+  end
+
+  def investigations_data
+    pre_doctor_data["investigations"] || {}
+  end
+
   def pre_doctor_completed?
     pre_doctor_data["completed_at"].present?
   end
 
-  def in_priority_actions_phase?
-    pre_doctor_completed? && priority != "pending" && current_phase == "decision"
+  def decision_completed?
+    return true if decision_data["completed_at"].present?
+
+    pre_doctor_completed? && priority != "pending" && decision_data.empty?
+  end
+
+  def actions_completed?
+    actions_completed_at.present?
   end
 
   def workflow_route
-    return "priority_actions" if in_priority_actions_phase?
+    return "completed" if actions_completed?
+    return "actions" if decision_completed? && priority != "pending" && !actions_completed?
+    return "decision" if pre_doctor_completed? && !decision_completed?
     return "pre_doctor" if current_phase == "pre_doctor" && !pre_doctor_completed?
 
     "stub"
   end
 
-  def submit_pre_doctor!(attrs)
+  def display_priority
+    return priority if priority != "pending"
+    return suggested_priority if pre_doctor_completed? && suggested_priority != "pending"
+
+    nil
+  end
+
+  def display_priority_name
+    if priority != "pending"
+      priority_name
+    elsif pre_doctor_completed? && suggested_priority != "pending"
+      "Рекомендация: #{suggested_priority_name}"
+    else
+      nil
+    end
+  end
+
+  def submit_pre_doctor!(attrs, user: nil)
     raise ArgumentError, "Доврачебный этап уже завершён" if pre_doctor_completed?
 
     validated = validate_pre_doctor_attrs!(attrs)
-    evaluated_priority = self.class.pre_doctor_priority_strategy.evaluate(validated)
+    suggested = self.class.pre_doctor_priority_strategy.evaluate(validated)
     now = Time.current.iso8601
 
     merged = phase_data_hash.merge(
-      "pre_doctor" => validated.merge("completed_at" => now)
+      "pre_doctor" => validated.merge(
+        "completed_at" => now,
+        "completed_by_user_id" => user&.id
+      )
     )
 
     update!(
       phase_data: merged,
-      priority: evaluated_priority,
+      suggested_priority: suggested,
       current_phase: "decision"
     )
 
-    evaluated_priority
+    suggested
+  end
+
+  def submit_decision!(priority:, note: nil, user: nil)
+    raise ArgumentError, "invalid priority" unless DECISION_PRIORITIES.include?(priority.to_s)
+    raise ArgumentError, "Сначала завершите доврачебный этап" unless pre_doctor_completed?
+    raise ArgumentError, "Решение уже принято" if decision_completed? && decision_data["completed_at"].present?
+
+    now = Time.current
+    merged = phase_data_hash.merge(
+      "decision" => {
+        "priority" => priority.to_s,
+        "note" => note.presence,
+        "completed_at" => now.iso8601,
+        "completed_by_user_id" => user&.id,
+        "suggested_priority" => suggested_priority
+      }
+    )
+
+    update!(
+      priority: priority.to_s,
+      current_phase: "action",
+      actions_started_at: now,
+      phase_data: merged
+    )
+
+    priority.to_s
+  end
+
+  def mark_action!(action_key)
+    self.actions_data ||= {}
+    return if actions_data[action_key]
+
+    actions_data[action_key] = Time.now.to_i
+    save!
+  end
+
+  def unmark_action!(action_key)
+    self.actions_data ||= {}
+    actions_data.delete(action_key)
+    save!
+  end
+
+  def action_completed?(action_key)
+    actions_data.is_a?(Hash) && actions_data[action_key].present?
+  end
+
+  def can_complete_final_action?
+    return false unless actions_data.is_a?(Hash)
+
+    final_def = priority_actions.find { |a| a[:final] }
+    return true if final_def && final_def[:final_always_available]
+
+    required_actions = priority_actions.reject { |a| a[:final] }
+    required_actions.all? { |a| actions_data[a[:key]].present? }
+  end
+
+  def complete_actions!
+    final_action = priority_actions.find { |a| a[:final] }
+    return false unless final_action
+    return false unless can_complete_final_action? && action_completed?(final_action[:key])
+
+    now = Time.current
+    update!(
+      actions_completed_at: now,
+      current_phase: "exit",
+      completed_at: now,
+      timer_active: false
+    )
+    true
+  end
+
+  def priority_actions
+    self.class.actions_catalog.actions_for(priority: priority, triage: self)
   end
 
   def advance_phase!
@@ -100,10 +224,6 @@ class Stage2Triage < ApplicationRecord
     completed_at.present? || current_phase == "exit"
   end
 
-  def display_priority
-    priority != "pending" ? priority : nil
-  end
-
   private
 
   def validate_pre_doctor_attrs!(attrs)
@@ -116,6 +236,7 @@ class Stage2Triage < ApplicationRecord
     duration_sec = attrs[:contraction_duration_sec]
     interval_min = attrs[:contraction_interval_min]
     vitals_src = attrs[:vitals].is_a?(Hash) ? attrs[:vitals] : {}
+    inv_src = attrs[:investigations].is_a?(Hash) ? attrs[:investigations] : {}
 
     errors = []
     errors << "Укажите характер выделений" unless PRE_DOCTOR_DISCHARGE_KEYS.include?(discharge)
@@ -155,13 +276,20 @@ class Stage2Triage < ApplicationRecord
 
     raise ArgumentError, errors.join("; ") if errors.any?
 
+    investigations = {}
+    INVESTIGATION_KEYS.each do |key|
+      raw = inv_src[key] || inv_src[key.to_sym]
+      investigations[key] = raw == true || raw.to_s == "true" || raw == "1" || raw == 1
+    end
+
     result = {
       "discharge" => discharge,
       "fetal_heart_rate" => fetal,
       "uterine_tone" => uterine,
       "pain_vas" => pain,
       "skin_finding" => skin,
-      "vitals" => vitals
+      "vitals" => vitals,
+      "investigations" => investigations
     }
 
     if uterine == "labor_regular"

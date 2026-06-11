@@ -14,6 +14,7 @@ type PreDoctorOptions = {
   uterine_tone: Option[];
   skin_findings: Option[];
   edema_locations: Option[];
+  investigations: Option[];
   vitals: VitalField[];
   pain_vas_min: number;
   pain_vas_max: number;
@@ -22,6 +23,7 @@ type PreDoctorOptions = {
 type TriageState = {
   pre_doctor_data: Record<string, unknown>;
   pre_doctor_completed: boolean;
+  workflow_route: string;
 };
 
 const EMPTY_VITALS: Record<string, string> = {
@@ -47,6 +49,12 @@ export default function PreDoctorStepPage() {
   const [skinFinding, setSkinFinding] = useState("");
   const [edemaLocation, setEdemaLocation] = useState("");
   const [vitals, setVitals] = useState<Record<string, string>>(EMPTY_VITALS);
+  const [investigations, setInvestigations] = useState<Record<string, boolean>>({
+    ctg_done: false,
+    ultrasound_done: false,
+    labs_blood_done: false,
+    labs_urine_done: false,
+  });
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -63,7 +71,11 @@ export default function PreDoctorStepPage() {
         setOpts(options);
         setPatientName(details.patient.full_name);
         if (triage.pre_doctor_completed) {
-          nav(`/patients/${patientId}/priority-actions`, { replace: true });
+          const dest =
+            triage.workflow_route === "actions"
+              ? `/patients/${patientId}/actions`
+              : `/patients/${patientId}/decision`;
+          nav(dest, { replace: true });
           return;
         }
         const pd = triage.pre_doctor_data || {};
@@ -82,6 +94,13 @@ export default function PreDoctorStepPage() {
           heart_rate: v.heart_rate != null ? String(v.heart_rate) : "",
           respiratory_rate: v.respiratory_rate != null ? String(v.respiratory_rate) : "",
           saturation: v.saturation != null ? String(v.saturation) : "",
+        });
+        const inv = (pd.investigations as Record<string, boolean>) || {};
+        setInvestigations({
+          ctg_done: inv.ctg_done === true,
+          ultrasound_done: inv.ultrasound_done === true,
+          labs_blood_done: inv.labs_blood_done === true,
+          labs_urine_done: inv.labs_urine_done === true,
         });
       } catch {
         setErr("Не удалось загрузить форму");
@@ -154,10 +173,11 @@ export default function PreDoctorStepPage() {
               respiratory_rate: Number(vitals.respiratory_rate),
               saturation: Number(vitals.saturation),
             },
+            investigations,
           },
         },
       });
-      nav(`/patients/${patientId}/priority-actions`);
+      nav(`/patients/${patientId}/decision`);
     } catch (ex: unknown) {
       const e = ex as { body?: { error?: string } };
       setErr(e.body?.error || "Не удалось сохранить");
@@ -176,7 +196,7 @@ export default function PreDoctorStepPage() {
             <i className="bi bi-arrow-left" aria-hidden /> К списку
           </Link>
           <h1 className="h4 mb-1">Доврачебный этап · {patientName || "Пациент"}</h1>
-          <p className="text-muted small mb-2">Этап 2 · осмотр и назначение приоритета</p>
+          <p className="text-muted small mb-2">Этап 2 · шаг 1 — сбор данных и рекомендация приоритета</p>
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setChecklistOpen(true)}>
             <i className="bi bi-list-check me-1" aria-hidden />
             Посмотреть чек-лист этапа 1
@@ -336,6 +356,23 @@ export default function PreDoctorStepPage() {
             </section>
 
             <section>
+              <h2 className="h6 mb-2">Исследования (факт выполнения)</h2>
+              <div className="d-grid gap-2">
+                {(opts?.investigations || []).map((o) => (
+                  <label key={o.key} className="triage-check-item">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={investigations[o.key] === true}
+                      onChange={(e) => setInvestigations((prev) => ({ ...prev, [o.key]: e.target.checked }))}
+                    />
+                    <span>{o.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section>
               <h2 className="h6 mb-2">Витальные функции</h2>
               <div className="row g-2">
                 {(opts?.vitals || []).map((v) => (
@@ -356,7 +393,7 @@ export default function PreDoctorStepPage() {
             </section>
 
             <button type="submit" className="btn btn-primary" disabled={busy || !opts}>
-              {busy ? "Сохранение…" : "Завершить доврачебный этап и назначить приоритет"}
+              {busy ? "Сохранение…" : "Завершить доврачебный этап и перейти к решению"}
             </button>
           </div>
         </form>

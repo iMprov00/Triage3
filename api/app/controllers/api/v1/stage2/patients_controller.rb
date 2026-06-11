@@ -4,7 +4,7 @@ module Api
   module V1
     module Stage2
       class PatientsController < ApplicationController
-        before_action :set_patient_and_case, only: %i[show update destroy stage1_summary]
+        before_action :set_patient_and_case, only: %i[show update destroy stage1_summary decision_summary]
 
         def index
           prm = list_params
@@ -19,6 +19,15 @@ module Api
 
         def stage1_summary
           summary = Stage2Stage1SummaryPresenter.call(@patient)
+          if summary[:error]
+            return render json: summary, status: :not_found
+          end
+
+          render json: summary
+        end
+
+        def decision_summary
+          summary = Stage2DecisionSummaryPresenter.call(@patient, @stage2_case)
           if summary[:error]
             return render json: summary, status: :not_found
           end

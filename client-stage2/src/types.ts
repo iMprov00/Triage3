@@ -3,8 +3,12 @@ export type Stage2TriageRow = {
   phase_label: string;
   priority: string;
   priority_name?: string;
+  suggested_priority?: string;
+  suggested_priority_name?: string;
   display_priority?: string | null;
+  display_priority_name?: string | null;
   pre_doctor_completed?: boolean;
+  decision_completed?: boolean;
   workflow_route?: string;
   completed_at?: string | null;
   started_at?: string | null;

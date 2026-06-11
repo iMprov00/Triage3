@@ -19,10 +19,12 @@ const STAGE1_PRIORITY_LABELS: Record<string, string> = {
   pending: "Не определён",
 };
 
-function priorityTone(priority?: string | null): "red" | "yellow" | "purple" | "green" | "neutral" {
+function priorityTone(priority?: string | null): "red" | "yellow" | "orange" | "grey" | "purple" | "green" | "neutral" {
   const p = (priority || "").toLowerCase();
   if (p === "red") return "red";
   if (p === "yellow") return "yellow";
+  if (p === "orange") return "orange";
+  if (p === "grey") return "grey";
   if (p === "purple") return "purple";
   if (p === "green") return "green";
   return "neutral";
@@ -38,15 +40,28 @@ function formatAdmissionDate(value?: string): string {
 function statusLabel(p: Stage2PatientListRow): string {
   if (!p.stage2_triage) return "Ожидание";
   if (p.stage2_triage.completed_at) return "Завершено";
-  if (p.stage2_triage.pre_doctor_completed) return "Действия по приоритету";
+  const route = p.stage2_triage.workflow_route;
+  if (route === "pre_doctor") return "Шаг 1";
+  if (route === "decision") return "Принять решение";
+  if (route === "actions") return "Действия";
   return p.stage2_triage.phase_label || p.stage2_triage.current_phase;
 }
 
 function workflowPath(p: Stage2PatientListRow): string {
-  if (p.stage2_triage?.workflow_route === "priority_actions") {
-    return `/patients/${p.id}/priority-actions`;
-  }
+  const route = p.stage2_triage?.workflow_route;
+  if (route === "decision") return `/patients/${p.id}/decision`;
+  if (route === "actions") return `/patients/${p.id}/actions`;
+  if (route === "completed") return `/patients/${p.id}/actions/report`;
   return `/patients/${p.id}/workflow`;
+}
+
+function workflowButtonLabel(p: Stage2PatientListRow): string {
+  const route = p.stage2_triage?.workflow_route;
+  if (route === "pre_doctor") return "Шаг 1";
+  if (route === "decision") return "Принять решение";
+  if (route === "actions") return "Действия";
+  if (route === "completed") return "Итог действий";
+  return "Открыть этап 2";
 }
 
 export default function PatientsPage() {
@@ -206,7 +221,8 @@ export default function PatientsPage() {
                     <span
                       className={`patient-tag patient-tag--priority patient-tag--${priorityTone(p.stage2_triage.display_priority)}`}
                     >
-                      Этап 2: {p.stage2_triage.priority_name || STAGE1_PRIORITY_LABELS[p.stage2_triage.display_priority]}
+                      {p.stage2_triage.display_priority_name ||
+                        `Этап 2: ${p.stage2_triage.priority_name || STAGE1_PRIORITY_LABELS[p.stage2_triage.display_priority]}`}
                     </span>
                   )}
                   {!p.stage2_triage?.display_priority && p.stage1_priority && (
@@ -224,8 +240,13 @@ export default function PatientsPage() {
                   Исполнитель: <strong>{p.performer_name || "—"}</strong>
                 </div>
                 <div className="mt-3 d-grid gap-2">
-                  <Link to={workflowPath(p)} className="btn btn-primary btn-sm">
-                    {p.stage2_triage?.pre_doctor_completed ? "Действия по приоритету" : "Открыть этап 2"}
+                  <Link
+                    to={workflowPath(p)}
+                    className={`btn btn-sm ${
+                      p.stage2_triage?.workflow_route === "completed" ? "btn-outline-warning" : "btn-primary"
+                    }`}
+                  >
+                    {workflowButtonLabel(p)}
                   </Link>
                   {p.can_edit && (
                     <Link to={`/patients/${p.id}/edit`} className="btn btn-outline-secondary btn-sm">

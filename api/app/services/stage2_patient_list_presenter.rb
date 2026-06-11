@@ -17,8 +17,8 @@ class Stage2PatientListPresenter
     case effective_priority.to_s
     when "red" then "patient-b-card--priority-red"
     when "yellow" then "patient-b-card--priority-yellow"
-    when "orange" then "patient-b-card--priority-yellow"
-    when "grey" then "patient-b-card--triage-active"
+    when "orange" then "patient-b-card--priority-orange"
+    when "grey" then "patient-b-card--priority-grey"
     when "green" then "patient-b-card--priority-green"
     else "patient-b-card--triage-active"
     end
@@ -57,8 +57,12 @@ class Stage2PatientListPresenter
       phase_label: st.phase_label,
       priority: st.priority,
       priority_name: st.priority_name,
+      suggested_priority: st.suggested_priority,
+      suggested_priority_name: st.suggested_priority_name,
       display_priority: st.display_priority,
+      display_priority_name: st.display_priority_name,
       pre_doctor_completed: st.pre_doctor_completed?,
+      decision_completed: st.decision_completed?,
       workflow_route: st.workflow_route,
       completed_at: st.completed_at,
       started_at: st.started_at

@@ -301,6 +301,18 @@ body {
   border-color: rgba(16, 185, 129, 0.35);
 }
 
+.patient-tag--orange {
+  background: rgba(249, 115, 22, 0.15);
+  color: #9a3412;
+  border-color: rgba(249, 115, 22, 0.35);
+}
+
+.patient-tag--grey {
+  background: rgba(107, 114, 128, 0.14);
+  color: #374151;
+  border-color: rgba(107, 114, 128, 0.35);
+}
+
 .patient-tag--done {
   background: rgba(71, 85, 105, 0.12);
   color: #334155;
@@ -398,6 +410,74 @@ body {
 .patient-b-card--priority-green {
   border-color: rgba(16, 185, 129, 0.65);
   animation: patient-b-pulse-green-priority 2.4s ease-in-out infinite;
+}
+
+.patient-b-card--priority-orange {
+  border-color: rgba(249, 115, 22, 0.65);
+  animation: patient-b-pulse-yellow 2.4s ease-in-out infinite;
+}
+
+.patient-b-card--priority-grey {
+  border-color: rgba(107, 114, 128, 0.55);
+}
+
+.stage2-decision-priority-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.stage2-decision-priority-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.9rem;
+  border: 2px solid #e7e5e4;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stage2-decision-priority-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.stage2-decision-priority-card--active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.stage2-decision-priority-card--red { border-color: rgba(220, 38, 38, 0.45); }
+.stage2-decision-priority-card--yellow { border-color: rgba(245, 158, 11, 0.45); }
+.stage2-decision-priority-card--orange { border-color: rgba(249, 115, 22, 0.45); }
+.stage2-decision-priority-card--grey { border-color: rgba(107, 114, 128, 0.45); }
+.stage2-decision-priority-card--green { border-color: rgba(16, 185, 129, 0.45); }
+
+.stage2-decision-priority-card--active.stage2-decision-priority-card--red { border-color: #dc2626; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--yellow { border-color: #f59e0b; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--orange { border-color: #f97316; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--grey { border-color: #6b7280; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--green { border-color: #10b981; }
+
+.stage2-decision-priority-card__title {
+  font-weight: 600;
+}
+
+.stage2-decision-priority-card__hint {
+  font-size: 0.8rem;
+  color: #78716c;
+}
+
+.stage2-decision-priority-card__badge {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
 }
 
 @keyframes patient-b-pulse-blue {

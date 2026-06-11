@@ -10,8 +10,21 @@ class Stage2AuditEvent < ApplicationRecord
     "case_removed" => "Пациент снят с этапа 2",
     "patient_edited" => "Карта пациента изменена",
     "pre_doctor_submitted" => "Доврачебный этап заполнен",
-    "priority_assigned" => "Назначен приоритет этапа 2"
+    "priority_assigned" => "Назначен приоритет этапа 2",
+    "suggested_priority_computed" => "Рассчитана рекомендация приоритета",
+    "decision_confirmed" => "Подтверждён приоритет этапа 2",
+    "priority_action_marked" => "Отмечено действие по приоритету",
+    "priority_action_unmarked" => "Снята отметка действия",
+    "actions_completed" => "Действия этапа 2 завершены"
   }.freeze
+
+  def payload_hash
+    return {} if payload.blank?
+
+    JSON.parse(payload)
+  rescue JSON::ParserError
+    {}
+  end
 
   def self.log!(patient:, stage2_case: nil, type:, payload: {})
     create!(

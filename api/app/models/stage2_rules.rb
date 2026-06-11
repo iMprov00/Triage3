@@ -48,7 +48,16 @@ module Stage2Rules
     { key: "anterior_abdominal_wall", label: "Передняя брюшная стенка" }
   ].freeze
 
+  INVESTIGATION_OPTIONS = [
+    { key: "ctg_done", label: "КТГ выполнено" },
+    { key: "ultrasound_done", label: "УЗИ выполнено" },
+    { key: "labs_blood_done", label: "Анализ крови выполнен" },
+    { key: "labs_urine_done", label: "Анализ мочи выполнен" }
+  ].freeze
+
   VITAL_FIELDS = %w[systolic_bp diastolic_bp heart_rate respiratory_rate saturation].freeze
+
+  DECISION_PRIORITIES = %w[red yellow orange grey green].freeze
 
   PRIORITY_NAMES = {
     "pending" => "Не определён",
@@ -59,11 +68,21 @@ module Stage2Rules
     "green" => "Зелёный"
   }.freeze
 
+  DESTINATION_HINTS = {
+    "red" => "Операционная / родовой бокс",
+    "yellow" => "ПИТ",
+    "orange" => "Родовое отделение",
+    "grey" => "Профильное учреждение",
+    "green" => "Отделение патологии"
+  }.freeze
+
   class PreDoctorPriorityStrategy
     def evaluate(data)
       d = normalize(data)
       return "red" if red?(d)
+      return "grey" if grey?(d)
       return "yellow" if yellow?(d)
+      return "orange" if orange?(d)
 
       "green"
     end
@@ -90,16 +109,24 @@ module Stage2Rules
       false
     end
 
+    def grey?(d)
+      d[:discharge] == "suspected_liquor"
+    end
+
     def yellow?(d)
-      return true if %w[moderate_bleeding amniotic_waters suspected_liquor].include?(d[:discharge])
+      return true if %w[moderate_bleeding amniotic_waters].include?(d[:discharge])
       return true if d[:fetal_heart_rate] == "not_assessed"
       return true if d[:uterine_tone] == "elevated"
-      return true if %w[labor_regular labor_irregular].include?(d[:uterine_tone])
+      return true if d[:uterine_tone] == "labor_irregular"
       return true if d[:pain_vas].between?(4, 6)
       return true if %w[pale jaundiced rash edema].include?(d[:skin_finding])
       return true if vital_yellow?(d[:vitals])
 
       false
+    end
+
+    def orange?(d)
+      d[:uterine_tone] == "labor_regular"
     end
 
     def vital_yellow?(vitals)
@@ -118,6 +145,77 @@ module Stage2Rules
       return true if hr > 0 && (hr > 110 || hr < 50)
 
       false
+    end
+  end
+
+  class ActionsCatalog
+    def actions_for(priority:, triage: nil)
+      _ = triage
+      []
+    end
+
+    def action_text_for_key(key)
+      key.to_s
+    end
+  end
+
+  class DefaultActionsCatalog < ActionsCatalog
+    RED_ACTIONS = [
+      { key: "s2_red_stabilize", text: "Немедленная стабилизация состояния" },
+      { key: "s2_red_or", text: "Подготовка к экстренному родоразрешению / операции" },
+      { key: "s2_red_anesthesia", text: "Вызов анестезиолога-реаниматолога" },
+      { key: "s2_red_monitor", text: "Непрерывный мониторинг плода и матери" },
+      { key: "s2_red_exit", text: "Перевод: операционная / родовой бокс", final: true, final_always_available: false }
+    ].freeze
+
+    YELLOW_ACTIONS = [
+      { key: "s2_yellow_exam", text: "Расширенное обследование (КТГ, УЗИ, анализы)" },
+      { key: "s2_yellow_consult", text: "Консультация акушера-гинеколога" },
+      { key: "s2_yellow_pit", text: "Подготовка к переводу в ПИТ" },
+      { key: "s2_yellow_vitals", text: "Контроль витальных функций" },
+      { key: "s2_yellow_exit", text: "Перевод: ПИТ", final: true, final_always_available: false }
+    ].freeze
+
+    ORANGE_ACTIONS = [
+      { key: "s2_orange_observe", text: "Наблюдение в родовом отделении" },
+      { key: "s2_orange_ctg", text: "КТГ / мониторинг плода" },
+      { key: "s2_orange_docs", text: "Оформление документации" },
+      { key: "s2_orange_exit", text: "Перевод: родовое отделение", final: true, final_always_available: false }
+    ].freeze
+
+    GREY_ACTIONS = [
+      { key: "s2_grey_prepare", text: "Подготовка к переводу в профильное учреждение" },
+      { key: "s2_grey_docs", text: "Оформление сопроводительной документации" },
+      { key: "s2_grey_notify", text: "Уведомление принимающей стороны" },
+      { key: "s2_grey_exit", text: "Перевод: профильное учреждение", final: true, final_always_available: false }
+    ].freeze
+
+    GREEN_ACTIONS = [
+      { key: "s2_green_exam", text: "Плановое обследование" },
+      { key: "s2_green_consult", text: "Консультация врача" },
+      { key: "s2_green_admit", text: "Подготовка к госпитализации" },
+      { key: "s2_green_exit", text: "Перевод: отделение патологии", final: true, final_always_available: false }
+    ].freeze
+
+    ALL_ACTIONS = (
+      RED_ACTIONS + YELLOW_ACTIONS + ORANGE_ACTIONS + GREY_ACTIONS + GREEN_ACTIONS
+    ).freeze
+
+    def actions_for(priority:, triage: nil)
+      _ = triage
+      case priority.to_s
+      when "red" then RED_ACTIONS
+      when "yellow" then YELLOW_ACTIONS
+      when "orange" then ORANGE_ACTIONS
+      when "grey" then GREY_ACTIONS
+      when "green" then GREEN_ACTIONS
+      else []
+      end
+    end
+
+    def action_text_for_key(key)
+      action = ALL_ACTIONS.find { |a| a[:key] == key.to_s }
+      action ? action[:text] : key.to_s
     end
   end
 end

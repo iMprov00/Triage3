@@ -166,7 +166,7 @@ export default function TriageActionsPage() {
                     className={`btn ${done ? "btn-success" : "btn-outline-primary"} triage-simple-action-btn`}
                     onClick={() => void mark(a.key)}
                   >
-                    {done ? "Готово" : "Отметить"}
+                    {done ? "Готово" : "Выполнено"}
                   </button>
                 )}
               </div>

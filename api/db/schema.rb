@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_06_120000) do
   create_table "job_positions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "kind", null: false
@@ -79,6 +79,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_05_120000) do
   end
 
   create_table "stage2_triages", force: :cascade do |t|
+    t.datetime "actions_completed_at"
+    t.json "actions_data", default: {}
+    t.datetime "actions_started_at"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.string "current_phase", default: "pre_doctor", null: false
@@ -87,6 +90,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_05_120000) do
     t.integer "stage2_case_id", null: false
     t.datetime "start_time"
     t.datetime "started_at"
+    t.string "suggested_priority", default: "pending", null: false
     t.boolean "timer_active", default: false
     t.datetime "updated_at", null: false
     t.index ["stage2_case_id"], name: "index_stage2_triages_on_stage2_case_id", unique: true

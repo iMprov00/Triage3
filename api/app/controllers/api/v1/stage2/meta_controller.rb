@@ -11,6 +11,14 @@ module Api
             uterine_tone: Stage2Rules::UTERINE_TONE_OPTIONS,
             skin_findings: Stage2Rules::SKIN_FINDING_OPTIONS,
             edema_locations: Stage2Rules::EDEMA_LOCATION_OPTIONS,
+            investigations: Stage2Rules::INVESTIGATION_OPTIONS,
+            decision_priorities: Stage2Rules::DECISION_PRIORITIES.map do |key|
+              {
+                key: key,
+                label: Stage2Rules::PRIORITY_NAMES[key],
+                destination_hint: Stage2Rules::DESTINATION_HINTS[key]
+              }
+            end,
             vitals: Stage2Rules::VITAL_FIELDS.map { |key| { key: key, label: vital_field_label(key) } },
             pain_vas_min: 0,
             pain_vas_max: 10

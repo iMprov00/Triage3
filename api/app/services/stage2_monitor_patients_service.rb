@@ -29,7 +29,8 @@ class Stage2MonitorPatientsService
       current_phase: st.current_phase,
       phase_label: st.phase_label,
       priority: display_priority || st.priority,
-      priority_name: display_priority ? st.priority_name : nil,
+      priority_name: st.display_priority_name,
+      workflow_route: st.workflow_route,
       stage1_priority: p.triage&.priority,
       stage1_priority_name: p.triage&.priority_name
     }

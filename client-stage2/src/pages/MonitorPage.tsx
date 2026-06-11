@@ -11,17 +11,28 @@ type MonitorPatientRow = {
   current_phase: string;
   phase_label: string;
   priority?: string | null;
+  priority_name?: string | null;
+  workflow_route?: string | null;
   stage1_priority?: string | null;
   stage1_priority_name?: string | null;
 };
 
-function priorityTone(priority?: string | null): "red" | "yellow" | "purple" | "green" | "neutral" {
+function priorityTone(priority?: string | null): "red" | "yellow" | "orange" | "grey" | "purple" | "green" | "neutral" {
   const p = (priority || "").toLowerCase();
   if (p === "red") return "red";
-  if (p === "yellow" || p === "orange") return "yellow";
+  if (p === "yellow") return "yellow";
+  if (p === "orange") return "orange";
+  if (p === "grey") return "grey";
   if (p === "purple") return "purple";
   if (p === "green") return "green";
   return "neutral";
+}
+
+function workflowPhaseLabel(route?: string | null): string | null {
+  if (route === "pre_doctor") return "Шаг 1";
+  if (route === "decision") return "Решение";
+  if (route === "actions") return "Действия";
+  return null;
 }
 
 function formatClock(d: Date): string {
@@ -117,7 +128,8 @@ export default function MonitorPage() {
         <div className="monitor-tv-grid">
           {sortedRows.map((r) => {
             const tone = priorityTone(r.stage1_priority || r.priority);
-            const priorityLabel = r.stage1_priority_name || "—";
+            const priorityLabel = r.priority_name || r.stage1_priority_name || "—";
+            const workflowLabel = workflowPhaseLabel(r.workflow_route);
             return (
               <article key={r.id} className={`monitor-tv-card monitor-tv-card--priority-${tone}`}>
                 <div className="monitor-tv-card-accent" aria-hidden />
@@ -133,7 +145,10 @@ export default function MonitorPage() {
                       Исполнитель: <strong>{r.performer_name || "—"}</strong>
                     </span>
                   </div>
-                  <div className="monitor-tv-phase">{r.phase_label}</div>
+                  <div className="monitor-tv-phase">
+                    {workflowLabel ? `${workflowLabel} · ` : ""}
+                    {r.phase_label}
+                  </div>
                 </div>
               </article>
             );

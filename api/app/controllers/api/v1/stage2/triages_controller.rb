@@ -21,7 +21,7 @@ module Api
           end
 
           attrs = pre_doctor_params
-          priority = st.submit_pre_doctor!(attrs)
+          suggested = st.submit_pre_doctor!(attrs, user: current_user)
           st.reload
 
           Stage2AuditEvent.log!(
@@ -33,13 +33,53 @@ module Api
           Stage2AuditEvent.log!(
             patient: @patient,
             stage2_case: @stage2_case,
-            type: "priority_assigned",
-            payload: { priority: priority, source: "pre_doctor" }
+            type: "suggested_priority_computed",
+            payload: { suggested_priority: suggested }
           )
 
           render json: {
             ok: true,
-            result: "priority_assigned",
+            result: "pre_doctor_completed",
+            suggested_priority: suggested,
+            suggested_priority_name: st.suggested_priority_name,
+            triage: Stage2TriageStatePresenter.call(@patient, @stage2_case, viewer: current_user)
+          }
+        rescue ArgumentError => e
+          render json: { error: e.message }, status: :unprocessable_entity
+        end
+
+        def decision
+          st = @stage2_case.stage2_triage
+          unless st
+            return render json: { error: "Триаж этапа 2 не найден" }, status: :not_found
+          end
+
+          unless st.pre_doctor_completed?
+            return render json: { error: "Сначала завершите доврачебный этап" }, status: :unprocessable_entity
+          end
+
+          if st.decision_completed? && st.decision_data["completed_at"].present?
+            return render json: { error: "Решение уже принято" }, status: :unprocessable_entity
+          end
+
+          priority = decision_params[:priority].to_s
+          note = decision_params[:note]
+          st.submit_decision!(priority: priority, note: note, user: current_user)
+          st.reload
+
+          Stage2AuditEvent.log!(
+            patient: @patient,
+            stage2_case: @stage2_case,
+            type: "decision_confirmed",
+            payload: {
+              priority: priority,
+              suggested_priority: st.suggested_priority,
+              note: note
+            }
+          )
+
+          render json: {
+            ok: true,
             priority: priority,
             priority_name: st.priority_name,
             triage: Stage2TriageStatePresenter.call(@patient, @stage2_case, viewer: current_user)
@@ -98,7 +138,8 @@ module Api
             :edema_location,
             :contraction_duration_sec,
             :contraction_interval_min,
-            vitals: %i[systolic_bp diastolic_bp heart_rate respiratory_rate saturation]
+            vitals: %i[systolic_bp diastolic_bp heart_rate respiratory_rate saturation],
+            investigations: %i[ctg_done ultrasound_done labs_blood_done labs_urine_done]
           )
           {
             discharge: p[:discharge],
@@ -109,8 +150,14 @@ module Api
             edema_location: p[:edema_location],
             contraction_duration_sec: p[:contraction_duration_sec],
             contraction_interval_min: p[:contraction_interval_min],
-            vitals: (p[:vitals] || {}).to_h
+            vitals: (p[:vitals] || {}).to_h,
+            investigations: (p[:investigations] || {}).to_h
           }
+        end
+
+        def decision_params
+          src = params[:decision].present? ? params.require(:decision) : params
+          src.permit(:priority, :note)
         end
       end
     end
