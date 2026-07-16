@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
 import TriageStepEditConfirmDialog from "../components/TriageStepEditConfirmDialog";
+import FormErrorToast from "../components/FormErrorToast";
+import { focusTriageStep3FormError } from "../utils/triageStep3FormErrors";
 import {
   triageActiveStepPath,
   triageHasSavedStepData,
@@ -25,6 +27,11 @@ export default function TriageStep3Page() {
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
+    if (!err) return;
+    focusTriageStep3FormError(err);
+  }, [err]);
+
+  useEffect(() => {
     void (async () => {
       try {
         const t = await apiJson<Record<string, unknown>>(`/api/v1/patients/${patientId}/triage`);
@@ -45,6 +52,18 @@ export default function TriageStep3Page() {
     const id = window.setInterval(() => setTick((x) => x + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!triage || isEditMode || !patientId) return;
+    if (triage.completed_at) {
+      nav(`/patients/${patientId}/triage/actions`, { replace: true });
+      return;
+    }
+    const step = Number(triage.step) || 1;
+    if (step !== 3) {
+      nav(triageActiveStepPath(patientId, step), { replace: true });
+    }
+  }, [triage, isEditMode, patientId, nav]);
 
   const rem =
     triage?.timer_active && triage.timer_ends_at
@@ -191,19 +210,18 @@ export default function TriageStep3Page() {
   if (!isEditMode && (triage.step as number) !== 3) {
     return (
       <div className="container-fluid triag-page-wide">
-        <div className="triage-page-shell py-2 py-sm-3">
-        <Link to="/patients" className="triage-back-link">← Назад</Link>
-        </div>
+        <div className="triage-page-shell py-2 py-sm-3">Переход к текущему шагу…</div>
       </div>
     );
   }
 
   return (
     <div className="container-fluid triag-page-wide">
+      <FormErrorToast message={err} onDismiss={() => setErr("")} />
       <div className="triage-page-shell py-2 py-sm-3">
-      <div className="triage-page-head">
+      <div className="triage-page-head mb-3">
         <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-        <h1 className="h4 triage-page-title">{isEditMode ? "Редактирование шага 3" : "Шаг 3"}</h1>
+        <h1 className="triag-page-heading mb-0">{isEditMode ? "Редактирование шага 3" : "Шаг 3"}</h1>
       </div>
       {!isEditMode && (
       <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
@@ -216,9 +234,8 @@ export default function TriageStep3Page() {
         </div>
       </div>
       )}
-      {err && <div className="alert alert-danger py-2">{err}</div>}
       <form onSubmit={(e) => void handleSubmit(e)} className="card triage-form-card triage-step3-form">
-        <div className="card-body row g-2">
+        <div id="triage-step3-vitals" className="card-body row g-2">
           {[
             ["respiratory_rate", "ЧДД"],
             ["saturation", "Сатурация"],
@@ -232,8 +249,9 @@ export default function TriageStep3Page() {
               tone === "yellow" ? " triage-input-yellow" : tone === "purple" ? " triage-input-purple" : "";
             return (
             <div className="col-md-6" key={key}>
-              <label className="form-label">{label}</label>
+              <label className="form-label" htmlFor={`triage-step3-${key}`}>{label}</label>
               <input
+                id={`triage-step3-${key}`}
                 type="text"
                 inputMode="decimal"
                 className={`form-control${toneClass}`}
@@ -244,7 +262,7 @@ export default function TriageStep3Page() {
             );
           })}
           <div className="col-12">
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary triag-btn-primary">
               {isEditMode ? "Сохранить изменения" : "Завершить триаж"}
             </button>
           </div>

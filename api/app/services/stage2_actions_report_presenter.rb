@@ -20,6 +20,7 @@ class Stage2ActionsReportPresenter
     {
       patient_id: @patient.id,
       full_name: @patient.full_name,
+      patient: patient_admission_hash,
       stage2_triage: {
         priority: @st.priority,
         priority_name: @st.priority_name,
@@ -31,12 +32,25 @@ class Stage2ActionsReportPresenter
       },
       decision_summary: decision,
       actions_phase: actions_phase_stats,
-      audit_events: audit_events_payload,
+      audit_events: filtered_action_events,
       workflow_events: workflow_events_payload
     }
   end
 
   private
+
+  def patient_admission_hash
+    {
+      full_name: @patient.full_name,
+      admission_date: @patient.admission_date.to_s,
+      admission_time: @patient.admission_time_formatted,
+      birth_date: @patient.birth_date&.to_s,
+      appeal_type: @patient.appeal_type,
+      pregnancy_display: @patient.pregnancy_display,
+      performer_name: @patient.performer_name,
+      created_at: PatientListPresenter.format_time_nsk(@patient.created_at, "%d.%m.%Y %H:%M")
+    }
+  end
 
   def actions_phase_stats
     started = @st.actions_started_at
@@ -51,24 +65,32 @@ class Stage2ActionsReportPresenter
     }
   end
 
-  def audit_events_payload
-    @patient.stage2_audit_events
+  def raw_audit_events
+    @raw_audit_events ||= @patient.stage2_audit_events
       .where(stage2_case_id: @stage2_case.id)
       .order(:occurred_at)
       .map { |ev| format_audit_event(ev) }
   end
 
+  def filtered_action_events
+    TriageAuditTimelineFilter.for_report(raw_audit_events)
+  end
+
   def workflow_events_payload
-    audit_events_payload.select do |ev|
+    workflow = raw_audit_events.select do |ev|
       %w[
+        case_accepted
         pre_doctor_submitted
-        suggested_priority_computed
+        doctor_examination_submitted
         decision_confirmed
-        priority_action_marked
-        priority_action_unmarked
-        actions_completed
       ].include?(ev[:event_type])
     end
+
+    (workflow + filtered_action_events).sort_by { |ev| ev[:occurred_at] }
+  end
+
+  def audit_events_payload
+    raw_audit_events
   end
 
   def format_audit_event(ev)
@@ -80,7 +102,7 @@ class Stage2ActionsReportPresenter
       event_label: Stage2AuditEvent::EVENT_LABELS[ev.event_type] || ev.event_type,
       occurred_at: ev.occurred_at,
       payload: payload,
-      action_text: action_key.present? ? Stage2Triage.action_text_for_key(action_key) : nil
+      action_text: action_key.present? ? Stage2Triage.action_display_text(action_key, payload) : nil
     }
   end
 end

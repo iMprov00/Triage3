@@ -1,5 +1,5 @@
-/* TriagV3 PWA: статика — stale-while-revalidate; API не кешируем */
-const STATIC = "triag-client-static-v2";
+/* TriagV3 Stage 1 PWA: статика — stale-while-revalidate; API не кешируем */
+const STATIC = "triag-stage1-static-v1";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -10,7 +10,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((k) => {
-          if (k !== STATIC && k.startsWith("triag-client")) return caches.delete(k);
+          if (k !== STATIC && k.startsWith("triag-stage1")) return caches.delete(k);
         }),
       ),
     ).then(() => self.clients.claim()),

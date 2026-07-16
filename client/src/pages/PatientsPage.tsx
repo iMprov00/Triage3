@@ -2,14 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createConsumer } from "@rails/actioncable";
 import { apiJson, formatTimer } from "../api";
+import { triageActiveStepPath } from "../triageUi";
 import type { PatientListRow } from "../types";
-
-const APPEAL_TYPES = [
-  "Плановая госпитализация по направлению",
-  "Самообращение",
-  "СМП",
-  "ДКЦ",
-];
 
 type PatientDetailsResponse = {
   patient: PatientListRow & {
@@ -26,8 +20,10 @@ export default function PatientsPage() {
   const [err, setErr] = useState("");
   const [admissionDate, setAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState("");
-  const [appealType, setAppealType] = useState("all");
-  const [onlyActive, setOnlyActive] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [performerFilter, setPerformerFilter] = useState("");
+  const [sort, setSort] = useState("");
+  const [performers, setPerformers] = useState<string[]>([]);
   const [detailsOpenFor, setDetailsOpenFor] = useState<number | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsErr, setDetailsErr] = useState("");
@@ -38,10 +34,11 @@ export default function PatientsPage() {
     const p = new URLSearchParams();
     p.set("admission_date", admissionDate);
     if (search) p.set("search", search);
-    if (appealType !== "all") p.set("appeal_type", appealType);
-    if (onlyActive) p.set("only_active", onlyActive);
+    if (statusFilter) p.set("status_filter", statusFilter);
+    if (performerFilter) p.set("performer_filter", performerFilter);
+    if (sort) p.set("sort", sort);
     return p.toString();
-  }, [admissionDate, search, appealType, onlyActive]);
+  }, [admissionDate, search, statusFilter, performerFilter, sort]);
 
   const load = useCallback(async () => {
     try {
@@ -52,6 +49,17 @@ export default function PatientsPage() {
       setErr("Не удалось загрузить список");
     }
   }, [qs]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await apiJson<{ performers: string[] }>("/api/v1/performers");
+        setPerformers(r.performers || []);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     void load();
@@ -113,7 +121,7 @@ export default function PatientsPage() {
   function statusLabel(p: PatientListRow): string {
     if (!p.triage) return "Триаж не начат";
     if (p.triage.completed_at && p.triage.actions_completed_at) return "Завершено";
-    if (p.triage.completed_at && !p.triage.actions_completed_at) return "Выполняются действия";
+    if (p.triage.completed_at && !p.triage.actions_completed_at) return "Действия по приоритету";
     return `Шаг ${p.triage.step}`;
   }
 
@@ -174,8 +182,8 @@ export default function PatientsPage() {
   return (
     <div className="container-fluid triag-page-wide px-0 px-sm-1">
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 className="h4 mb-0">Пациенты</h1>
-        <Link to="/patients/new" className="btn btn-primary btn-sm">
+        <h1 className="triag-page-heading mb-0">Пациенты</h1>
+        <Link to="/patients/new" className="btn btn-primary btn-sm triag-btn-primary">
           Новый пациент
         </Link>
       </div>
@@ -191,27 +199,41 @@ export default function PatientsPage() {
             <input className="form-control" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ФИО, ID…" />
           </div>
           <div className="col-12 col-sm-6 col-lg-3">
-            <label className="form-label small mb-0">Вид обращения</label>
-            <select className="form-select" value={appealType} onChange={(e) => setAppealType(e.target.value)}>
-              <option value="all">Все</option>
-              {APPEAL_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+            <label className="form-label small mb-0">Статус</label>
+            <select className="form-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">Все</option>
+              <option value="not_started">Не начаты</option>
+              <option value="on_steps">На шагах</option>
+              <option value="in_actions">Действия по приоритету</option>
+              <option value="completed">Завершённые</option>
+            </select>
+          </div>
+          <div className="col-12 col-sm-6 col-lg-3">
+            <label className="form-label small mb-0">Исполнитель</label>
+            <select className="form-select" value={performerFilter} onChange={(e) => setPerformerFilter(e.target.value)}>
+              <option value="">Все</option>
+              {performers.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
           </div>
-          <div className="col-12 col-sm-6 col-lg-3">
-            <label className="form-label small mb-0">Статус</label>
-            <select className="form-select" value={onlyActive} onChange={(e) => setOnlyActive(e.target.value)}>
-              <option value="">Все</option>
-              <option value="1">Только активные</option>
-            </select>
-          </div>
           <div className="col-12">
-            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => void load()}>
-              Обновить список
-            </button>
+            <div className="patients-list-toolbar d-flex flex-wrap align-items-center gap-2">
+              <button type="button" className="btn btn-sm triag-btn-secondary" onClick={() => void load()}>
+                Обновить список
+              </button>
+              <label className="patients-list-sort small mb-0 d-flex align-items-center gap-1">
+                <span className="text-muted">Сортировка</span>
+                <select className="form-select form-select-sm" value={sort} onChange={(e) => setSort(e.target.value)}>
+                  <option value="">По времени ↓</option>
+                  <option value="time_asc">По времени ↑</option>
+                  <option value="name_asc">По алфавиту А→Я</option>
+                  <option value="name_desc">По алфавиту Я→А</option>
+                </select>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -260,7 +282,7 @@ export default function PatientsPage() {
                   {!p.triage && (
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm"
+                      className="btn btn-primary btn-sm triag-btn-primary"
                       onClick={async () => {
                         await apiJson(`/api/v1/patients/${p.id}/triage/start`, { method: "POST", json: {} });
                         void load();
@@ -271,19 +293,19 @@ export default function PatientsPage() {
                     </button>
                   )}
                   {p.triage && !p.triage.completed_at && (
-                    <Link to={`/patients/${p.id}/triage`} className="btn btn-primary btn-sm">
+                    <Link to={triageActiveStepPath(String(p.id), p.triage.step)} className="btn btn-primary btn-sm triag-btn-primary">
                       Шаг {p.triage.step}
                     </Link>
                   )}
                   {p.triage?.completed_at && (
                     <Link
                       to={p.triage.actions_completed_at ? `/patients/${p.id}/triage/actions/report` : `/patients/${p.id}/triage/actions`}
-                      className={`btn btn-sm ${p.triage.actions_completed_at ? "btn-outline-warning" : "btn-warning"}`}
+                      className={`btn btn-sm ${p.triage.actions_completed_at ? "triag-btn-secondary" : "triag-btn-primary"}`}
                     >
                       {p.triage.actions_completed_at ? "Итог действий" : "Действия"}
                     </Link>
                   )}
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void openDetails(p.id)}>
+                  <button type="button" className="btn triag-btn-secondary btn-sm" onClick={() => void openDetails(p.id)}>
                     Подробнее
                   </button>
                 </div>
@@ -342,7 +364,7 @@ export default function PatientsPage() {
                       {!details.triage && (
                         <button
                           type="button"
-                          className="btn btn-primary"
+                          className="btn btn-primary triag-btn-primary"
                           onClick={async () => {
                             await apiJson(`/api/v1/patients/${details.patient.id}/triage/start`, { method: "POST", json: {} });
                             closeDetails();
@@ -356,10 +378,10 @@ export default function PatientsPage() {
                       {details.triage && !details.triage.completed_at && (
                         <button
                           type="button"
-                          className="btn btn-primary"
+                          className="btn btn-primary triag-btn-primary"
                           onClick={() => {
                             closeDetails();
-                            nav(`/patients/${details.patient.id}/triage`);
+                            nav(triageActiveStepPath(String(details.patient.id), details.triage!.step));
                           }}
                         >
                           Шаг {details.triage.step}
@@ -368,7 +390,7 @@ export default function PatientsPage() {
                       {details.triage?.completed_at && (
                         <button
                           type="button"
-                          className={`btn ${details.triage.actions_completed_at ? "btn-outline-warning" : "btn-warning"}`}
+                          className={`btn ${details.triage.actions_completed_at ? "triag-btn-secondary" : "triag-btn-primary"}`}
                           onClick={() => {
                             const triageState = details.triage;
                             if (!triageState) return;
@@ -393,7 +415,7 @@ export default function PatientsPage() {
                               <button
                                 key={stepNum}
                                 type="button"
-                                className="btn btn-outline-secondary btn-sm"
+                                className="btn triag-btn-secondary btn-sm"
                                 onClick={() => {
                                   closeDetails();
                                   nav(editStepPath(details.patient.id, stepNum as 1 | 2 | 3));
@@ -409,7 +431,7 @@ export default function PatientsPage() {
                     <div className="patient-details-bottom-actions d-flex flex-wrap gap-2">
                       <button
                         type="button"
-                        className="btn btn-outline-secondary btn-sm"
+                        className="btn triag-btn-secondary btn-sm"
                         onClick={() => {
                           closeDetails();
                           nav(`/patients/${details.patient.id}/edit`);
@@ -418,7 +440,7 @@ export default function PatientsPage() {
                         Данные пациента
                       </button>
                       {details.patient.can_delete && (
-                        <button type="button" className="btn btn-soft-danger btn-sm" onClick={() => openDeleteConfirm(details.patient)}>
+                        <button type="button" className="btn triag-btn-danger btn-sm" onClick={() => openDeleteConfirm(details.patient)}>
                           Удалить пациента
                         </button>
                       )}
@@ -453,10 +475,10 @@ export default function PatientsPage() {
                   </p>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary" onClick={closeDeleteConfirm}>
+                  <button type="button" className="btn triag-btn-secondary" onClick={closeDeleteConfirm}>
                     Отмена
                   </button>
-                  <button type="button" className="btn btn-danger" onClick={() => void executeDeletePatient()}>
+                  <button type="button" className="btn btn-danger triag-btn-danger" onClick={() => void executeDeletePatient()}>
                     Удалить
                   </button>
                 </div>

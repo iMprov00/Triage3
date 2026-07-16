@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/darlink-overrides.css';
+
+@theme {
+  --color-primary: var(--dar-primary);
+  --color-primary-hover: var(--dar-primary-hover);
+  --color-primary-light: var(--dar-primary-light);
+  --color-surface: var(--dar-card);
+  --color-muted: var(--dar-text-muted);
+  --radius-card: var(--dar-radius-lg);
+}
+
+@keyframes soft-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(50px, 30px); }
+}
+
+@keyframes soft-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-45px, -25px); }
+}
+
+@keyframes soft-float-0 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(40px, 6px); }
+}
+
+@keyframes soft-float-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-35px, 6px); }
+}
+
+@keyframes soft-float-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(28px, 6px); }
+}
+
+@keyframes soft-heart-0 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(22px, -16px); }
+}
+
+@keyframes soft-heart-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-18px, -12px); }
+}
+
+@keyframes soft-heart-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(14px, -20px); }
+}
+
+@keyframes soft-heart-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-20px, -14px); }
+}
+
+@keyframes soft-heart-4 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(12px, -10px); }
+}
+
+@keyframes soft-pacifier-0 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(50px, -8px) rotate(6deg); }
+}
+
+@keyframes soft-pacifier-1 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-45px, -12px) rotate(-6deg); }
+}
+
+@keyframes soft-pacifier-2 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-30px, 10px) rotate(4deg); }
+}
+
+@keyframes soft-pacifier-3 {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(35px, -6px) rotate(-4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [class*='soft-'],
+  .app-shell-bg * {
+    animation: none !important;
+  }
+}

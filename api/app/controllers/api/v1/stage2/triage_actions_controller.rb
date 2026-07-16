@@ -25,8 +25,8 @@ module Api
 
         def mark
           action_key = params[:triage_action].presence || params[:priority_action].presence || params[:action_key]
-          unless action_key.present? && @st.priority_actions.any? { |a| a[:key] == action_key }
-            return render json: { error: "Неизвестное действие" }, status: :unprocessable_entity
+          unless action_key.present? && @st.markable_action?(action_key)
+            return render json: { error: "Это действие — рекомендация, отметка не требуется" }, status: :unprocessable_entity
           end
 
           @st.mark_action!(action_key)
@@ -39,8 +39,8 @@ module Api
             payload: { action: action_key }
           )
 
-          final_action = @st.priority_actions.find { |a| a[:final] }
-          can_complete = @st.can_complete_final_action? && final_action && @st.action_completed?(final_action[:key])
+          final_action = @st.selected_final_action
+          can_complete = @st.can_complete_final_action? && final_action.present?
 
           render json: {
             success: true,
@@ -53,8 +53,11 @@ module Api
 
         def unmark
           action_key = params[:triage_action].presence || params[:priority_action].presence || params[:action_key]
-          final_action = @st.priority_actions.find { |a| a[:final] }
-          if final_action && action_key == final_action[:key] && @st.actions_completed?
+          unless action_key.present? && @st.markable_action?(action_key)
+            return render json: { error: "Это действие — рекомендация, отметка не требуется" }, status: :unprocessable_entity
+          end
+
+          if @st.actions_completed? && @st.markable_action?(action_key) && @st.action_completed?(action_key)
             return render json: { error: "Действия уже завершены" }, status: :unprocessable_entity
           end
 

@@ -17,8 +17,12 @@ class Stage2TransferService
     return @patient.stage2_case if @patient.stage2_case.present?
 
     triage = @patient.triage
-    unless triage&.actions_completed_at
-      raise TransferError, "Триаж этапа 1 не завершён"
+    unless triage&.stage2_handoff_at || triage&.actions_completed_at
+      raise TransferError, "Действия этапа 1 не завершены"
+    end
+
+    unless triage.stage2_eligible?
+      raise TransferError, "Пациенты с красным и фиолетовым приоритетом не передаются на этап 2"
     end
 
     now = Time.current
@@ -33,7 +37,8 @@ class Stage2TransferService
         admission_time: @patient.admission_time,
         performer_user_id: @patient.performer_user_id,
         performer_name: @patient.performer_name,
-        created_by_user_id: @user&.id
+        created_by_user_id: @user&.id,
+        accepted_at: nil
       )
 
       Stage2Triage.create!(

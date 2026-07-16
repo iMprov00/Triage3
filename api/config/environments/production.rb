@@ -76,11 +76,21 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.hosts = ENV.fetch("RAILS_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",").map(&:strip).reject(&:empty?)
+
+  # SPA на :1001/:1002 → WebSocket /cable должен принимать Origin с этих хостов.
+  # Без этого realtime падает, остаётся только polling раз в 15 с.
+  cable_origins = ENV.fetch("CORS_ORIGINS", "")
+    .split(",")
+    .map(&:strip)
+    .reject(&:empty?)
+  config.action_cable.allowed_request_origins = if cable_origins.any?
+    cable_origins
+  else
+    [
+      %r{\Ahttp://localhost(:\d+)?\z},
+      %r{\Ahttp://127\.0\.0\.1(:\d+)?\z},
+      %r{\Ahttp://192\.168\.\d+\.\d+:\d+\z}
+    ]
+  end
 end

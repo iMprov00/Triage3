@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { AppShell } from "./components/AppShell";
 import { apiJson } from "./api";
 import LoginPage from "./pages/LoginPage";
 import PatientsPage from "./pages/PatientsPage";
 import PatientFormPage from "./pages/PatientFormPage";
+import PreDoctorStepPage from "./pages/PreDoctorStepPage";
+import DoctorExaminationStepPage from "./pages/DoctorExaminationStepPage";
 import Stage2WorkflowRouter from "./pages/Stage2WorkflowRouter";
 import DecisionStepPage from "./pages/DecisionStepPage";
 import Stage2ActionsPage from "./pages/Stage2ActionsPage";
@@ -44,9 +47,11 @@ function RequireAuthLayout() {
 
   if (state === "loading") {
     return (
-      <div className="app-auth-loading" role="status">
-        Проверка сессии…
-      </div>
+      <AppShell>
+        <div className="app-auth-loading" role="status">
+          Проверка сессии…
+        </div>
+      </AppShell>
     );
   }
   if (!state.in) {
@@ -65,6 +70,10 @@ export default function App() {
           <Route path="/patients" element={<PatientsPage />} />
           <Route path="/patients/:patientId/edit" element={<PatientFormPage />} />
           <Route path="/patients/:patientId/workflow" element={<Stage2WorkflowRouter />} />
+          <Route path="/patients/:patientId/workflow/edit/pre-doctor" element={<PreDoctorStepPage />} />
+          <Route path="/patients/:patientId/workflow/edit/doctor-examination" element={<DoctorExaminationStepPage />} />
+          <Route path="/patients/:patientId/workflow/edit/decision" element={<DecisionStepPage />} />
+          <Route path="/patients/:patientId/doctor-examination" element={<DoctorExaminationStepPage />} />
           <Route path="/patients/:patientId/decision" element={<DecisionStepPage />} />
           <Route path="/patients/:patientId/actions" element={<Stage2ActionsPage />} />
           <Route path="/patients/:patientId/actions/report" element={<Stage2ActionsReportPage />} />

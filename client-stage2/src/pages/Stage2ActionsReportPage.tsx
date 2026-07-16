@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiJson } from "../api";
+import Stage1SummaryBlock from "../components/Stage1SummaryBlock";
+import Stage1ChecklistButton from "../components/Stage1ChecklistButton";
+import { openStage2ActionsReportPdf } from "../utils/stage2ActionsReportPdf";
+import {
+  buildStage2JournalTimeline,
+  formatStage2JournalEventText,
+  isStage2JournalActionEvent,
+} from "../utils/stage2JournalTimeline";
 
 type AuditEvent = {
   id: number;
@@ -27,6 +35,8 @@ type ReportResponse = {
     stage1: {
       priority_name: string;
       actions_completed_at?: string | null;
+      stopped_at_step?: number | null;
+      stopped_at_step_note?: string | null;
       step1: Record<string, string | undefined>;
       step2: { position?: string; urgency_criteria?: string[]; infection_signs?: string[] };
       step3: Record<string, string | number | undefined>;
@@ -41,7 +51,15 @@ type ReportResponse = {
       skin_finding?: string;
       edema_location?: string;
       vitals?: Record<string, number>;
+      doctor_called?: boolean;
+      duration_seconds?: number;
+    };
+    doctor_examination?: {
       investigations?: InvestigationRow[];
+      lab_investigations?: InvestigationRow[];
+      ctg?: { label: string; detail?: string };
+      ultrasound?: { label: string; detail?: string };
+      medical_conclusion?: string;
     };
     decision_priorities?: Array<{ key: string; label: string; destination_hint?: string }>;
   };
@@ -64,6 +82,7 @@ export default function Stage2ActionsReportPage() {
   const { patientId } = useParams();
   const [data, setData] = useState<ReportResponse | null>(null);
   const [err, setErr] = useState("");
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -83,25 +102,26 @@ export default function Stage2ActionsReportPage() {
     };
   }, [patientId]);
 
-  const actionTimeline = useMemo(() => {
+  const stageJournal = useMemo(() => {
     const events = data?.workflow_events || data?.audit_events || [];
-    return events.filter(
-      (e) =>
-        e.event_type === "priority_action_marked" ||
-        e.event_type === "priority_action_unmarked" ||
-        e.event_type === "actions_completed",
-    );
-  }, [data?.workflow_events, data?.audit_events]);
-
-  const workflowTimeline = useMemo(() => {
-    const events = data?.workflow_events || data?.audit_events || [];
-    return events.filter((e) =>
-      ["pre_doctor_submitted", "suggested_priority_computed", "decision_confirmed"].includes(e.event_type),
-    );
+    return buildStage2JournalTimeline(events);
   }, [data?.workflow_events, data?.audit_events]);
 
   const pd = data?.decision_summary?.pre_doctor;
+  const doc = data?.decision_summary?.doctor_examination;
   const s1 = data?.decision_summary?.stage1;
+
+  async function handlePrint() {
+    if (!data) return;
+    setPrinting(true);
+    try {
+      await openStage2ActionsReportPdf(data);
+    } catch {
+      setErr("Не удалось сформировать PDF-документ");
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   return (
     <div className="container-fluid triag-page-wide triage-report-page">
@@ -110,7 +130,22 @@ export default function Stage2ActionsReportPage() {
           <Link to="/patients" className="triage-back-link">
             ← Пациенты
           </Link>
-          <h1 className="h4 triage-page-title">Итоговый документ действий · Этап 2</h1>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h1 className="triag-page-heading mb-0">Итоговый документ действий · Этап 2</h1>
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              {patientId && <Stage1ChecklistButton patientId={Number(patientId)} />}
+              {data && (
+                <button
+                  type="button"
+                  className="btn btn-outline-primary triage-report-print-btn"
+                  disabled={printing}
+                  onClick={() => void handlePrint()}
+                >
+                  {printing ? "Формирование…" : "Напечатать"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {err && <div className="alert alert-danger py-2">{err}</div>}
@@ -174,48 +209,58 @@ export default function Stage2ActionsReportPage() {
             <div className="card mb-3 shadow-sm">
               <div className="card-header py-2 fw-semibold">Данные этапа 1</div>
               <div className="card-body small">
-                <div className="mb-2">
-                  Приоритет: <strong>{s1?.priority_name || "—"}</strong>
-                  {s1?.actions_completed_at ? ` · Завершено ${s1.actions_completed_at}` : ""}
-                </div>
-                <ul className="mb-0">
-                  <li>
-                    Витальные: ЧДД {s1?.step3.respiratory_rate ?? "—"}, SpO₂ {s1?.step3.saturation ?? "—"}, АД{" "}
-                    {s1?.step3.systolic_bp ?? "—"}/{s1?.step3.diastolic_bp ?? "—"}, ЧСС {s1?.step3.heart_rate ?? "—"}
-                  </li>
-                  <li>
-                    Критерии неотложности:{" "}
-                    {s1?.step2.urgency_criteria?.length ? s1.step2.urgency_criteria.join("; ") : "—"}
-                  </li>
-                </ul>
+                {s1 ? <Stage1SummaryBlock stage1={s1} /> : <div className="text-muted">Данные отсутствуют</div>}
               </div>
             </div>
 
             <div className="card mb-3 shadow-sm">
-              <div className="card-header py-2 fw-semibold">Доврачебный этап и решение</div>
+              <div className="card-header py-2 fw-semibold">Доврачебный и врачебный осмотр</div>
               <div className="card-body small">
-                <ul className="mb-0">
-                  <li>Выделения: {pd?.discharge || "—"}</li>
-                  <li>Сердцебиение плода: {pd?.fetal_heart_rate || "—"}</li>
+                <p className="fw-semibold mb-1">Доврачебный осмотр</p>
+                <ul className="mb-3">
+                  <li>Кожные покровы: {pd?.skin_finding || "—"}{pd?.edema_location ? ` (${pd.edema_location})` : ""}</li>
                   <li>Маточный тонус: {pd?.uterine_tone || "—"}</li>
                   <li>Боль по ВАШ: {pd?.pain_vas ?? "—"}</li>
-                  <li>
-                    Кожные покровы: {pd?.skin_finding || "—"}
-                    {pd?.edema_location ? ` (${pd.edema_location})` : ""}
-                  </li>
-                  <li>
-                    Исследования:{" "}
-                    {pd?.investigations?.filter((i) => i.done).map((i) => i.label).join(", ") || "не отмечены"}
-                  </li>
+                  <li>Сердцебиение плода: {pd?.fetal_heart_rate || "—"}</li>
+                  <li>Выделения: {pd?.discharge || "—"}</li>
+                  <li>Вызван врач: {pd?.doctor_called ? "да" : "нет"}</li>
+                  {pd?.duration_seconds != null && <li>Длительность: {secToMin(pd.duration_seconds)}</li>}
                 </ul>
+                {doc && (
+                  <>
+                    <p className="fw-semibold mb-1">Врачебный осмотр</p>
+                    <ul className="mb-0">
+                      <li>
+                        Исследования:{" "}
+                        {[
+                          ...(doc.investigations?.filter((i) => i.done).map((i) => i.label) || []),
+                          ...(doc.lab_investigations?.filter((i) => i.done).map((i) => i.label) || []),
+                        ].join(", ") || "не отмечены"}
+                      </li>
+                      {doc.ctg && (
+                        <li>
+                          КТГ: {doc.ctg.label}
+                          {doc.ctg.detail ? ` — ${doc.ctg.detail}` : ""}
+                        </li>
+                      )}
+                      {doc.ultrasound && (
+                        <li>
+                          УЗИ: {doc.ultrasound.label}
+                          {doc.ultrasound.detail ? ` — ${doc.ultrasound.detail}` : ""}
+                        </li>
+                      )}
+                      {doc.medical_conclusion && <li>Заключение: {doc.medical_conclusion}</li>}
+                    </ul>
+                  </>
+                )}
               </div>
             </div>
 
             <div className="card mb-3 shadow-sm">
               <div className="card-header py-2 fw-semibold">Журнал этапов этапа 2</div>
               <div className="card-body">
-                {workflowTimeline.length === 0 && <div className="text-muted">Записи отсутствуют</div>}
-                {workflowTimeline.length > 0 && (
+                {stageJournal.length === 0 && <div className="text-muted">Записи отсутствуют</div>}
+                {stageJournal.length > 0 && (
                   <div className="table-responsive">
                     <table className="table table-sm align-middle mb-0">
                       <thead>
@@ -225,68 +270,29 @@ export default function Stage2ActionsReportPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {workflowTimeline.map((ev) => (
-                          <tr key={ev.id}>
+                        {stageJournal.map((ev) => (
+                          <tr key={ev.id ?? `${ev.event_type}-${ev.occurred_at}`}>
                             <td>{new Date(ev.occurred_at).toLocaleString("ru-RU")}</td>
-                            <td>{ev.event_label || ev.event_type}</td>
+                            <td>
+                              {isStage2JournalActionEvent(ev.event_type) && (
+                                <span
+                                  className={`triage-report-chip ${
+                                    ev.event_type === "actions_completed"
+                                      ? "triage-report-chip--ok"
+                                      : "triage-report-chip--info"
+                                  }`}
+                                >
+                                  {ev.event_type === "actions_completed" ? "✓" : "•"}
+                                </span>
+                              )}{" "}
+                              {formatStage2JournalEventText(ev)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="card shadow-sm">
-              <div className="card-header py-2 fw-semibold">Журнал действий по времени</div>
-              <div className="card-body">
-                <div className="border rounded p-3">
-                  <div className="table-responsive">
-                    <table className="table table-sm align-middle mb-0">
-                      <thead>
-                        <tr>
-                          <th style={{ minWidth: 190 }}>Время</th>
-                          <th>Действие</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {actionTimeline.map((ev) => (
-                          <tr key={ev.id}>
-                            <td>{new Date(ev.occurred_at).toLocaleString("ru-RU")}</td>
-                            <td>
-                              <span
-                                className={`triage-report-chip ${
-                                  ev.event_type === "priority_action_unmarked"
-                                    ? "triage-report-chip--muted"
-                                    : ev.event_type === "actions_completed"
-                                      ? "triage-report-chip--ok"
-                                      : "triage-report-chip--info"
-                                }`}
-                              >
-                                {ev.event_type === "priority_action_unmarked"
-                                  ? "↺"
-                                  : ev.event_type === "actions_completed"
-                                    ? "✓"
-                                    : "•"}
-                              </span>{" "}
-                              {ev.event_type === "actions_completed"
-                                ? ev.event_label || "Действия завершены"
-                                : ev.action_text || String(ev.payload?.action || "—")}
-                            </td>
-                          </tr>
-                        ))}
-                        {actionTimeline.length === 0 && (
-                          <tr>
-                            <td colSpan={2} className="text-muted">
-                              События действий отсутствуют
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </div>
             </div>
           </>

@@ -26,6 +26,7 @@
   --triag-radius: 0.5rem;
   --triag-radius-lg: 0.75rem;
   --triag-touch: 44px;
+  --triag-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Bootstrap 5.3 */
   --bs-primary: #54c654;
@@ -51,12 +52,19 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+}
+
+html[data-theme='light'] {
   color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--triag-font);
   font-size: 15px;
   line-height: 1.5;
   color: var(--bs-body-color);
@@ -94,19 +102,106 @@ body {
 
 .app-header-inner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.65rem 0.75rem 0.65rem;
+  padding: 0.4rem 0.65rem;
   max-width: 1320px;
   margin: 0 auto;
 }
 
-@media (min-width: 768px) {
-  .app-header-inner {
-    padding: 0.75rem 1rem;
+.app-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-nav--pills {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 1px;
+}
+
+.app-nav--pills::-webkit-scrollbar {
+  display: none;
+}
+
+.app-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: var(--triag-font);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-nav-pill:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.app-nav-pill--active {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.95);
+  color: #2f6f2f;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.app-nav-pill--active:hover {
+  background: #fff;
+  color: #2f6f2f;
+}
+
+@media (pointer: coarse) {
+  .app-nav-pill {
+    min-height: var(--triag-touch);
   }
+}
+
+html[data-theme='dark'] .app-nav-pill {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+}
+
+html[data-theme='dark'] .app-nav-pill:hover {
+  background: rgba(74, 222, 128, 0.15);
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .app-nav-pill--active {
+  background: var(--dar-active-surface);
+  border-color: var(--dar-active-border);
+  color: var(--dar-btn-emphasis-text);
+  box-shadow: var(--dar-active-ring);
+}
+
+html[data-theme='dark'] .app-nav-pill--active:hover {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--dar-btn-emphasis-text);
 }
 
 .app-brand {
@@ -128,8 +223,8 @@ body {
 }
 
 .app-brand-logo {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 0.45rem;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -138,15 +233,16 @@ body {
 
 .app-brand-text {
   line-height: 1.2;
+  font-size: 1.05rem;
 }
 
 .app-user-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  max-width: min(100%, 14rem);
-  padding: 0.3rem 0.65rem;
-  font-size: 0.8125rem;
+  gap: 0.3rem;
+  max-width: min(100%, 10rem);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
   color: #fff;
@@ -161,22 +257,9 @@ body {
   }
 }
 
-.app-nav-btn {
-  min-height: var(--triag-touch);
-  padding-left: 0.85rem;
-  padding-right: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@media (max-width: 400px) {
-  .app-nav {
-    width: 100%;
-    justify-content: stretch;
-  }
-  .app-nav .app-nav-btn {
-    flex: 1 1 auto;
+@media (min-width: 768px) {
+  .app-header-inner {
+    padding: 0.45rem 0.85rem;
   }
 }
 
@@ -186,20 +269,20 @@ body {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  padding: 0.75rem max(0.75rem, env(safe-area-inset-left, 12px)) calc(0.85rem + env(safe-area-inset-bottom, 0px))
-    max(0.75rem, env(safe-area-inset-right, 12px));
+  padding: 0.75rem max(0.75rem, env(safe-area-inset-left, 12px))
+    calc(4.5rem + env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-right, 12px));
 }
 
 @media (min-width: 576px) {
   .app-main {
-    padding: 1rem max(1rem, env(safe-area-inset-left, 12px)) calc(1rem + env(safe-area-inset-bottom, 0px))
+    padding: 1rem max(1rem, env(safe-area-inset-left, 12px)) calc(4.5rem + env(safe-area-inset-bottom, 0px))
       max(1rem, env(safe-area-inset-right, 12px));
   }
 }
 
 @media (min-width: 992px) {
   .app-main {
-    padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    padding: 1.25rem 1.25rem calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -257,18 +340,30 @@ body {
 .patient-tag {
   display: inline-flex;
   align-items: center;
-  padding: 0.18rem 0.55rem;
+  padding: 0.25rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.2;
   font-weight: 600;
+  font-family: var(--triag-font);
   border: 1px solid transparent;
 }
 
 .patient-tag--status {
-  background: rgba(84, 198, 84, 0.12);
+  background: linear-gradient(135deg, rgba(134, 239, 172, 0.25), rgba(84, 198, 84, 0.18));
   color: #2f6f2f;
   border-color: rgba(84, 198, 84, 0.35);
+}
+
+.patient-tag--status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--dar-primary);
+  box-shadow: 0 0 6px rgba(84, 198, 84, 0.5);
 }
 
 .patient-tag--priority {
@@ -392,6 +487,23 @@ body {
   animation: patient-b-pulse-green 2.2s ease-in-out infinite;
 }
 
+.patient-b-card--new-arrival {
+  animation: patient-b-new-arrival 5s ease-out forwards;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.55), 0 8px 24px rgba(220, 38, 38, 0.25);
+}
+
+@keyframes patient-b-new-arrival {
+  0%,
+  15% {
+    border-color: rgba(220, 38, 38, 0.95);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.45), 0 8px 28px rgba(220, 38, 38, 0.35);
+  }
+  100% {
+    border-color: rgba(220, 38, 38, 0.65);
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2), 0 4px 14px rgba(220, 38, 38, 0.12);
+  }
+}
+
 .patient-b-card--priority-red {
   border-color: rgba(220, 38, 38, 0.65);
   animation: patient-b-pulse-red 1.6s ease-in-out infinite;
@@ -432,27 +544,28 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.85rem 0.9rem;
+  min-height: 72px;
+  padding: 1rem;
   border: 2px solid #e7e5e4;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #fff;
   text-align: left;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--triag-font);
 }
 
 .stage2-decision-priority-card:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--dar-shadow-glow);
+  transform: translateY(-2px);
 }
 
-.stage2-decision-priority-card--active {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
-}
-
-.stage2-decision-priority-card--red { border-color: rgba(220, 38, 38, 0.45); }
-.stage2-decision-priority-card--yellow { border-color: rgba(245, 158, 11, 0.45); }
-.stage2-decision-priority-card--orange { border-color: rgba(249, 115, 22, 0.45); }
-.stage2-decision-priority-card--grey { border-color: rgba(107, 114, 128, 0.45); }
-.stage2-decision-priority-card--green { border-color: rgba(16, 185, 129, 0.45); }
+.stage2-decision-priority-card--red { border-color: rgba(220, 38, 38, 0.35); }
+.stage2-decision-priority-card--yellow { border-color: rgba(245, 158, 11, 0.35); }
+.stage2-decision-priority-card--orange { border-color: rgba(249, 115, 22, 0.35); }
+.stage2-decision-priority-card--grey { border-color: rgba(107, 114, 128, 0.35); }
+.stage2-decision-priority-card--green { border-color: rgba(16, 185, 129, 0.35); }
 
 .stage2-decision-priority-card--active.stage2-decision-priority-card--red { border-color: #dc2626; }
 .stage2-decision-priority-card--active.stage2-decision-priority-card--yellow { border-color: #f59e0b; }
@@ -460,8 +573,21 @@ body {
 .stage2-decision-priority-card--active.stage2-decision-priority-card--grey { border-color: #6b7280; }
 .stage2-decision-priority-card--active.stage2-decision-priority-card--green { border-color: #10b981; }
 
+.stage2-decision-priority-card--active {
+  box-shadow: var(--dar-shadow-glow);
+  transform: translateY(-1px);
+  border-left-width: 4px;
+}
+
+.stage2-decision-priority-card--active.stage2-decision-priority-card--red { border-left-color: #dc2626; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--yellow { border-left-color: #f59e0b; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--orange { border-left-color: #f97316; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--grey { border-left-color: #6b7280; }
+.stage2-decision-priority-card--active.stage2-decision-priority-card--green { border-left-color: #10b981; }
+
 .stage2-decision-priority-card__title {
   font-weight: 600;
+  font-size: 0.9375rem;
 }
 
 .stage2-decision-priority-card__hint {
@@ -471,13 +597,15 @@ body {
 
 .stage2-decision-priority-card__badge {
   position: absolute;
-  top: 0.45rem;
-  right: 0.45rem;
+  top: 0.5rem;
+  right: 0.5rem;
   font-size: 0.65rem;
-  padding: 0.1rem 0.35rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, rgba(134, 239, 172, 0.35), rgba(84, 198, 84, 0.25));
+  color: #2f6f2f;
+  border: 1px solid rgba(84, 198, 84, 0.35);
 }
 
 @keyframes patient-b-pulse-blue {
@@ -1115,50 +1243,52 @@ body {
 }
 
 /* ---------- Тема «Soft D» — тёплый фон, мягкие карточки; сетка пациентов как в основном макете (несколько в ряд) ---------- */
-html.triag-theme-soft {
-  --triag-text: #292524;
-  --triag-text-muted: #78716c;
-  --triag-border: rgba(231, 213, 207, 0.95);
-  --triag-primary-bg: #fff7ed;
-  --triag-primary-light: #d8f5d8;
-  --bs-body-bg: #faf7f2;
-  --bs-body-color: #292524;
-  --bs-card-bg: #fffcfa;
-  --triag-radius: 12px;
-  --triag-radius-lg: 16px;
+html[data-theme='light'] {
+  --triag-primary: var(--dar-primary);
+  --triag-primary-hover: var(--dar-primary-hover);
+  --triag-text: var(--dar-text);
+  --triag-text-muted: var(--dar-text-muted);
+  --triag-border: var(--dar-border);
+  --triag-primary-bg: var(--dar-primary-bg);
+  --triag-primary-light: var(--dar-primary-light);
+  --bs-body-bg: var(--dar-bg);
+  --bs-body-color: var(--dar-text);
+  --bs-card-bg: var(--dar-card);
+  --triag-radius: var(--dar-radius);
+  --triag-radius-lg: var(--dar-radius-lg);
   --triag-shadow: 0 10px 36px rgba(87, 83, 78, 0.07);
   --triag-shadow-md: 0 14px 44px rgba(87, 83, 78, 0.09);
   --bs-link-color: #3d8f3d;
   --bs-link-hover-color: #2f6f2f;
 }
 
-html.triag-theme-soft .app-header {
+html[data-theme='light'] .app-header {
   background: var(--triag-primary);
   color: #ffffff;
   box-shadow: 0 6px 20px rgba(84, 198, 84, 0.36);
   border-bottom: 1px solid rgba(67, 168, 67, 0.9);
 }
 
-html.triag-theme-soft .app-brand {
+html[data-theme='light'] .app-brand {
   color: #ffffff !important;
 }
 
-html.triag-theme-soft .app-brand:hover {
+html[data-theme='light'] .app-brand:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-html.triag-theme-soft .app-brand-logo {
+html[data-theme='light'] .app-brand-logo {
   border-radius: 30% 70% 65% 35% / 40% 45% 55% 60%;
   box-shadow: 0 2px 10px rgba(84, 198, 84, 0.35);
 }
 
-html.triag-theme-soft .app-user-badge {
+html[data-theme='light'] .app-user-badge {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-html.triag-theme-soft .app-nav .btn-outline-light {
+html[data-theme='light'] .app-nav .btn-outline-light {
   --bs-btn-color: #ffffff;
   --bs-btn-border-color: rgba(255, 255, 255, 0.74);
   --bs-btn-hover-bg: rgba(255, 255, 255, 0.2);
@@ -1170,29 +1300,29 @@ html.triag-theme-soft .app-nav .btn-outline-light {
   background: rgba(255, 255, 255, 0.08);
 }
 
-html.triag-theme-soft .card {
+html[data-theme='light'] .card {
   border-color: rgba(231, 213, 207, 0.9);
   box-shadow: var(--triag-shadow);
 }
 
-html.triag-theme-soft .form-control,
-html.triag-theme-soft .form-select {
+html[data-theme='light'] .form-control,
+html[data-theme='light'] .form-select {
   border-color: #d6d3d1;
   border-radius: 12px;
 }
 
-html.triag-theme-soft .form-control:focus,
-html.triag-theme-soft .form-select:focus {
+html[data-theme='light'] .form-control:focus,
+html[data-theme='light'] .form-select:focus {
   border-color: rgba(84, 198, 84, 0.55);
   box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.18);
 }
 
-html.triag-theme-soft .btn-primary {
+html[data-theme='light'] .btn-primary {
   box-shadow: 0 2px 14px rgba(84, 198, 84, 0.32);
   border-radius: 12px;
 }
 
-html.triag-theme-soft .btn-outline-secondary {
+html[data-theme='light'] .btn-outline-secondary {
   --bs-btn-border-color: #d6d3d1;
   --bs-btn-color: #44403c;
   --bs-btn-hover-bg: #fafaf9;
@@ -1204,11 +1334,11 @@ html.triag-theme-soft .btn-outline-secondary {
   border-radius: 12px;
 }
 
-html.triag-theme-soft .btn-warning {
+html[data-theme='light'] .btn-warning {
   border-radius: 12px;
 }
 
-html.triag-theme-soft .btn-outline-primary {
+html[data-theme='light'] .btn-outline-primary {
   --bs-btn-color: #2f6f2f;
   --bs-btn-border-color: rgba(84, 198, 84, 0.7);
   --bs-btn-hover-bg: rgba(84, 198, 84, 0.14);
@@ -1218,7 +1348,7 @@ html.triag-theme-soft .btn-outline-primary {
   --bs-btn-active-color: #1c1917;
 }
 
-html.triag-theme-soft .btn-soft-danger {
+html[data-theme='light'] .btn-soft-danger {
   --bs-btn-bg: rgba(239, 68, 68, 0.12);
   --bs-btn-border-color: rgba(220, 38, 38, 0.35);
   --bs-btn-color: #991b1b;
@@ -1231,31 +1361,32 @@ html.triag-theme-soft .btn-soft-danger {
   border-radius: 12px;
 }
 
-html.triag-theme-soft .patient-b-card .card-body h2,
-html.triag-theme-soft .patient-b-card .card-body .h6 {
-  font-family: Georgia, "Times New Roman", ui-serif, serif;
+html[data-theme='light'] .patient-b-card .card-body h2,
+html[data-theme='light'] .patient-b-card .card-body .h6 {
+  font-family: var(--triag-font);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
   color: #1c1917;
 }
 
-html.triag-theme-soft .patient-b-card--done {
+html[data-theme='light'] .patient-b-card--done {
   background: #f5f0eb !important;
   border-color: #d6d3d1 !important;
   opacity: 1;
 }
 
-html.triag-theme-soft .patient-tag--status {
+html[data-theme='light'] .patient-tag--status {
   background: rgba(84, 198, 84, 0.15);
 }
 
-html.triag-theme-soft .patient-timer-box {
+html[data-theme='light'] .patient-timer-box {
   background: #fffdfa;
   border-color: rgba(231, 213, 207, 0.95);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-html.triag-theme-soft .patient-timer-value {
+html[data-theme='light'] .patient-timer-value {
   color: #292524;
 }
 
@@ -1325,15 +1456,46 @@ html.triag-theme-soft .patient-timer-value {
 
 .triage-page-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  margin-bottom: 0.7rem;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.65rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.triage-page-title {
+.triage-page-head::-webkit-scrollbar {
+  display: none;
+}
+
+.triage-page-head .triag-page-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.triage-page-head .triage-back-link {
+  flex-shrink: 0;
+}
+
+.triage-page-head-meta {
+  flex-shrink: 0;
   margin: 0;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.triage-page-title,
+.triag-page-heading {
+  margin: 0;
+  font-family: var(--triag-font);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+  letter-spacing: -0.02em;
+  color: var(--dar-text);
 }
 
 .triage-back-link {
@@ -1449,8 +1611,8 @@ html.triag-theme-soft .patient-timer-value {
 
 .triage-simple-action-row {
   border: 1px solid rgba(231, 213, 207, 0.95);
-  border-radius: 14px;
-  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
   background: #fffdfa;
   display: flex;
   flex-wrap: wrap;
@@ -1458,6 +1620,7 @@ html.triag-theme-soft .patient-timer-value {
   justify-content: space-between;
   gap: 1rem;
   box-shadow: var(--triag-shadow);
+  font-family: var(--triag-font);
 }
 
 .triage-simple-action-row--red {
@@ -1481,7 +1644,9 @@ html.triag-theme-soft .patient-timer-value {
 }
 
 .triage-simple-action-row--done {
-  background: #f4faf5;
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.85));
+  border-left-width: 4px;
+  border-left-color: #10b981;
 }
 
 .triage-simple-action-main {
@@ -1542,6 +1707,21 @@ html.triag-theme-soft .patient-timer-value {
 .triage-simple-actions-complete {
   padding: 0.55rem 1.25rem;
   font-size: 1rem;
+}
+
+.triage-action-recommendations {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--bs-body-color);
+}
+
+.triage-action-recommendations li {
+  margin-bottom: 0.35rem;
+  line-height: 1.45;
+}
+
+.triage-action-recommendations li:last-child {
+  margin-bottom: 0;
 }
 
 .triage-actions-top-grid {
@@ -1639,30 +1819,84 @@ html.triag-theme-soft .patient-timer-value {
 }
 
 .triage-check-item {
+  position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.55rem;
-  padding: 0.5rem 0.55rem;
+  padding: 0.75rem 0.9rem;
   border: 1px solid rgba(231, 213, 207, 0.9);
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fffdfa;
+  cursor: pointer;
+  font-family: var(--triag-font);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.triage-check-input {
-  margin-top: 0.15rem;
-  margin-right: 0.1rem;
-  transform: scale(1.15);
+.triage-check-item .form-check-input {
+  position: static;
+  opacity: 1;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0;
+  flex-shrink: 0;
+  pointer-events: auto;
+  border: 2px solid var(--dar-border, #d6d3d1);
+  cursor: pointer;
 }
 
-.triage-check-label {
-  font-size: 0.96rem;
+.triage-check-item .form-check-input:checked {
+  background-color: var(--dar-primary);
+  border-color: var(--dar-primary);
+}
+
+.triage-check-item .form-check-input[type="radio"] {
+  border-radius: 50%;
+}
+
+.triage-check-item .form-check-input:focus {
+  box-shadow: 0 0 0 0.2rem rgba(84, 198, 84, 0.25);
+}
+
+.triage-check-item span {
+  flex: 1;
+  font-size: 0.9375rem;
   line-height: 1.35;
   color: #292524;
+}
+
+.triage-check-item.triag-btn-selector {
+  min-height: var(--triag-touch);
+}
+
+.triage-check-item.triag-btn-selector:hover {
+  border-color: rgba(84, 198, 84, 0.45);
+  transform: translateY(-1px);
+}
+
+.triage-check-item.triag-btn-selector--active,
+.triage-check-item.triag-btn-selector:has(.form-check-input:checked),
+.triage-check-item.triag-btn-selector.triage-check-item--yellow {
+  border-color: var(--dar-primary);
+  background: linear-gradient(135deg, rgba(134, 239, 172, 0.22), rgba(84, 198, 84, 0.16));
+  box-shadow: var(--dar-shadow-glow);
+  color: #1c1917;
+}
+
+.triage-check-item.triag-btn-selector--active span,
+.triage-check-item.triag-btn-selector:has(.form-check-input:checked) span {
+  font-weight: 600;
+  color: #1c1917;
 }
 
 .triage-check-item--yellow {
   border-color: rgba(245, 158, 11, 0.55);
   background: rgba(255, 247, 237, 0.95);
+}
+
+html[data-theme='dark'] .triage-check-item--yellow {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(120, 53, 15, 0.25);
 }
 
 .triage-check-item--purple {
@@ -1703,18 +1937,18 @@ html.triag-theme-soft .patient-timer-value {
   background: rgba(245, 243, 255, 0.95);
 }
 
-html.triag-theme-soft .triage-step3-form .form-control:focus {
+html[data-theme='light'] .triage-step3-form .form-control:focus {
   border-color: #94a3b8;
   box-shadow: 0 0 0 0.2rem rgba(148, 163, 184, 0.28);
 }
 
-html.triag-theme-soft .triage-step3-form .triage-input-yellow:focus {
+html[data-theme='light'] .triage-step3-form .triage-input-yellow:focus {
   border-color: rgba(217, 119, 6, 0.9) !important;
   box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.22);
   background: rgba(255, 247, 237, 0.95);
 }
 
-html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
+html[data-theme='light'] .triage-step3-form .triage-input-purple:focus {
   border-color: rgba(124, 58, 237, 0.85) !important;
   box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.22);
   background: rgba(245, 243, 255, 0.95);
@@ -2205,4 +2439,823 @@ html.triag-theme-soft .triage-step3-form .triage-input-purple:focus {
   border: 1px solid var(--triag-border, #e5e7eb);
   cursor: pointer;
   margin: 0;
+}
+
+.triage-form-error-toast {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  z-index: 1090;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: min(380px, calc(100vw - 2rem));
+  padding: 0.85rem 1rem;
+  border-radius: var(--triag-radius-lg);
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #991b1b;
+  box-shadow: 0 8px 28px rgba(220, 38, 38, 0.18);
+  animation: triage-form-error-toast-in 0.25s ease;
+}
+
+.triage-form-error-toast-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.triage-form-error-toast-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.triage-form-error-toast-text {
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.triage-form-error-toast-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.65;
+  padding: 0;
+  margin-left: auto;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.triage-form-error-toast-close:hover {
+  opacity: 1;
+}
+
+.triage-form-section--highlight {
+  outline: 2px solid rgba(220, 38, 38, 0.45);
+  outline-offset: 4px;
+  border-radius: var(--triag-radius);
+  transition: outline-color 0.2s ease;
+}
+
+.triage-field--invalid {
+  border-color: var(--bs-danger) !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.15);
+}
+
+.triage-check-item.triage-field--invalid {
+  border-color: var(--bs-danger) !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 38, 38, 0.15);
+}
+
+@keyframes triage-form-error-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ---------- App shell (DARlink backgrounds) ---------- */
+.app-shell {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.app-shell-bg {
+  z-index: 0;
+}
+
+.app-shell-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100dvh;
+}
+
+body:has(.app-shell) {
+  background: transparent;
+}
+
+.app-shell .app-login-shell {
+  background: transparent;
+}
+
+/* ---------- Theme toggle ---------- */
+.theme-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid;
+  border-radius: 9999px;
+  padding: 0.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.theme-toggle--fixed {
+  position: fixed;
+  right: max(1.5rem, env(safe-area-inset-right, 0px));
+  top: max(1.5rem, env(safe-area-inset-top, 0px));
+  z-index: 1050;
+  height: 3rem;
+  box-shadow: var(--dar-shadow-md);
+}
+
+.theme-toggle--inline {
+  height: 2.25rem;
+  flex-shrink: 0;
+}
+
+.theme-toggle-slider {
+  position: absolute;
+  height: calc(100% - 8px);
+  width: calc(50% - 2px);
+  border-radius: 9999px;
+  top: 4px;
+}
+
+.theme-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle--inline .theme-toggle-icon {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+.theme-toggle--inline .theme-toggle-slider {
+  height: calc(100% - 6px);
+  top: 3px;
+}
+
+/* ---------- Theme bridge: dark theme tokens ---------- */
+html[data-theme='dark'] {
+  --triag-primary: var(--dar-primary);
+  --triag-primary-hover: var(--dar-primary-hover);
+  --triag-primary-light: var(--dar-primary-light);
+  --triag-primary-bg: var(--dar-primary-bg);
+  --triag-text: var(--dar-text);
+  --triag-text-muted: var(--dar-text-muted);
+  --triag-border: var(--dar-border);
+  --triag-shadow: var(--dar-shadow);
+  --triag-shadow-md: var(--dar-shadow-md);
+  --triag-radius: var(--dar-radius);
+  --triag-radius-lg: var(--dar-radius-lg);
+  --bs-primary: var(--dar-primary);
+  --bs-primary-rgb: 74, 222, 128;
+  --bs-link-color: var(--dar-link);
+  --bs-link-hover-color: #86efac;
+  --bs-body-bg: var(--dar-bg);
+  --bs-body-color: var(--dar-text);
+  --bs-card-bg: var(--dar-card);
+  --bs-border-color: var(--dar-border);
+  --bs-border-radius: var(--dar-radius);
+  --bs-border-radius-lg: var(--dar-radius-lg);
+  --bs-secondary-color: var(--dar-text-muted);
+  --bs-tertiary-color: var(--dar-text-muted);
+  --bs-emphasis-color: var(--dar-text);
+}
+
+html[data-theme='dark'] .app-header {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f1f5f9;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+html[data-theme='dark'] .app-brand {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme='dark'] .app-brand:hover {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+html[data-theme='dark'] .app-brand-logo {
+  border-radius: 30% 70% 65% 35% / 40% 45% 55% 60%;
+  box-shadow: 0 2px 12px rgba(74, 222, 128, 0.35);
+}
+
+html[data-theme='dark'] .app-user-badge {
+  color: #f1f5f9;
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+html[data-theme='dark'] .app-nav .btn-outline-light {
+  --bs-btn-color: #e2e8f0;
+  --bs-btn-border-color: rgba(74, 222, 128, 0.35);
+  --bs-btn-hover-bg: rgba(74, 222, 128, 0.15);
+  --bs-btn-hover-color: #f8fafc;
+  --bs-btn-hover-border-color: rgba(74, 222, 128, 0.55);
+  --bs-btn-active-bg: rgba(74, 222, 128, 0.22);
+  --bs-btn-active-color: #f8fafc;
+  --bs-btn-active-border-color: rgba(74, 222, 128, 0.65);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+html[data-theme='dark'] .card {
+  border-color: var(--dar-border);
+  box-shadow: var(--dar-shadow-md);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .card-header,
+html[data-theme='dark'] .card-footer {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .form-control,
+html[data-theme='dark'] .form-select {
+  background: var(--dar-input-bg);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+  border-radius: 12px;
+}
+
+html[data-theme='dark'] .form-control:focus,
+html[data-theme='dark'] .form-select:focus {
+  border-color: rgba(74, 222, 128, 0.55);
+  box-shadow: 0 0 0 0.2rem rgba(74, 222, 128, 0.18);
+  background: var(--dar-input-bg);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .form-control::placeholder {
+  color: var(--dar-text-muted);
+}
+
+html[data-theme='dark'] .form-label,
+html[data-theme='dark'] .form-text {
+  color: var(--dar-text-muted);
+}
+
+html[data-theme='dark'] .btn-primary {
+  --bs-btn-bg: #3a6b52;
+  --bs-btn-border-color: var(--dar-active-border);
+  --bs-btn-hover-bg: #457a5e;
+  --bs-btn-hover-border-color: rgba(93, 170, 120, 0.45);
+  --bs-btn-active-bg: #315a44;
+  --bs-btn-active-border-color: var(--dar-active-border);
+  --bs-btn-color: var(--dar-btn-emphasis-text);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+}
+
+html[data-theme='dark'] .btn-outline-secondary {
+  --bs-btn-border-color: var(--dar-border);
+  --bs-btn-color: var(--dar-text);
+  --bs-btn-hover-bg: rgba(74, 222, 128, 0.1);
+  --bs-btn-hover-color: var(--dar-text);
+  --bs-btn-hover-border-color: rgba(74, 222, 128, 0.45);
+  --bs-btn-active-color: var(--dar-text);
+  --bs-btn-active-bg: rgba(74, 222, 128, 0.15);
+  --bs-btn-active-border-color: rgba(74, 222, 128, 0.55);
+  border-radius: 12px;
+}
+
+html[data-theme='dark'] .btn-outline-primary {
+  --bs-btn-color: var(--dar-primary);
+  --bs-btn-border-color: rgba(74, 222, 128, 0.55);
+  --bs-btn-hover-bg: rgba(74, 222, 128, 0.12);
+  --bs-btn-hover-color: var(--dar-text);
+  --bs-btn-hover-border-color: var(--dar-primary);
+  --bs-btn-active-bg: rgba(74, 222, 128, 0.18);
+  --bs-btn-active-color: var(--dar-text);
+}
+
+html[data-theme='dark'] .btn-soft-danger {
+  --bs-btn-bg: rgba(239, 68, 68, 0.15);
+  --bs-btn-border-color: rgba(248, 113, 113, 0.35);
+  --bs-btn-color: #fca5a5;
+  --bs-btn-hover-bg: #dc2626;
+  --bs-btn-hover-border-color: #dc2626;
+  --bs-btn-hover-color: #ffffff;
+}
+
+html[data-theme='dark'] .alert {
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .alert-danger {
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+html[data-theme='dark'] .alert-warning {
+  background: rgba(120, 53, 15, 0.35);
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+html[data-theme='dark'] .alert-info {
+  background: rgba(15, 23, 42, 0.6);
+  color: #bae6fd;
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+html[data-theme='dark'] .modal-content {
+  background: var(--dar-modal-bg);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .modal-header,
+html[data-theme='dark'] .modal-footer {
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+html[data-theme='dark'] .patient-b-card {
+  background: var(--dar-card) !important;
+  border-color: var(--dar-border) !important;
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .patient-b-card .card-body h2,
+html[data-theme='dark'] .patient-b-card .card-body .h6 {
+  font-family: var(--triag-font);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  color: #f1f5f9;
+}
+
+html[data-theme='dark'] .patient-b-card--done {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border-color: var(--dar-border) !important;
+  opacity: 1;
+}
+
+html[data-theme='dark'] .patient-tag--status {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+}
+
+html[data-theme='dark'] .patient-timer-box {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: var(--dar-border);
+  box-shadow: inset 0 1px 0 rgba(74, 222, 128, 0.08);
+}
+
+html[data-theme='dark'] .patient-timer-value {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .text-triag-muted,
+html[data-theme='dark'] .text-muted {
+  color: var(--dar-text-muted) !important;
+}
+
+html[data-theme='dark'] .triage-page-shell,
+html[data-theme='dark'] .triage-page-head {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .triage-timer-box {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .stage2-vas-btn {
+  background: var(--dar-input-bg);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .stage2-vas-btn:hover {
+  border-color: var(--dar-primary);
+}
+
+html[data-theme='dark'] .stage2-vas-btn--active {
+  border-color: var(--dar-active-border);
+  background: var(--dar-active-surface) !important;
+  box-shadow: var(--dar-active-ring);
+}
+
+html[data-theme='dark'] .stage2-vas-btn--active.triag-btn-selector,
+html[data-theme='dark'] .stage2-vas-btn--active.triag-btn-selector--active {
+  background: var(--dar-active-surface) !important;
+  border-color: var(--dar-active-border) !important;
+  box-shadow: var(--dar-active-ring) !important;
+}
+
+html[data-theme='dark'] .triage-yn-row .btn-check:checked + .triage-yn-slot-yes-good,
+html[data-theme='dark'] .triage-yn-row .btn-check:checked + .triage-yn-slot-no-good {
+  color: var(--dar-btn-emphasis-text);
+  background: var(--dar-btn-emphasis);
+  border-color: var(--dar-active-border);
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .triage-yn-row .btn-check:checked + .triage-yn-slot-yes-bad,
+html[data-theme='dark'] .triage-yn-row .btn-check:checked + .triage-yn-slot-no-bad {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.55);
+  border-color: rgba(248, 113, 113, 0.35);
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .theme-toggle--fab {
+  border-color: var(--dar-active-border);
+  background: rgba(15, 23, 42, 0.92);
+  color: var(--dar-primary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='dark'] .btn-success {
+  --bs-btn-bg: #3a6b52;
+  --bs-btn-border-color: var(--dar-active-border);
+  --bs-btn-hover-bg: #457a5e;
+  --bs-btn-hover-border-color: rgba(93, 170, 120, 0.45);
+  --bs-btn-color: var(--dar-btn-emphasis-text);
+}
+
+html[data-theme='dark'] .stage2-vas-num {
+  color: var(--dar-text-muted);
+}
+
+html[data-theme='dark'] .stage2-skin-check {
+  background: var(--dar-input-bg);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .triage-form-error-toast {
+  background: rgba(127, 29, 29, 0.92);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+html[data-theme='dark'] .stage2-decision-priority-card {
+  background: var(--dar-card);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .stage2-decision-priority-card--active {
+  box-shadow: var(--dar-active-ring);
+}
+
+html[data-theme='dark'] .stage2-decision-priority-card__hint {
+  color: var(--dar-text-muted);
+}
+
+html[data-theme='dark'] .stage2-decision-priority-card__badge {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+}
+
+html[data-theme='dark'] .app-auth-loading {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .list-group-item {
+  background: var(--dar-card);
+  border-color: var(--dar-border);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .dropdown-menu {
+  background: var(--dar-modal-bg);
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .dropdown-item {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .dropdown-item:hover {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .badge.bg-light {
+  background: rgba(74, 222, 128, 0.15) !important;
+  color: #86efac !important;
+}
+
+/* ---------- DARlink-style buttons ---------- */
+.triag-btn-primary {
+  background: linear-gradient(135deg, #86efac 0%, var(--dar-primary) 55%, var(--dar-primary-hover) 100%) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-family: var(--triag-font);
+  font-weight: 600 !important;
+  box-shadow: var(--dar-shadow-glow) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.triag-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(84, 198, 84, 0.35) !important;
+}
+
+.triag-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+html[data-theme='dark'] .triag-btn-primary {
+  background: var(--dar-btn-emphasis) !important;
+  color: var(--dar-btn-emphasis-text) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32) !important;
+}
+
+html[data-theme='dark'] .triag-btn-primary:hover:not(:disabled) {
+  background: var(--dar-btn-emphasis-hover) !important;
+  filter: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38) !important;
+}
+
+.triag-btn-secondary {
+  border-radius: var(--dar-radius) !important;
+  border: 1px solid var(--dar-border) !important;
+  background: var(--dar-card) !important;
+  color: var(--dar-text) !important;
+  font-family: var(--triag-font);
+  font-weight: 600 !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.triag-btn-danger {
+  border-radius: var(--dar-radius) !important;
+  border: 1px solid rgba(220, 38, 38, 0.35) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #991b1b !important;
+  font-family: var(--triag-font);
+  font-weight: 600 !important;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.triag-btn-danger:hover:not(:disabled) {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .triag-btn-danger {
+  background: rgba(127, 29, 29, 0.35) !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme='dark'] .triag-btn-danger:hover:not(:disabled) {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+.triag-btn-selector {
+  min-height: 52px;
+  border-radius: 12px;
+  font-family: var(--triag-font);
+  font-weight: 500;
+}
+
+.triag-btn-selector--active {
+  background: linear-gradient(135deg, #86efac 0%, var(--dar-primary) 55%, var(--dar-primary-hover) 100%) !important;
+  border-color: var(--dar-primary) !important;
+  color: #fff !important;
+  box-shadow: var(--dar-shadow-glow) !important;
+}
+
+html[data-theme='dark'] .triag-btn-selector--active {
+  background: var(--dar-active-surface) !important;
+  border-color: var(--dar-active-border) !important;
+  color: var(--dar-text) !important;
+  box-shadow: var(--dar-active-ring) !important;
+}
+
+.patient-card-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.patient-card-actions > :first-child {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 576px) {
+  .patient-card-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .patient-card-actions > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.triage-simple-action-btn {
+  flex-shrink: 0;
+  min-width: 8.5rem;
+  font-weight: 600 !important;
+}
+
+.theme-toggle--fab {
+  position: fixed;
+  left: max(1rem, env(safe-area-inset-left, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 1040;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--dar-border);
+  background: var(--dar-card);
+  color: var(--dar-text);
+  box-shadow: var(--dar-shadow-glow);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-login-shell {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+html[data-theme='dark'] .triage-check-item span {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .triage-check-item {
+  background: var(--dar-input-bg);
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .triage-check-item .form-check-input {
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html[data-theme='dark'] .triage-check-item .form-check-input:checked {
+  background-color: var(--dar-check-fill);
+  border-color: var(--dar-active-border);
+}
+
+html[data-theme='dark'] .triage-check-item.triag-btn-selector--active,
+html[data-theme='dark'] .triage-check-item.triag-btn-selector:has(.form-check-input:checked),
+html[data-theme='dark'] .triage-check-item.triag-btn-selector.triage-check-item--yellow {
+  background: var(--dar-active-surface) !important;
+  border-color: var(--dar-active-border) !important;
+  box-shadow: var(--dar-active-ring) !important;
+}
+
+html[data-theme='dark'] .triage-check-item.triag-btn-selector--active span,
+html[data-theme='dark'] .triage-check-item.triag-btn-selector:has(.form-check-input:checked) span {
+  color: var(--dar-text);
+  font-weight: 600;
+}
+
+html[data-theme='dark'] .triage-simple-action-row {
+  background: var(--dar-card);
+  border-color: var(--dar-border);
+}
+
+html[data-theme='dark'] .triage-simple-action-row--done {
+  background: rgba(15, 23, 42, 0.88);
+  border-left-color: #10b981;
+}
+
+html[data-theme='dark'] .triage-simple-action-title {
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .triage-simple-action-hint,
+html[data-theme='dark'] .triage-simple-action-time {
+  color: var(--dar-text-muted);
+}
+
+html[data-theme='dark'] .triage-simple-action-badge {
+  background: rgba(74, 222, 128, 0.12);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+html[data-theme='dark'] .triage-simple-action-badge--final {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+html[data-theme='dark'] .triage-form-card .bg-light {
+  background: rgba(15, 23, 42, 0.65) !important;
+  border-color: var(--dar-border) !important;
+  color: var(--dar-text);
+}
+
+html[data-theme='dark'] .triage-action-recommendations li {
+  color: var(--dar-text);
+}
+
+.triag-btn-secondary:hover:not(:disabled) {
+  background: var(--dar-primary-bg) !important;
+  border-color: var(--dar-primary) !important;
+  transform: translateY(-1px);
+}
+
+.stage2-vas-btn.triag-btn-selector,
+.stage2-vas-btn {
+  transition: border-color 0.15s, background 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stage2-vas-btn--active.triag-btn-selector,
+.stage2-vas-btn--active {
+  background: linear-gradient(135deg, rgba(134, 239, 172, 0.2), rgba(84, 198, 84, 0.18)) !important;
+  box-shadow: var(--dar-shadow-glow);
+}
+
+button,
+.btn,
+a.btn,
+.theme-toggle {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Mobile / tablet ---------- */
+@media (max-width: 900px) {
+  .app-header-inner {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .app-nav--pills {
+    margin-left: -0.15rem;
+    margin-right: -0.15rem;
+    padding-left: 0.15rem;
+    padding-right: 0.15rem;
+  }
+
+  .app-main {
+    padding-top: 0.75rem !important;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .triag-login-wrap {
+    max-width: 100%;
+  }
+
+  .triage-page-head {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+
+  .stage2-vas-picker {
+    gap: 0.35rem;
+  }
+
+  .stage2-vas-btn {
+    min-width: 3rem;
+    min-height: 3rem;
+  }
+
+  .triage-simple-action-row {
+    flex-direction: column;
+  }
+
+  .triage-simple-action-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .triag-btn-primary,
+  .triag-btn-secondary,
+  .stage2-vas-btn {
+    transition: none;
+  }
+
+  .triag-btn-primary:hover:not(:disabled),
+  .triag-btn-secondary:hover:not(:disabled) {
+    transform: none;
+  }
 }

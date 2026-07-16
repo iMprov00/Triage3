@@ -199,7 +199,7 @@ export default function AdministrationPage() {
   return (
     <div className="container-fluid triag-page-wide triag-admin-page px-0 px-sm-1">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h1 className="triag-admin-page-title mb-0">Администрирование</h1>
+        <h1 className="triag-page-heading mb-0">Администрирование</h1>
         <Link to="/patients" className="btn btn-outline-secondary btn-sm">
           ← К пациентам
         </Link>
@@ -271,7 +271,7 @@ export default function AdministrationPage() {
                     </select>
                   </div>
                   <div className="col-12 col-sm-3">
-                    <button type="submit" className="btn btn-primary btn-sm w-100 triag-admin-compact-btn">
+                    <button type="submit" className="btn btn-primary btn-sm w-100 triag-btn-primary triag-admin-compact-btn">
                       Добавить
                     </button>
                   </div>
@@ -405,7 +405,7 @@ export default function AdministrationPage() {
                       </select>
                     </div>
                     <div className="col-12">
-                      <button type="submit" className="btn btn-primary btn-sm" disabled={positions.length === 0}>
+                      <button type="submit" className="btn btn-primary btn-sm triag-btn-primary" disabled={positions.length === 0}>
                         Создать пользователя
                       </button>
                     </div>
@@ -489,7 +489,7 @@ export default function AdministrationPage() {
                     <button type="button" className="btn btn-outline-secondary" onClick={() => setEditPos(null)}>
                       Отмена
                     </button>
-                    <button type="submit" className="btn btn-primary">
+                    <button type="submit" className="btn btn-primary triag-btn-primary">
                       Сохранить
                     </button>
                   </div>
@@ -570,7 +570,7 @@ export default function AdministrationPage() {
                     >
                       Отмена
                     </button>
-                    <button type="submit" className="btn btn-primary">
+                    <button type="submit" className="btn btn-primary triag-btn-primary">
                       Сохранить
                     </button>
                   </div>

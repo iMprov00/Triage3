@@ -23,6 +23,14 @@ class Stage2Case < ApplicationRecord
     admission_time&.strftime("%H:%M")
   end
 
+  def accepted?
+    accepted_at.present?
+  end
+
+  def pending_acceptance?
+    !accepted?
+  end
+
   private
 
   def sync_performer_name_from_user

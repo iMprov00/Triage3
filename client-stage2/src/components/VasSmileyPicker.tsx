@@ -18,7 +18,7 @@ export default function VasSmileyPicker({ value, onChange, min = 0, max = 10 }: 
           <button
             key={score}
             type="button"
-            className={`stage2-vas-btn ${active ? "stage2-vas-btn--active" : ""}`}
+            className={`stage2-vas-btn triag-btn-selector ${active ? "stage2-vas-btn--active triag-btn-selector--active" : ""}`}
             onClick={() => onChange(score)}
             title={`Боль: ${score}`}
             aria-pressed={active}

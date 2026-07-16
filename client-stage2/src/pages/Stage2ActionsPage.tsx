@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson } from "../api";
+import Stage1ChecklistButton from "../components/Stage1ChecklistButton";
 
-type ActionDef = { key: string; text?: string; final?: boolean; completed?: boolean };
+type ActionDef = { key: string; text?: string; final?: boolean; recommendation?: boolean; completed?: boolean };
 
 type TriageState = {
   priority: string;
@@ -80,6 +81,9 @@ export default function Stage2ActionsPage() {
   }
 
   const actions = triage.priority_actions || [];
+  const recommendations = actions.filter((a) => a.recommendation);
+  const markableActions = actions.filter((a) => !a.recommendation && a.final);
+  const multipleFinals = markableActions.length > 1;
   const actionsData = triage.actions_data || {};
   const tone = priorityClass(triage.priority);
 
@@ -90,16 +94,31 @@ export default function Stage2ActionsPage() {
           <Link to="/patients" className="triage-back-link">
             ← Пациенты
           </Link>
-          <h1 className="h4 triage-page-title">Действия по приоритету</h1>
-          <p className="text-muted small mb-0">
+          <h1 className="triag-page-heading mb-0">Действия по приоритету</h1>
+          <span className="triage-page-head-meta text-muted">
             Приоритет: <span className={`patient-tag patient-tag--priority patient-tag--${tone}`}>{triage.priority_name}</span>
-          </p>
+          </span>
+          {patientId && <Stage1ChecklistButton patientId={Number(patientId)} />}
         </div>
 
         {err && <div className="alert alert-danger py-2">{err}</div>}
 
+        {recommendations.length > 0 && (
+          <div className="mb-4">
+            <h2 className="h6 mb-2">Рекомендации к действиям</h2>
+            <ul className="triage-action-recommendations mb-0">
+              {recommendations.map((a) => (
+                <li key={a.key}>{a.text || a.key}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="triage-simple-actions">
-          {actions.map((a) => {
+          {multipleFinals && !triage.actions_completed_at && (
+            <p className="small text-muted mb-2">Выберите один исход</p>
+          )}
+          {markableActions.map((a) => {
             const done = Boolean(actionsData[a.key]);
             const completedAt = actionsData[a.key];
             return (
@@ -109,14 +128,16 @@ export default function Stage2ActionsPage() {
               >
                 <div className="triage-simple-action-main">
                   <div className="triage-simple-action-badges">
-                    {a.final ? <span className="triage-simple-action-badge triage-simple-action-badge--final">Финал</span> : null}
+                    <span className="triage-simple-action-badge triage-simple-action-badge--final">
+                      {multipleFinals ? "Итоговый исход" : "Отметка выполнения"}
+                    </span>
                   </div>
                   <div className="triage-simple-action-title">{a.text || a.key}</div>
-                  {a.final ? (
-                    <div className="triage-simple-action-hint">
-                      Завершающее действие фазы — отметьте после выполнения остальных пунктов.
-                    </div>
-                  ) : null}
+                  <div className="triage-simple-action-hint">
+                    {multipleFinals
+                      ? "Можно отметить только один итоговый исход."
+                      : "Отметьте госпитализацию после выполнения рекомендованных действий."}
+                  </div>
                   {done && completedAt != null && (
                     <div className="triage-simple-action-time text-muted">
                       Выполнено: {new Date(Number(completedAt) * 1000).toLocaleString("ru-RU")}
@@ -126,10 +147,10 @@ export default function Stage2ActionsPage() {
                 {!triage.actions_completed_at && (
                   <button
                     type="button"
-                    className={`btn ${done ? "btn-success" : "btn-outline-primary"} triage-simple-action-btn`}
+                    className={`btn triag-simple-action-btn ${done ? "triag-btn-primary btn-success" : "triag-btn-secondary"}`}
                     onClick={() => void mark(a.key)}
                   >
-                    {done ? "Готово" : "Выполнено"}
+                    {multipleFinals ? (done ? "Выбрано" : "Выбрать") : done ? "Готово" : "Выполнено"}
                   </button>
                 )}
               </div>
@@ -140,7 +161,7 @@ export default function Stage2ActionsPage() {
         {!triage.actions_completed_at && (
           <button
             type="button"
-            className="btn btn-primary mt-3 triage-simple-actions-complete"
+            className="btn btn-primary mt-3 triage-simple-actions-complete triag-btn-primary"
             disabled={!triage.can_complete_actions}
             onClick={() => void complete()}
           >

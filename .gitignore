@@ -1,13 +1,19 @@
-
+# Legacy Sinatra / Ruby root
 Gemfile.lock
 hospital.db
-db/schema.rb
-hospital.db-shm
-hospital.db-wal
+hospital.db-*
 
+# API
 api/tmp/
 api/log/
 api/storage/
-api/db/*.sqlite3
+api/.env
+
+# Frontends
 client/node_modules/
 client/dist/
+client-stage2/node_modules/
+client-stage2/dist/
+
+# Docker / local env
+.env

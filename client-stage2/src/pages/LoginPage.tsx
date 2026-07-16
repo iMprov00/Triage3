@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AppShell } from "../components/AppShell";
 import { apiJson } from "../api";
+import { unlockNotificationAudio } from "../notificationSound";
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -12,6 +14,7 @@ export default function LoginPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    unlockNotificationAudio();
     setErr("");
     try {
       const r = await apiJson<{ ok: boolean; error?: string }>("/api/v1/login", {
@@ -28,8 +31,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="app-login-shell">
-      <div className="triag-login-wrap w-100">
+    <AppShell>
+      <div className="app-login-shell">
+        <div className="triag-login-wrap w-100">
         <h1 className="h3 mb-3 text-center">Вход</h1>
         <p className="text-triag-muted text-center small mb-4">Триаж · Этап 2</p>
         <form onSubmit={submit} className="card shadow-sm">
@@ -49,12 +53,13 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
-            <button type="submit" className="btn btn-primary w-100">
+            <button type="submit" className="btn btn-primary triag-btn-primary w-100" onPointerDown={unlockNotificationAudio}>
               Войти
             </button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

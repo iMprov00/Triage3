@@ -62,16 +62,24 @@ module Api
       private
 
       def list_params
-        params.permit(:search, :admission_date, :appeal_type, :pregnancy_condition, :performer_filter, :only_active).to_h
+        params.permit(:search, :admission_date, :pregnancy_condition, :performer_filter, :status_filter, :sort).to_h
       end
 
       def patient_attributes
         src = params[:patient].present? ? params.require(:patient) : params
         p = src.permit(
-          :full_name, :admission_date, :admission_time, :birth_date, :appeal_type,
+          :full_name, :full_name_unknown, :admission_date, :admission_time, :birth_date, :birth_date_unknown, :appeal_type,
           :pregnancy_unknown, :pregnancy_weeks, :performer_user_id
         )
         h = p.to_h
+        h[:full_name_unknown] = ActiveModel::Type::Boolean.new.cast(h[:full_name_unknown])
+        if h[:full_name_unknown].to_s == "true" || h[:full_name_unknown] == true
+          h[:full_name] = "Неизвестно"
+        end
+        h[:birth_date_unknown] = ActiveModel::Type::Boolean.new.cast(h[:birth_date_unknown])
+        if h[:birth_date_unknown].to_s == "true" || h[:birth_date_unknown] == true
+          h[:birth_date] = nil
+        end
         h[:pregnancy_unknown] = ActiveModel::Type::Boolean.new.cast(h[:pregnancy_unknown])
         if h[:pregnancy_unknown].to_s == "true" || h[:pregnancy_unknown] == true
           h[:pregnancy_weeks] = nil
@@ -95,6 +103,7 @@ module Api
         t = patient.triage
         {
           patient: PatientListPresenter.to_list_hash(patient, current_user).merge(
+            full_name_unknown: patient.full_name_unknown?,
             pregnancy_weeks: patient.pregnancy_weeks,
             pregnancy_unknown: patient.pregnancy_unknown,
             created_by_user_id: patient.created_by_user_id,

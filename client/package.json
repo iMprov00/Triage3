@@ -17,9 +17,15 @@
   },
   "dependencies": {
     "@rails/actioncable": "^8.1.300",
+    "@tailwindcss/vite": "^4.3.2",
+    "framer-motion": "^12.42.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^1.23.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.1",
-    "recharts": "^2.15.4"
+    "recharts": "^2.15.4",
+    "tailwindcss": "^4.3.2"
   }
 }

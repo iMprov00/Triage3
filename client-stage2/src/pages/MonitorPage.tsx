@@ -30,6 +30,7 @@ function priorityTone(priority?: string | null): "red" | "yellow" | "orange" | "
 
 function workflowPhaseLabel(route?: string | null): string | null {
   if (route === "pre_doctor") return "Шаг 1";
+  if (route === "doctor_examination") return "Шаг 2";
   if (route === "decision") return "Решение";
   if (route === "actions") return "Действия";
   return null;

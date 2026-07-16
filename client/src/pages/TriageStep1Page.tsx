@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
 import TriageStepEditConfirmDialog from "../components/TriageStepEditConfirmDialog";
+import FormErrorToast from "../components/FormErrorToast";
+import { focusTriageStep1FormError } from "../utils/triageStep1FormErrors";
 import {
   triageActiveStepPath,
   triageHasSavedStepData,
@@ -56,7 +58,7 @@ function YesNoToggle({ name, label, value, onChange, mode }: YesNoToggleProps) {
   const yesTone = mode === "yes_good" ? "triage-yn-slot-yes-good" : "triage-yn-slot-yes-bad";
   const noTone = mode === "yes_good" ? "triage-yn-slot-no-bad" : "triage-yn-slot-no-good";
   return (
-    <div className="triage-yn-item">
+    <div className="triage-yn-item" id={`triage-step1-${name}`}>
       <div className="triage-yn-label">{label}</div>
       <div className="triage-yn-row" role="group" aria-label={label}>
         <input
@@ -107,6 +109,11 @@ export default function TriageStep1Page() {
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
+    if (!err) return;
+    focusTriageStep1FormError(err);
+  }, [err]);
+
+  useEffect(() => {
     void (async () => {
       try {
         const [o, t] = await Promise.all([
@@ -133,6 +140,18 @@ export default function TriageStep1Page() {
     const id = window.setInterval(() => setTick((x) => x + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!triage || isEditMode || !patientId) return;
+    if (triage.completed_at) {
+      nav(`/patients/${patientId}/triage/actions`, { replace: true });
+      return;
+    }
+    const step = Number(triage.step) || 1;
+    if (step !== 1) {
+      nav(triageActiveStepPath(patientId, step), { replace: true });
+    }
+  }, [triage, isEditMode, patientId, nav]);
 
   const rem =
     triage?.timer_active && triage.timer_ends_at
@@ -290,20 +309,18 @@ export default function TriageStep1Page() {
   if (!isEditMode && (triage.step as number) !== 1) {
     return (
       <div className="container-fluid triag-page-wide">
-        <div className="triage-page-shell py-2 py-sm-3">
-        <p>Откройте текущий шаг из списка.</p>
-        <Link to="/patients" className="triage-back-link">← Назад</Link>
-        </div>
+        <div className="triage-page-shell py-2 py-sm-3">Переход к текущему шагу…</div>
       </div>
     );
   }
 
   return (
     <div className="container-fluid triag-page-wide">
+      <FormErrorToast message={err} onDismiss={() => setErr("")} />
       <div className="triage-page-shell py-2 py-sm-3">
-      <div className="triage-page-head">
+      <div className="triage-page-head mb-3">
         <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-        <h1 className="h4 triage-page-title">{isEditMode ? "Редактирование шага 1" : "Шаг 1"}</h1>
+        <h1 className="triag-page-heading mb-0">{isEditMode ? "Редактирование шага 1" : "Шаг 1"}</h1>
       </div>
       {!isEditMode && (
       <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
@@ -316,9 +333,9 @@ export default function TriageStep1Page() {
         </div>
       </div>
       )}
-      {err && <div className="alert alert-danger py-2">{err}</div>}
       <form onSubmit={(e) => void handleSubmit(e)} className="card triage-form-card">
         <div className="card-body row g-3">
+          <div id="triage-step1-gcs" className="col-12 row g-3">
           <div className="col-md-4">
             <label className="form-label">Открывание глаз</label>
             <select className="form-select" required value={eye} onChange={(e) => setEye(e.target.value)}>
@@ -352,6 +369,7 @@ export default function TriageStep1Page() {
               ))}
             </select>
           </div>
+          </div>
           <div className="col-12">
             <div className="triage-yn-grid">
               <YesNoToggle name="breathing" label="Дыхание" mode="yes_good" value={breathing} onChange={setBreathing} />
@@ -370,7 +388,7 @@ export default function TriageStep1Page() {
             </div>
           </div>
           <div className="col-12">
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary triag-btn-primary">
               {isEditMode ? "Сохранить изменения" : "Сохранить шаг"}
             </button>
           </div>

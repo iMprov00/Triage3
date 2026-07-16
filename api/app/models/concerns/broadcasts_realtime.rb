@@ -26,15 +26,16 @@ module BroadcastsRealtime
     return unless p
 
     reload
+    ActionCable.server.broadcast("patients_list", { type: "refresh" })
     payload = { type: "triage_updated", triage: TriageStatePresenter.call(p, self) }
     ActionCable.server.broadcast("triage:#{p.id}", payload)
     ActionCable.server.broadcast("monitor", monitor_broadcast_envelope)
-    ActionCable.server.broadcast("patients_list", { type: "refresh" })
   end
 
   def broadcast_patient_streams
     p = self
     tri = triage
+    ActionCable.server.broadcast("patients_list", { type: "refresh" })
     payload = {
       type: "patient_updated",
       patient_id: p.id,
@@ -42,7 +43,6 @@ module BroadcastsRealtime
     }
     ActionCable.server.broadcast("triage:#{p.id}", payload)
     ActionCable.server.broadcast("monitor", monitor_broadcast_envelope)
-    ActionCable.server.broadcast("patients_list", { type: "refresh" })
   end
 
   def monitor_broadcast_envelope

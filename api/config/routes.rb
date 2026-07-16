@@ -24,6 +24,7 @@ Rails.application.routes.draw do
 
       get "statistics", to: "statistics#show"
       get "statistics/dashboard", to: "statistics#dashboard"
+      get "statistics/cohort", to: "statistics#cohort"
       get "statistics/detailed", to: "statistics#detailed"
 
       resources :patients, param: :patient_id, only: %i[show create update destroy] do
@@ -53,14 +54,21 @@ Rails.application.routes.draw do
         get "monitor/patients", to: "monitor#patients_payload"
         get "statistics", to: "statistics#show"
         get "meta/pre_doctor_options", to: "meta#pre_doctor_options"
+        get "meta/doctor_examination_options", to: "meta#doctor_examination_options"
+        get "meta/called_doctors", to: "meta#called_doctors"
 
         resources :patients, param: :patient_id, only: %i[show update destroy] do
           member do
             get "stage1_summary", to: "patients#stage1_summary"
             get "decision_summary", to: "patients#decision_summary"
+            post "accept", to: "patients#accept"
             get "triage", to: "triages#show"
             post "triage/pre_doctor", to: "triages#pre_doctor"
+            post "triage/doctor_examination", to: "triages#doctor_examination"
             post "triage/decision", to: "triages#decision"
+            post "triage/preview_phase_update/:phase", to: "phase_edits#preview"
+            post "triage/update_phase/:phase", to: "phase_edits#update"
+            patch "triage/draft", to: "triages#draft"
             post "triage/advance", to: "triages#advance"
             get "triage/actions", to: "triage_actions#show"
             post "triage/actions/mark", to: "triage_actions#mark"

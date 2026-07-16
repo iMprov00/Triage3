@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { apiJson } from "../api";
-import Stage1ChecklistModal from "../components/Stage1ChecklistModal";
+import FormErrorToast from "../components/FormErrorToast";
+import Stage1ChecklistButton from "../components/Stage1ChecklistButton";
+import Stage2DraftBanner from "../components/Stage2DraftBanner";
+import Stage2PhaseEditConfirmDialog from "../components/Stage2PhaseEditConfirmDialog";
 import VasSmileyPicker from "../components/VasSmileyPicker";
+import { useStage2DraftSync } from "../hooks/useStage2DraftSync";
+import type { AuthOutletContext } from "../sessionTypes";
+import { focusPreDoctorFormError } from "../utils/preDoctorFormErrors";
+import {
+  applyPreDoctorPhaseData,
+  buildPreDoctorDraftPayload,
+  draftRevisionFrom,
+} from "../utils/stage2DraftHelpers";
+import { stage2ActivePhasePath, stage2PathIsEditMode } from "../stage2Ui";
 
-type Option = { key: string; label: string; requires?: string[]; requires_edema_location?: boolean };
+type Option = { key: string; label: string };
 
 type VitalField = { key: string; label: string };
 
@@ -12,9 +24,9 @@ type PreDoctorOptions = {
   discharge: Option[];
   fetal_heart_rate: Option[];
   uterine_tone: Option[];
-  skin_findings: Option[];
+  skin_colors?: Option[];
+  skin_findings?: Option[];
   edema_locations: Option[];
-  investigations: Option[];
   vitals: VitalField[];
   pain_vas_min: number;
   pain_vas_max: number;
@@ -24,6 +36,17 @@ type TriageState = {
   pre_doctor_data: Record<string, unknown>;
   pre_doctor_completed: boolean;
   workflow_route: string;
+  actions_completed_at?: string | null;
+  can_edit_saved_phases?: boolean;
+};
+
+type PhaseEditPreview = {
+  ok: boolean;
+  suggested_priority?: string;
+  suggested_priority_name?: string;
+  suggested_priority_changed?: boolean;
+  downstream_reset?: boolean;
+  notice_hint?: string;
 };
 
 const EMPTY_VITALS: Record<string, string> = {
@@ -34,10 +57,49 @@ const EMPTY_VITALS: Record<string, string> = {
   saturation: "",
 };
 
+function YesNoChoice({
+  value,
+  onChange,
+  name,
+}: {
+  value: boolean | null;
+  onChange: (v: boolean) => void;
+  name: string;
+}) {
+  return (
+    <div className="d-flex flex-wrap gap-2" role="radiogroup" aria-label={name}>
+      <label className={`triage-check-item triag-btn-selector ${value === true ? "triag-btn-selector--active" : ""}`}>
+        <input
+          type="radio"
+          className="form-check-input"
+          name={name}
+          checked={value === true}
+          onChange={() => onChange(true)}
+        />
+        <span>Да</span>
+      </label>
+      <label className={`triage-check-item triag-btn-selector ${value === false ? "triag-btn-selector--active" : ""}`}>
+        <input
+          type="radio"
+          className="form-check-input"
+          name={name}
+          checked={value === false}
+          onChange={() => onChange(false)}
+        />
+        <span>Нет</span>
+      </label>
+    </div>
+  );
+}
+
 export default function PreDoctorStepPage() {
   const { patientId } = useParams();
+  const location = useLocation();
   const nav = useNavigate();
+  const auth = useOutletContext<AuthOutletContext | undefined>();
+  const userId = auth?.user?.id;
   const pid = Number(patientId);
+  const isEditMode = stage2PathIsEditMode(location.pathname, "pre_doctor");
   const [opts, setOpts] = useState<PreDoctorOptions | null>(null);
   const [patientName, setPatientName] = useState("");
   const [discharge, setDischarge] = useState("");
@@ -46,18 +108,95 @@ export default function PreDoctorStepPage() {
   const [contractionDurationSec, setContractionDurationSec] = useState("");
   const [contractionIntervalMin, setContractionIntervalMin] = useState("");
   const [painVas, setPainVas] = useState<number | null>(null);
-  const [skinFinding, setSkinFinding] = useState("");
+  const [skinColor, setSkinColor] = useState("");
+  const [hasRash, setHasRash] = useState<boolean | null>(null);
+  const [rashDescription, setRashDescription] = useState("");
+  const [hasEdema, setHasEdema] = useState<boolean | null>(null);
   const [edemaLocation, setEdemaLocation] = useState("");
   const [vitals, setVitals] = useState<Record<string, string>>(EMPTY_VITALS);
-  const [investigations, setInvestigations] = useState<Record<string, boolean>>({
-    ctg_done: false,
-    ultrasound_done: false,
-    labs_blood_done: false,
-    labs_urine_done: false,
-  });
-  const [checklistOpen, setChecklistOpen] = useState(false);
+  const [doctorCalled, setDoctorCalled] = useState(false);
+  const [ctgOrdered, setCtgOrdered] = useState(false);
+  const [ultrasoundOrdered, setUltrasoundOrdered] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [draftEnabled, setDraftEnabled] = useState(false);
+  const [editPreview, setEditPreview] = useState<PhaseEditPreview | null>(null);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+
+  const formState = useMemo(
+    () => ({
+      discharge,
+      fetalHr,
+      uterineTone,
+      contractionDurationSec,
+      contractionIntervalMin,
+      painVas,
+      skinColor,
+      hasRash,
+      rashDescription,
+      hasEdema,
+      edemaLocation,
+      vitals,
+      doctorCalled,
+      ctgOrdered,
+      ultrasoundOrdered,
+    }),
+    [
+      discharge,
+      fetalHr,
+      uterineTone,
+      contractionDurationSec,
+      contractionIntervalMin,
+      painVas,
+      skinColor,
+      hasRash,
+      rashDescription,
+      hasEdema,
+      edemaLocation,
+      vitals,
+      doctorCalled,
+      ctgOrdered,
+      ultrasoundOrdered,
+    ],
+  );
+
+  const applyRemote = useCallback((pd: Record<string, unknown>) => {
+    applyPreDoctorPhaseData(pd, {
+      setDischarge,
+      setFetalHr,
+      setUterineTone,
+      setContractionDurationSec,
+      setContractionIntervalMin,
+      setPainVas,
+      setSkinColor,
+      setHasRash,
+      setRashDescription,
+      setHasEdema,
+      setEdemaLocation,
+      setVitals,
+      setDoctorCalled,
+      setCtgOrdered,
+      setUltrasoundOrdered,
+    });
+  }, []);
+
+  const { notice, scheduleSave, finishHydration } = useStage2DraftSync({
+    patientId,
+    phase: "pre_doctor",
+    userId,
+    enabled: draftEnabled && !isEditMode,
+    buildPayload: () => buildPreDoctorDraftPayload(formState),
+    applyRemote,
+  });
+
+  function showError(message: string) {
+    setErr(message);
+  }
+
+  useEffect(() => {
+    if (!err) return;
+    focusPreDoctorFormError(err);
+  }, [err]);
 
   useEffect(() => {
     if (!patientId) return;
@@ -70,43 +209,54 @@ export default function PreDoctorStepPage() {
         ]);
         setOpts(options);
         setPatientName(details.patient.full_name);
-        if (triage.pre_doctor_completed) {
-          const dest =
-            triage.workflow_route === "actions"
-              ? `/patients/${patientId}/actions`
-              : `/patients/${patientId}/decision`;
-          nav(dest, { replace: true });
-          return;
+
+        if (!isEditMode && triage.pre_doctor_completed) {
+          const route = triage.workflow_route;
+          if (route === "doctor_examination") {
+            nav("/patients", { replace: true });
+            return;
+          }
+          if (route === "decision") {
+            nav(`/patients/${patientId}/decision`, { replace: true });
+            return;
+          }
+          if (route === "actions") {
+            nav(`/patients/${patientId}/actions`, { replace: true });
+            return;
+          }
         }
+
+        if (isEditMode) {
+          if (triage.actions_completed_at) {
+            showError("Действия по приоритету завершены. Редактирование недоступно.");
+            return;
+          }
+          if (!triage.can_edit_saved_phases) {
+            showError("Недостаточно прав для редактирования");
+            return;
+          }
+          if (!triage.pre_doctor_completed) {
+            nav(`/patients/${patientId}/workflow`, { replace: true });
+            return;
+          }
+        }
+
         const pd = triage.pre_doctor_data || {};
-        if (pd.discharge) setDischarge(String(pd.discharge));
-        if (pd.fetal_heart_rate) setFetalHr(String(pd.fetal_heart_rate));
-        if (pd.uterine_tone) setUterineTone(String(pd.uterine_tone));
-        if (pd.contraction_duration_sec != null) setContractionDurationSec(String(pd.contraction_duration_sec));
-        if (pd.contraction_interval_min != null) setContractionIntervalMin(String(pd.contraction_interval_min));
-        if (typeof pd.pain_vas === "number") setPainVas(pd.pain_vas);
-        if (pd.skin_finding) setSkinFinding(String(pd.skin_finding));
-        if (pd.edema_location) setEdemaLocation(String(pd.edema_location));
-        const v = (pd.vitals as Record<string, unknown>) || {};
-        setVitals({
-          systolic_bp: v.systolic_bp != null ? String(v.systolic_bp) : "",
-          diastolic_bp: v.diastolic_bp != null ? String(v.diastolic_bp) : "",
-          heart_rate: v.heart_rate != null ? String(v.heart_rate) : "",
-          respiratory_rate: v.respiratory_rate != null ? String(v.respiratory_rate) : "",
-          saturation: v.saturation != null ? String(v.saturation) : "",
-        });
-        const inv = (pd.investigations as Record<string, boolean>) || {};
-        setInvestigations({
-          ctg_done: inv.ctg_done === true,
-          ultrasound_done: inv.ultrasound_done === true,
-          labs_blood_done: inv.labs_blood_done === true,
-          labs_urine_done: inv.labs_urine_done === true,
-        });
+        applyRemote(pd);
+        if (!isEditMode) {
+          finishHydration(draftRevisionFrom(pd));
+          setDraftEnabled(true);
+        }
       } catch {
-        setErr("Не удалось загрузить форму");
+        showError("Не удалось загрузить форму");
       }
     })();
-  }, [patientId, nav]);
+  }, [patientId, nav, applyRemote, finishHydration, isEditMode]);
+
+  useEffect(() => {
+    if (!draftEnabled || isEditMode) return;
+    scheduleSave();
+  }, [draftEnabled, formState, scheduleSave, isEditMode]);
 
   function onUterineToneChange(value: string) {
     setUterineTone(value);
@@ -116,35 +266,84 @@ export default function PreDoctorStepPage() {
     }
   }
 
-  function onSkinChange(value: string) {
-    setSkinFinding(value);
-    if (value !== "edema") setEdemaLocation("");
-  }
-
   function setVital(key: string, value: string) {
     setVitals((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!patientId || painVas == null) {
-      setErr("Оцените боль по ВАШ");
-      return;
-    }
-    if (!skinFinding) {
-      setErr("Укажите осмотр кожных покровов");
-      return;
-    }
-    if (skinFinding === "edema" && !edemaLocation) {
-      setErr("Укажите локализацию отёков");
-      return;
-    }
+  function buildSubmitPayload() {
+    return {
+      pre_doctor: {
+        discharge,
+        fetal_heart_rate: fetalHr,
+        uterine_tone: uterineTone,
+        pain_vas: painVas,
+        skin_color: skinColor,
+        has_rash: hasRash === true,
+        rash_description: hasRash === true ? rashDescription.trim() : undefined,
+        has_edema: hasEdema === true,
+        edema_location: hasEdema === true ? edemaLocation : undefined,
+        contraction_duration_sec:
+          uterineTone === "labor_regular" || uterineTone === "labor_irregular"
+            ? Number(contractionDurationSec)
+            : undefined,
+        contraction_interval_min: uterineTone === "labor_regular" ? Number(contractionIntervalMin) : undefined,
+        doctor_called: doctorCalled,
+        ctg_ordered: ctgOrdered,
+        ultrasound_ordered: ultrasoundOrdered,
+        vitals: {
+          systolic_bp: Number(vitals.systolic_bp),
+          diastolic_bp: Number(vitals.diastolic_bp),
+          heart_rate: Number(vitals.heart_rate),
+          respiratory_rate: Number(vitals.respiratory_rate),
+          saturation: Number(vitals.saturation),
+        },
+      },
+    };
+  }
+
+  function validateClient(): string | null {
+    if (painVas == null) return "Оцените боль по ВАШ";
+    if (!skinColor) return "Укажите осмотр кожных покровов";
+    if (hasRash === null) return "Укажите наличие сыпи";
+    if (hasRash === true && !rashDescription.trim()) return "Опишите сыпь";
+    if (hasEdema === null) return "Укажите наличие отёков";
+    if (hasEdema === true && !edemaLocation) return "Укажите локализацию отёков";
     if (uterineTone === "labor_regular" && (!contractionDurationSec || !contractionIntervalMin)) {
-      setErr("Укажите длительность и интервал схваток");
-      return;
+      return "Укажите длительность и интервал схваток";
     }
     if (uterineTone === "labor_irregular" && !contractionDurationSec) {
-      setErr("Укажите длительность схваток");
+      return "Укажите длительность схваток";
+    }
+    if (!doctorCalled) return "Отметьте вызов врача";
+    return null;
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!patientId) return;
+
+    const validationErr = validateClient();
+    if (validationErr) {
+      showError(validationErr);
+      return;
+    }
+
+    if (isEditMode) {
+      setBusy(true);
+      setErr("");
+      try {
+        const preview = await apiJson<PhaseEditPreview>(
+          `/api/v1/stage2/patients/${patientId}/triage/preview_phase_update/pre_doctor`,
+          { method: "POST", json: buildSubmitPayload() },
+        );
+        setEditPreview(preview);
+        setEditConfirmOpen(true);
+      } catch (ex: unknown) {
+        const error = ex as { body?: { error?: string } };
+        showError(error.body?.error || "Не удалось подготовить сохранение");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
@@ -153,65 +352,67 @@ export default function PreDoctorStepPage() {
     try {
       await apiJson(`/api/v1/stage2/patients/${patientId}/triage/pre_doctor`, {
         method: "POST",
-        json: {
-          pre_doctor: {
-            discharge,
-            fetal_heart_rate: fetalHr,
-            uterine_tone: uterineTone,
-            pain_vas: painVas,
-            skin_finding: skinFinding,
-            edema_location: skinFinding === "edema" ? edemaLocation : undefined,
-            contraction_duration_sec:
-              uterineTone === "labor_regular" || uterineTone === "labor_irregular"
-                ? Number(contractionDurationSec)
-                : undefined,
-            contraction_interval_min: uterineTone === "labor_regular" ? Number(contractionIntervalMin) : undefined,
-            vitals: {
-              systolic_bp: Number(vitals.systolic_bp),
-              diastolic_bp: Number(vitals.diastolic_bp),
-              heart_rate: Number(vitals.heart_rate),
-              respiratory_rate: Number(vitals.respiratory_rate),
-              saturation: Number(vitals.saturation),
-            },
-            investigations,
-          },
-        },
+        json: buildSubmitPayload(),
       });
-      nav(`/patients/${patientId}/decision`);
+      nav("/patients");
     } catch (ex: unknown) {
-      const e = ex as { body?: { error?: string } };
-      setErr(e.body?.error || "Не удалось сохранить");
+      const error = ex as { body?: { error?: string } };
+      showError(error.body?.error || "Не удалось сохранить");
     } finally {
       setBusy(false);
     }
   }
 
+  async function confirmEditSave() {
+    if (!patientId) return;
+    setBusy(true);
+    try {
+      const res = await apiJson<{ triage: TriageState }>(
+        `/api/v1/stage2/patients/${patientId}/triage/update_phase/pre_doctor`,
+        { method: "POST", json: buildSubmitPayload() },
+      );
+      setEditConfirmOpen(false);
+      nav(stage2ActivePhasePath(patientId, res.triage.workflow_route));
+    } catch (ex: unknown) {
+      const error = ex as { body?: { error?: string } };
+      showError(error.body?.error || "Не удалось сохранить");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const skinOptions = opts?.skin_colors || opts?.skin_findings || [];
   const uterineOption = opts?.uterine_tone.find((o) => o.key === uterineTone);
 
   return (
     <div className="container-fluid triag-page-wide">
+      <FormErrorToast message={err} onDismiss={() => setErr("")} />
+      <Stage2DraftBanner notice={notice} />
       <div className="triage-page-shell">
         <div className="triage-page-head mb-4">
           <Link to="/patients" className="triage-back-link">
             <i className="bi bi-arrow-left" aria-hidden /> К списку
           </Link>
-          <h1 className="h4 mb-1">Доврачебный этап · {patientName || "Пациент"}</h1>
-          <p className="text-muted small mb-2">Этап 2 · шаг 1 — сбор данных и рекомендация приоритета</p>
-          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setChecklistOpen(true)}>
-            <i className="bi bi-list-check me-1" aria-hidden />
-            Посмотреть чек-лист этапа 1
-          </button>
+          <h1 className="triag-page-heading mb-0">
+            {isEditMode ? "Редактирование шага 1" : "Доврачебный осмотр"} · {patientName || "Пациент"}
+          </h1>
+          <span className="triage-page-head-meta text-muted">Этап 2 · шаг 1</span>
+          <Stage1ChecklistButton patientId={pid} />
         </div>
-
-        {err && <div className="alert alert-danger">{err}</div>}
 
         <form onSubmit={(e) => void submit(e)} className="card triage-form-card shadow-sm">
           <div className="card-body d-grid gap-4">
-            <section>
-              <h2 className="h6 mb-2">Осмотр выделений</h2>
-              <select className="form-select" required value={discharge} onChange={(e) => setDischarge(e.target.value)}>
+            <section id="pre-doctor-skin">
+              <h2 className="h6 mb-2">Осмотр кожных покровов</h2>
+              <select
+                id="pre-doctor-skin-color"
+                className="form-select"
+                required
+                value={skinColor}
+                onChange={(e) => setSkinColor(e.target.value)}
+              >
                 <option value="">— выберите —</option>
-                {(opts?.discharge || []).map((o) => (
+                {skinOptions.map((o) => (
                   <option key={o.key} value={o.key}>
                     {o.label}
                   </option>
@@ -219,19 +420,61 @@ export default function PreDoctorStepPage() {
               </select>
             </section>
 
-            <section>
-              <h2 className="h6 mb-2">Оценка сердцебиения плода</h2>
-              <select className="form-select" required value={fetalHr} onChange={(e) => setFetalHr(e.target.value)}>
-                <option value="">— выберите —</option>
-                {(opts?.fetal_heart_rate || []).map((o) => (
-                  <option key={o.key} value={o.key}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+            <section id="pre-doctor-rash">
+              <h2 className="h6 mb-2">Сыпь</h2>
+              <YesNoChoice value={hasRash} onChange={setHasRash} name="pre-doctor-rash" />
+              {hasRash === true && (
+                <div className="mt-3">
+                  <label className="form-label small" htmlFor="pre-doctor-rash-description">
+                    Описание
+                  </label>
+                  <textarea
+                    id="pre-doctor-rash-description"
+                    className="form-control"
+                    rows={2}
+                    required
+                    value={rashDescription}
+                    onChange={(e) => setRashDescription(e.target.value)}
+                    placeholder="Опишите характер и локализацию сыпи"
+                  />
+                </div>
+              )}
             </section>
 
-            <section>
+            <section id="pre-doctor-edema">
+              <h2 className="h6 mb-2">Отёки</h2>
+              <YesNoChoice
+                value={hasEdema}
+                onChange={(v) => {
+                  setHasEdema(v);
+                  if (!v) setEdemaLocation("");
+                }}
+                name="pre-doctor-edema"
+              />
+              {hasEdema === true && (
+                <div className="mt-3">
+                  <label className="form-label small" htmlFor="pre-doctor-edema-location">
+                    Локализация
+                  </label>
+                  <select
+                    id="pre-doctor-edema-location"
+                    className="form-select"
+                    required
+                    value={edemaLocation}
+                    onChange={(e) => setEdemaLocation(e.target.value)}
+                  >
+                    <option value="">— выберите —</option>
+                    {(opts?.edema_locations || []).map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </section>
+
+            <section id="pre-doctor-uterine">
               <h2 className="h6 mb-2">Оценка маточного тонуса</h2>
               <select
                 className="form-select"
@@ -305,7 +548,7 @@ export default function PreDoctorStepPage() {
               )}
             </section>
 
-            <section>
+            <section id="pre-doctor-pain">
               <h2 className="h6 mb-2">Оценка боли по ВАШ</h2>
               <p className="small text-muted mb-2">Пациент может нажать на смайлик (0 — нет боли, 10 — максимальная боль)</p>
               <VasSmileyPicker
@@ -316,69 +559,40 @@ export default function PreDoctorStepPage() {
               />
             </section>
 
-            <section>
-              <h2 className="h6 mb-2">Осмотр кожных покровов</h2>
-              <div className="d-grid gap-2">
-                {(opts?.skin_findings || []).map((o) => (
-                  <label
-                    key={o.key}
-                    className={`triage-check-item stage2-skin-check ${skinFinding === o.key ? "triage-check-item--yellow" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      className="form-check-input"
-                      name="skin_finding"
-                      checked={skinFinding === o.key}
-                      onChange={() => onSkinChange(o.key)}
-                    />
-                    <span>{o.label}</span>
-                  </label>
+            <section id="pre-doctor-fhr">
+              <h2 className="h6 mb-2">Оценка сердцебиения плода</h2>
+              <select className="form-select" required value={fetalHr} onChange={(e) => setFetalHr(e.target.value)}>
+                <option value="">— выберите —</option>
+                {(opts?.fetal_heart_rate || []).map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
                 ))}
-              </div>
-              {skinFinding === "edema" && (
-                <div className="mt-3">
-                  <label className="form-label small">Локализация отёков</label>
-                  <select
-                    className="form-select"
-                    required
-                    value={edemaLocation}
-                    onChange={(e) => setEdemaLocation(e.target.value)}
-                  >
-                    <option value="">— выберите —</option>
-                    {(opts?.edema_locations || []).map((o) => (
-                      <option key={o.key} value={o.key}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              </select>
             </section>
 
-            <section>
-              <h2 className="h6 mb-2">Исследования (факт выполнения)</h2>
-              <div className="d-grid gap-2">
-                {(opts?.investigations || []).map((o) => (
-                  <label key={o.key} className="triage-check-item">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      checked={investigations[o.key] === true}
-                      onChange={(e) => setInvestigations((prev) => ({ ...prev, [o.key]: e.target.checked }))}
-                    />
-                    <span>{o.label}</span>
-                  </label>
+            <section id="pre-doctor-discharge">
+              <h2 className="h6 mb-2">Осмотр выделений</h2>
+              <select className="form-select" required value={discharge} onChange={(e) => setDischarge(e.target.value)}>
+                <option value="">— выберите —</option>
+                {(opts?.discharge || []).map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
                 ))}
-              </div>
+              </select>
             </section>
 
-            <section>
+            <section id="pre-doctor-vitals">
               <h2 className="h6 mb-2">Витальные функции</h2>
               <div className="row g-2">
                 {(opts?.vitals || []).map((v) => (
                   <div key={v.key} className="col-6 col-md-4 col-lg">
-                    <label className="form-label small mb-0">{v.label}</label>
+                    <label className="form-label small mb-0" htmlFor={`pre-doctor-field-${v.key}`}>
+                      {v.label}
+                    </label>
                     <input
+                      id={`pre-doctor-field-${v.key}`}
                       type="number"
                       className="form-control"
                       required
@@ -392,14 +606,74 @@ export default function PreDoctorStepPage() {
               </div>
             </section>
 
-            <button type="submit" className="btn btn-primary" disabled={busy || !opts}>
-              {busy ? "Сохранение…" : "Завершить доврачебный этап и перейти к решению"}
+            <section id="pre-doctor-investigations">
+              <h2 className="h6 mb-2">Назначенные исследования</h2>
+              <div className="d-flex flex-wrap gap-2">
+                <label className={`triage-check-item triag-btn-selector ${ctgOrdered ? "triage-check-item--yellow triag-btn-selector--active" : ""}`}>
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={ctgOrdered}
+                    onChange={(e) => setCtgOrdered(e.target.checked)}
+                  />
+                  <span>Назначено КТГ</span>
+                </label>
+                <label className={`triage-check-item triag-btn-selector ${ultrasoundOrdered ? "triage-check-item--yellow triag-btn-selector--active" : ""}`}>
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={ultrasoundOrdered}
+                    onChange={(e) => setUltrasoundOrdered(e.target.checked)}
+                  />
+                  <span>Назначено УЗИ</span>
+                </label>
+              </div>
+            </section>
+
+            <section id="pre-doctor-doctor-call">
+              <h2 className="h6 mb-2">Вызов врача</h2>
+              <label className={`triage-check-item triag-btn-selector ${doctorCalled ? "triage-check-item--yellow triag-btn-selector--active" : ""}`}>
+                <input
+                  id="pre-doctor-doctor-called"
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={doctorCalled}
+                  onChange={(e) => {
+                    setDoctorCalled(e.target.checked);
+                    if (err) setErr("");
+                  }}
+                />
+                <span>Вызван врач</span>
+              </label>
+            </section>
+
+            <button type="submit" className="btn btn-primary triag-btn-primary" disabled={busy || !opts}>
+              {busy ? "Сохранение…" : isEditMode ? "Сохранить изменения" : "Завершить доврачебный осмотр"}
             </button>
           </div>
         </form>
       </div>
 
-      <Stage1ChecklistModal patientId={pid} open={checklistOpen} onClose={() => setChecklistOpen(false)} />
+      <Stage2PhaseEditConfirmDialog
+        open={editConfirmOpen}
+        title="Сохранить изменения шага 1?"
+        busy={busy}
+        onCancel={() => setEditConfirmOpen(false)}
+        onConfirm={() => void confirmEditSave()}
+      >
+        {editPreview?.suggested_priority_changed && (
+          <p className="mb-2">
+            Рекомендация алгоритма изменится на{" "}
+            <strong>{editPreview.suggested_priority_name || editPreview.suggested_priority}</strong>.
+          </p>
+        )}
+        {editPreview?.downstream_reset && (
+          <p className="mb-0 text-warning">Последующие шаги будут сброшены и потребуют повторного заполнения.</p>
+        )}
+        {!editPreview?.suggested_priority_changed && !editPreview?.downstream_reset && (
+          <p className="mb-0">Подтвердите сохранение изменений доврачебного осмотра.</p>
+        )}
+      </Stage2PhaseEditConfirmDialog>
     </div>
   );
 }

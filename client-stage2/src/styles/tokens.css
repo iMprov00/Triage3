@@ -1,0 +1,45 @@
+:root,
+html[data-theme='light'] {
+  --dar-primary: #54c654;
+  --dar-primary-hover: #43a843;
+  --dar-primary-light: #d8f5d8;
+  --dar-primary-bg: #fff7ed;
+  --dar-bg: #faf7f2;
+  --dar-card: #fffcfa;
+  --dar-text: #292524;
+  --dar-text-muted: #78716c;
+  --dar-border: rgba(231, 213, 207, 0.95);
+  --dar-link: #3d8f3d;
+  --dar-radius: 12px;
+  --dar-radius-lg: 16px;
+  --dar-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --dar-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --dar-shadow-glow: 0 8px 32px rgba(84, 198, 84, 0.18);
+  --dar-input-bg: #ffffff;
+  --dar-modal-bg: #fffcfa;
+}
+
+html[data-theme='dark'] {
+  --dar-primary: #5daa78;
+  --dar-primary-hover: #4d9368;
+  --dar-primary-light: rgba(74, 222, 128, 0.1);
+  --dar-primary-bg: rgba(74, 222, 128, 0.06);
+  --dar-bg: #060b14;
+  --dar-card: rgba(15, 23, 42, 0.92);
+  --dar-text: #f1f5f9;
+  --dar-text-muted: #94a3b8;
+  --dar-border: rgba(74, 222, 128, 0.18);
+  --dar-link: #7bc49a;
+  --dar-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --dar-shadow-md: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --dar-shadow-glow: 0 4px 16px rgba(0, 0, 0, 0.32);
+  --dar-input-bg: rgba(15, 23, 42, 0.8);
+  --dar-modal-bg: rgba(15, 23, 42, 0.95);
+  --dar-active-surface: rgba(74, 222, 128, 0.08);
+  --dar-active-border: rgba(93, 170, 120, 0.34);
+  --dar-active-ring: inset 0 0 0 1px rgba(93, 170, 120, 0.2);
+  --dar-btn-emphasis: linear-gradient(135deg, #2f5a44 0%, #274838 55%, #1f3a2e 100%);
+  --dar-btn-emphasis-hover: linear-gradient(135deg, #36634a 0%, #2d5040 55%, #254236 100%);
+  --dar-btn-emphasis-text: #d8efe3;
+  --dar-check-fill: #3a6b52;
+}

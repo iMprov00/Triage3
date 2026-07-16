@@ -28,5 +28,3 @@ export async function apiJson<T>(
   }
   return data;
 }
-
-export const STAGE1_APP_URL = import.meta.env.VITE_STAGE1_APP_URL || "http://localhost:5173";

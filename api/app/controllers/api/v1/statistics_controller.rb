@@ -8,6 +8,18 @@ module Api
         render json: TriageDepartmentDashboardService.call(admission_date: date)
       end
 
+      def cohort
+        prm = params.permit(
+          :admission_date, :date_from, :date_to, :category, :priority, :page, :per_page
+        )
+        result = TriageDepartmentCohortService.call(params: prm.to_unsafe_h, viewer: current_user)
+        if result[:error]
+          render json: result, status: :unprocessable_entity
+        else
+          render json: result
+        end
+      end
+
       def detailed
         prm = params.permit(
           :date_from, :date_to, :search, :appeal_type, :pregnancy_condition,
@@ -35,7 +47,7 @@ module Api
                 event_label: TriageAuditEvent::EVENT_LABELS[ev.event_type.to_s] || ev.event_type.to_s,
                 occurred_at: ev.occurred_at,
                 payload: payload,
-                action_text: action_key.present? ? Triage.action_text_for_key(action_key) : nil
+                action_text: action_key.present? ? Triage.action_display_text(action_key, payload) : nil
               }
             end
           end

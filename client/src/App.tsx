@@ -14,6 +14,7 @@ import QuickStatisticsPage from "./pages/QuickStatisticsPage";
 import FullStatisticsPage from "./pages/FullStatisticsPage";
 import AdministrationPage from "./pages/AdministrationPage";
 import MainLayout from "./layouts/MainLayout";
+import { AppShell } from "./components/AppShell";
 import type { AuthOutletContext, SessionUser } from "./sessionTypes";
 
 type MeResponse = { user: SessionUser | null };
@@ -42,9 +43,11 @@ function RequireAuthLayout() {
 
   if (state === "loading") {
     return (
-      <div className="app-auth-loading" role="status">
-        Проверка сессии…
-      </div>
+      <AppShell>
+        <div className="app-auth-loading" role="status">
+          Проверка сессии…
+        </div>
+      </AppShell>
     );
   }
   if (!state.in) {

@@ -15,7 +15,8 @@ type TriageState = {
 
 const FLOW_STEPS = [
   { key: "start", label: "Точка начала" },
-  { key: "pre_doctor", label: "Доврачебный" },
+  { key: "pre_doctor", label: "Доврачебный осмотр" },
+  { key: "doctor", label: "Врачебный осмотр" },
   { key: "decision", label: "Решение" },
   { key: "doctor", label: "Врачебный" },
   { key: "action", label: "Действие" },
@@ -80,7 +81,7 @@ export default function WorkflowStubPage() {
           <Link to="/patients" className="triage-back-link">
             <i className="bi bi-arrow-left" aria-hidden /> К списку
           </Link>
-          <h1 className="h4 mb-1">Этап 2 · {patientName || "Пациент"}</h1>
+          <h1 className="triag-page-heading mb-1">Этап 2 · {patientName || "Пациент"}</h1>
           <p className="text-muted small mb-0">
             Полный алгоритм 2-го этапа будет реализован позже. Сейчас доступна заглушка перехода по фазам.
           </p>
@@ -142,7 +143,7 @@ export default function WorkflowStubPage() {
             <div className="mt-4 d-flex flex-wrap gap-2">
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary triag-btn-primary"
                 disabled={!state?.can_advance || busy}
                 onClick={() => void advance()}
               >

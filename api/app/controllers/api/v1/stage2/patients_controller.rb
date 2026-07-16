@@ -4,7 +4,7 @@ module Api
   module V1
     module Stage2
       class PatientsController < ApplicationController
-        before_action :set_patient_and_case, only: %i[show update destroy stage1_summary decision_summary]
+        before_action :set_patient_and_case, only: %i[show update destroy stage1_summary decision_summary accept]
 
         def index
           prm = list_params
@@ -33,6 +33,16 @@ module Api
           end
 
           render json: summary
+        end
+
+        def accept
+          case_record = Stage2CaseAcceptanceService.accept!(patient: @patient, user: current_user)
+          render json: {
+            ok: true,
+            patient: Stage2PatientListPresenter.to_list_hash(@patient.reload, case_record, current_user)
+          }
+        rescue Stage2CaseAcceptanceService::AcceptanceError => e
+          render json: { error: e.message }, status: :unprocessable_entity
         end
 
         def update
@@ -84,7 +94,7 @@ module Api
         private
 
         def list_params
-          params.permit(:search, :admission_date, :appeal_type, :only_active).to_h
+          params.permit(:search, :admission_date, :status, :step).to_h
         end
 
         def set_patient_and_case
@@ -122,10 +132,18 @@ module Api
 
           src = params.require(:patient)
           p = src.permit(
-            :full_name, :birth_date, :appeal_type,
+            :full_name, :full_name_unknown, :birth_date, :birth_date_unknown, :appeal_type,
             :pregnancy_unknown, :pregnancy_weeks
           )
           h = p.to_h
+          h[:full_name_unknown] = ActiveModel::Type::Boolean.new.cast(h[:full_name_unknown])
+          if h[:full_name_unknown].to_s == "true" || h[:full_name_unknown] == true
+            h[:full_name] = "Неизвестно"
+          end
+          h[:birth_date_unknown] = ActiveModel::Type::Boolean.new.cast(h[:birth_date_unknown])
+          if h[:birth_date_unknown].to_s == "true" || h[:birth_date_unknown] == true
+            h[:birth_date] = nil
+          end
           h[:pregnancy_unknown] = ActiveModel::Type::Boolean.new.cast(h[:pregnancy_unknown])
           if h[:pregnancy_unknown].to_s == "true" || h[:pregnancy_unknown] == true
             h[:pregnancy_weeks] = nil

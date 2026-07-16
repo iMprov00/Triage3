@@ -24,7 +24,7 @@ export default function StatisticsStubPage() {
 
   return (
     <div className="container-fluid triag-page-wide">
-      <h1 className="h4 mb-3">Статистика · Этап 2</h1>
+      <h1 className="triag-page-heading mb-3">Статистика · Этап 2</h1>
       {err && <div className="alert alert-warning">{err}</div>}
       {data && (
         <div className="card shadow-sm">

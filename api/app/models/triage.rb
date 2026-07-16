@@ -1,6 +1,10 @@
 class Triage < ApplicationRecord
   include BroadcastsRealtime
 
+  # true — завершение действий только на этапе 1 (без автопередачи на этап 2).
+  # false — жёлтый/зелёный после завершения сразу передаются на этап 2.
+  STAGE1_COMPLETE_WITHOUT_HANDOFF = false
+
   belongs_to :patient
   has_many :triage_audit_events, dependent: :nullify
 
@@ -22,6 +26,8 @@ class Triage < ApplicationRecord
     'purple' => { name: 'фиолетовый', order: 3 },
     'green' => { name: 'зеленый', order: 4 }
   }.freeze
+
+  STAGE2_ELIGIBLE_PRIORITIES = %w[yellow green].freeze
   
   # Сериализация данных этапов (YAML, совместимо с legacy Sinatra)
   serialize :step1_data, coder: YAML
@@ -299,6 +305,27 @@ class Triage < ApplicationRecord
   # Текст действия по ключу (для журнала аудита)
   def self.action_text_for_key(key)
     actions_catalog.action_text_for_key(key)
+  end
+
+  # Текст для отображения: без префикса приоритета, с замером если есть
+  def self.action_display_text(action_key, payload = {})
+    return nil if action_key.blank?
+
+    text = strip_priority_prefix(action_text_for_key(action_key))
+    append_audit_value(text, payload)
+  end
+
+  def self.strip_priority_prefix(text)
+    return text if text.blank?
+
+    text.sub(/\A(?:Красный|Желтый|Зел[её]ный|Фиолетовый|Оранжевый|Серый)\s*\([^)]+\):\s*/i, "")
+  end
+
+  def self.append_audit_value(text, payload)
+    value = payload.is_a?(Hash) ? payload["value"].presence : nil
+    return text unless value
+
+    "#{text} — #{value}"
   end
 
   def self.priority_label_ru(code)
@@ -640,7 +667,8 @@ class Triage < ApplicationRecord
 
     return false unless ensure_actions_flow_bucket!
     vitals_keys = schema[:vitals].map { |e| e[:key].to_s }
-    return false unless vital_allowed_key?(vkey.to_s, vitals_keys)
+    extra_vitals = schema[:bucket] == 'red_arrest' ? %w[fetal_heartbeat active_bleeding] : []
+    return false unless vital_allowed_key?(vkey.to_s, vitals_keys, extra_keys: extra_vitals)
 
     vkey = vkey.to_s
     val = value.to_s.strip
@@ -666,7 +694,7 @@ class Triage < ApplicationRecord
       return save
     end
 
-    return false unless vitals_keys.include?(vkey)
+    return false unless vitals_keys.include?(vkey) || extra_vitals.include?(vkey)
 
     actions_data[schema[:bucket]]['vitals'] ||= {}
     if val.empty?
@@ -677,7 +705,8 @@ class Triage < ApplicationRecord
     save
   end
 
-  def vital_allowed_key?(key, allowed_base_keys)
+  def vital_allowed_key?(key, allowed_base_keys, extra_keys: [])
+    return true if extra_keys.include?(key)
     return true if allowed_base_keys.include?(key)
     return false unless key =~ /\A([a-z_]+)_(1|2|3)\z/
 
@@ -765,6 +794,32 @@ class Triage < ApplicationRecord
     actions_data && actions_data[action_key].present?
   end
   
+  # Проверить, можно ли завершить действия (без финального пункта)
+  def can_complete_actions_without_final?
+    if actions_flow_kind.present?
+      return can_complete_actions_flow?
+    end
+
+    can_complete_non_final_actions?
+  end
+
+  def can_complete_non_final_actions?
+    return false unless actions_data.is_a?(Hash)
+
+    required_actions = priority_actions.reject { |a| a[:final] }
+    return true if required_actions.empty?
+
+    required_actions.all? { |a| actions_data[a[:key]].present? }
+  end
+
+  def stage2_handoff_pending?
+    stage2_handoff_at.present? && actions_completed_at.nil?
+  end
+
+  def stage2_eligible?
+    STAGE2_ELIGIBLE_PRIORITIES.include?(priority.to_s)
+  end
+
   # Проверить, можно ли отметить финальное действие
   def can_complete_final_action?
     return false unless actions_data
@@ -776,18 +831,15 @@ class Triage < ApplicationRecord
     required_actions.all? { |a| actions_data[a[:key]].present? }
   end
   
-  # Завершить все действия
+  # Завершить все действия этапа 1. Передача на этап 2 — отдельно в контроллере.
   def complete_actions!
     if actions_flow_kind.present?
       return false unless can_complete_actions_flow?
-      update(actions_completed_at: Time.now)
-      return true
+    else
+      return false unless can_complete_non_final_actions?
     end
 
-    final_action = priority_actions.find { |a| a[:final] }
-    return false unless final_action
-    return false unless can_complete_final_action? && action_completed?(final_action[:key])
-    update(actions_completed_at: Time.now)
+    update(actions_completed_at: Time.current)
     true
   end
   

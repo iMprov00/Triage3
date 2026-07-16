@@ -44,9 +44,11 @@ class TriageStatePresenter
         manips: Triage::RED_ARREST_MANIPS.map { |e| { key: e[:key].to_s, label: e[:label] } },
         vitals: Triage::RED_ARREST_VITALS.map { |e| { key: e[:key].to_s, label: e[:label] } }
       },
-      priority_actions: triage.priority_actions,
+      priority_actions: triage.priority_actions.reject { |a| a[:final] },
       final_action: triage.final_action,
       can_complete_final: triage.can_complete_final_action?,
+      can_complete_actions: triage.can_complete_actions_without_final?,
+      stage2_handoff_at: triage.stage2_handoff_at,
       brigade_timer_ends_at: triage.brigade_timer_ends_at,
       can_complete_red_arrest: triage.can_complete_red_arrest?,
       can_complete_actions_flow: triage.can_complete_actions_flow?

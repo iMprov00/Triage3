@@ -5,7 +5,7 @@ type Stage1Summary = {
   full_name: string;
   priority_name: string;
   actions_completed_at?: string | null;
-  step1: Record<string, string | undefined>;
+  step1: Record<string, string | number | undefined>;
   step2: { position?: string; urgency_criteria?: string[]; infection_signs?: string[] };
   step3: Record<string, string | number | undefined>;
 };
@@ -76,6 +76,11 @@ export default function Stage1ChecklistModal({ patientId, open, onClose }: Props
                   </div>
                   <section>
                     <h3 className="h6">Шаг 1 — уровень сознания</h3>
+                    <div className={`triage-score-box mb-2 ${Number(data.step1.total_consciousness_score) > 0 && Number(data.step1.total_consciousness_score) <= 8 ? "triage-score-box--alert" : ""}`}>
+                      <div className="small text-muted">Сумма баллов (уровень сознания)</div>
+                      <div className="triage-score-total">{data.step1.total_consciousness_score ?? "—"}</div>
+                      <div className="small text-muted">Шкала Глазго</div>
+                    </div>
                     <ul className="small mb-0">
                       <li>Открывание глаз: {data.step1.eye_opening || "—"}</li>
                       <li>Речевая реакция: {data.step1.verbal_response || "—"}</li>

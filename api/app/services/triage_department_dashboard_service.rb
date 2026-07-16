@@ -53,27 +53,59 @@ class TriageDepartmentDashboardService
   end
 
   # Ожидается scope Patient (уже с фильтрами по дате поступления и т.д.).
-  def self.summary_for_patients(base)
-    total = base.count
-    no_triage = base.left_outer_joins(:triage).where(triages: { id: nil }).count
-
+  def self.patient_scope_for_category(base, category, priority: nil)
     with_triage = base.joins(:triage)
     triage_open = with_triage.where(triages: { completed_at: nil })
-
-    step1 = triage_open.where(triages: { step: 1 }).count
-    step2 = triage_open.where(triages: { step: 2 }).count
-    step3 = triage_open.where(triages: { step: 3 }).count
-
     in_actions = with_triage.where.not(triages: { completed_at: nil }).where(triages: { actions_completed_at: nil })
     fully_done = with_triage.where.not(triages: { actions_completed_at: nil })
 
+    case category.to_s
+    when "total_patients"
+      base
+    when "without_triage"
+      base.left_outer_joins(:triage).where(triages: { id: nil })
+    when "triage_in_progress"
+      triage_open
+    when "step1"
+      triage_open.where(triages: { step: 1 })
+    when "step2"
+      triage_open.where(triages: { step: 2 })
+    when "step3"
+      triage_open.where(triages: { step: 3 })
+    when "in_actions_phase"
+      in_actions
+    when "fully_completed"
+      fully_done
+    when "step_timer_expired"
+      triage_open.where(triages: { timer_active: true }).where(step_timer_expired_sql)
+    when "actions_timer_expired"
+      in_actions.where.not(triages: { actions_started_at: nil }).where(actions_timer_expired_sql)
+    when "brigade_timer_expired"
+      in_actions.where.not(triages: { brigade_called_at: nil }).where(brigade_timer_expired_sql)
+    when "priority"
+      return base.none if priority.blank? || !Triage::PRIORITIES.key?(priority.to_s)
+
+      fully_done.where(triages: { priority: priority.to_s })
+    else
+      base.none
+    end
+  end
+
+  def self.summary_for_patients(base)
+    total = base.count
+    no_triage = patient_scope_for_category(base, "without_triage").count
+    triage_open = patient_scope_for_category(base, "triage_in_progress")
+    step1 = patient_scope_for_category(base, "step1").count
+    step2 = patient_scope_for_category(base, "step2").count
+    step3 = patient_scope_for_category(base, "step3").count
+    in_actions = patient_scope_for_category(base, "in_actions_phase")
+    fully_done = patient_scope_for_category(base, "fully_completed")
+
     priority_breakdown = fully_done.group("triages.priority").count.transform_keys(&:to_s)
 
-    step_timer_expired = triage_open.where(triages: { timer_active: true }).where(step_timer_expired_sql).count
-
-    actions_timer_expired = in_actions.where.not(triages: { actions_started_at: nil }).where(actions_timer_expired_sql).count
-
-    brigade_timer_expired = in_actions.where.not(triages: { brigade_called_at: nil }).where(brigade_timer_expired_sql).count
+    step_timer_expired = patient_scope_for_category(base, "step_timer_expired").count
+    actions_timer_expired = patient_scope_for_category(base, "actions_timer_expired").count
+    brigade_timer_expired = patient_scope_for_category(base, "brigade_timer_expired").count
 
     {
       counts: {

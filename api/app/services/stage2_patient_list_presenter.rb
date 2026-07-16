@@ -12,6 +12,7 @@ class Stage2PatientListPresenter
     return "patient-b-card--notriage" unless st
 
     return "patient-b-card--done" if st.completed?
+    return "patient-b-card--priority-red" if stage2_case.pending_acceptance?
 
     effective_priority = st.display_priority || patient.triage&.priority
     case effective_priority.to_s
@@ -34,13 +35,17 @@ class Stage2PatientListPresenter
       admission_time: stage2_case.admission_time_formatted || patient.admission_time_formatted,
       performer_name: stage2_case.performer_name.presence || patient.performer_name,
       birth_date: patient.birth_date&.to_s,
+      birth_date_unknown: patient.birth_date_unknown?,
       appeal_type: patient.appeal_type,
       pregnancy_display: patient.pregnancy_display,
       created_at: format_time_nsk(stage2_case.transferred_at, "%d.%m.%Y %H:%M"),
       transferred_at: format_time_nsk(stage2_case.transferred_at, "%d.%m.%Y %H:%M"),
       transfer_source: stage2_case.transfer_source,
+      pending_acceptance: stage2_case.pending_acceptance?,
+      accepted_at: stage2_case.accepted_at,
       can_delete: !other_role?(viewer),
       can_edit: !other_role?(viewer) || case_performer?(stage2_case, patient, viewer),
+      can_edit_saved_phases: !other_role?(viewer) || case_performer?(stage2_case, patient, viewer),
       card_state_class: card_state_class(patient, stage2_case),
       stage1_priority: s1&.priority,
       stage1_priority_name: s1&.priority_name,
@@ -62,6 +67,7 @@ class Stage2PatientListPresenter
       display_priority: st.display_priority,
       display_priority_name: st.display_priority_name,
       pre_doctor_completed: st.pre_doctor_completed?,
+      doctor_examination_completed: st.doctor_examination_completed?,
       decision_completed: st.decision_completed?,
       workflow_route: st.workflow_route,
       completed_at: st.completed_at,

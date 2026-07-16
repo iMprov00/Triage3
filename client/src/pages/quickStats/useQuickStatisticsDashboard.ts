@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { createConsumer } from "@rails/actioncable";
 import { apiJson } from "../../api";
 
 export type DashboardCounts = {
@@ -46,6 +47,21 @@ export function useQuickStatisticsDashboard() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const consumer = createConsumer("/cable");
+    const sub = consumer.subscriptions.create("PatientsListChannel", {
+      received() {
+        void load();
+      },
+    });
+    const poll = window.setInterval(() => void load(), 15000);
+    return () => {
+      sub.unsubscribe();
+      consumer.disconnect();
+      window.clearInterval(poll);
+    };
   }, [load]);
 
   return { admissionDate, setAdmissionDate, data, err, load };

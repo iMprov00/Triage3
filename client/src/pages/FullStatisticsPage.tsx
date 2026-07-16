@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiJson } from "../api";
+import DashboardCohortModal, { type DashboardCohortRequest } from "../components/DashboardCohortModal";
 import type { PeriodAnalytics } from "../components/FullStatisticsCharts";
 import type { PatientListRow } from "../types";
 
@@ -126,6 +127,20 @@ export default function FullStatisticsPage() {
 
   const [data, setData] = useState<DetailedResponse | null>(null);
   const [err, setErr] = useState("");
+  const [cohortRequest, setCohortRequest] = useState<DashboardCohortRequest | null>(null);
+
+  const openCohort = useCallback(
+    (category: DashboardCohortRequest["category"], label: string, priority?: string) => {
+      setCohortRequest({
+        category,
+        priority,
+        label,
+        dateFrom: applied.dateFrom,
+        dateTo: applied.dateTo,
+      });
+    },
+    [applied.dateFrom, applied.dateTo],
+  );
 
   const qs = useMemo(() => buildQs(applied, page, perPage), [applied, page]);
 
@@ -153,14 +168,15 @@ export default function FullStatisticsPage() {
 
   return (
     <div className="container-fluid triag-page-wide triage-stats-page">
+      <DashboardCohortModal request={cohortRequest} onClose={() => setCohortRequest(null)} />
       <div className="triage-page-shell py-2 py-sm-3">
         <div className="triage-page-head d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
             <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-            <h1 className="h4 triage-page-title mb-0">Полная статистика</h1>
+            <h1 className="triag-page-heading mb-0">Полная статистика</h1>
             <p className="text-muted small mb-0">Период и фильтры по пациентам отделения</p>
           </div>
-          <Link to="/statistics/quick" className="btn btn-outline-secondary btn-sm">
+          <Link to="/statistics/quick" className="btn triag-btn-secondary btn-sm">
             Быстрая статистика
           </Link>
         </div>
@@ -227,7 +243,7 @@ export default function FullStatisticsPage() {
               </select>
             </div>
             <div className="col-12">
-              <button type="button" className="btn btn-primary" onClick={() => applyFilters()}>
+              <button type="button" className="btn btn-primary triag-btn-primary" onClick={() => applyFilters()}>
                 Применить фильтры
               </button>
             </div>
@@ -239,22 +255,22 @@ export default function FullStatisticsPage() {
         {data && (
           <>
             <div className="triage-stat-grid mb-2">
-              <div className="triage-stat-kpi triage-stat-kpi--neutral">
+              <button type="button" className="triage-cohort-hit triage-stat-kpi triage-stat-kpi--neutral" onClick={() => openCohort("total_patients", "Всего в периоде")}>
                 <div className="triage-stat-kpi-value">{data.counts.total_patients}</div>
                 <div className="triage-stat-kpi-label">Всего в периоде</div>
-              </div>
-              <div className="triage-stat-kpi triage-stat-kpi--neutral">
+              </button>
+              <button type="button" className="triage-cohort-hit triage-stat-kpi triage-stat-kpi--neutral" onClick={() => openCohort("triage_in_progress", "Триаж в процессе")}>
                 <div className="triage-stat-kpi-value">{data.counts.triage_in_progress}</div>
                 <div className="triage-stat-kpi-label">Триаж в процессе</div>
-              </div>
-              <div className="triage-stat-kpi triage-stat-kpi--neutral">
+              </button>
+              <button type="button" className="triage-cohort-hit triage-stat-kpi triage-stat-kpi--neutral" onClick={() => openCohort("in_actions_phase", "Фаза действий")}>
                 <div className="triage-stat-kpi-value">{data.counts.in_actions_phase}</div>
                 <div className="triage-stat-kpi-label">Фаза действий</div>
-              </div>
-              <div className="triage-stat-kpi triage-stat-kpi--ok">
+              </button>
+              <button type="button" className="triage-cohort-hit triage-stat-kpi triage-stat-kpi--ok" onClick={() => openCohort("fully_completed", "Завершено полностью")}>
                 <div className="triage-stat-kpi-value">{data.counts.fully_completed}</div>
                 <div className="triage-stat-kpi-label">Завершено полностью</div>
-              </div>
+              </button>
             </div>
 
             <div className="card border-0 shadow-sm mb-3 triage-full-cohort-card">
@@ -265,23 +281,48 @@ export default function FullStatisticsPage() {
                 </div>
                 <div className="triage-full-cohort-strip" role="img" aria-label="Доля пациентов по этапам">
                   {cohortSnapshotSegments(data.counts).map((s) => (
-                    <div
+                    <button
                       key={s.key}
-                      className="triage-full-cohort-seg"
+                      type="button"
+                      className="triage-full-cohort-seg triage-cohort-hit border-0 p-0"
                       style={{
                         width: `${(s.n / data.counts.total_patients) * 100}%`,
                         backgroundColor: s.color,
                       }}
                       title={`${s.key}: ${s.n}`}
+                      onClick={() => {
+                        const map: Record<string, DashboardCohortRequest["category"]> = {
+                          "Без триажа": "without_triage",
+                          "Триаж в процессе": "triage_in_progress",
+                          "Фаза действий": "in_actions_phase",
+                          "Завершено полностью": "fully_completed",
+                        };
+                        const category = map[s.key];
+                        if (category) openCohort(category, s.key);
+                      }}
                     />
                   ))}
                 </div>
                 <div className="d-flex flex-wrap gap-2 small text-muted mt-2">
                   {cohortSnapshotSegments(data.counts).map((s) => (
-                    <span key={s.key} className="d-inline-flex align-items-center gap-1">
+                    <button
+                      key={s.key}
+                      type="button"
+                      className="triage-cohort-inline-link d-inline-flex align-items-center gap-1 border-0 bg-transparent p-0 small text-muted"
+                      onClick={() => {
+                        const map: Record<string, DashboardCohortRequest["category"]> = {
+                          "Без триажа": "without_triage",
+                          "Триаж в процессе": "triage_in_progress",
+                          "Фаза действий": "in_actions_phase",
+                          "Завершено полностью": "fully_completed",
+                        };
+                        const category = map[s.key];
+                        if (category) openCohort(category, s.key);
+                      }}
+                    >
                       <span className="triage-full-cohort-dot" style={{ backgroundColor: s.color }} />
                       {s.key}: <strong className="text-body">{s.n}</strong>
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -300,10 +341,10 @@ export default function FullStatisticsPage() {
                 Записей: {data.total_count} · страница {data.page} из {totalPages}
               </span>
               <div className="btn-group btn-group-sm">
-                <button type="button" className="btn btn-outline-secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <button type="button" className="btn triag-btn-secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                   Назад
                 </button>
-                <button type="button" className="btn btn-outline-secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                <button type="button" className="btn triag-btn-secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
                   Вперёд
                 </button>
               </div>
@@ -318,6 +359,7 @@ export default function FullStatisticsPage() {
                     <th>Исполнитель</th>
                     <th>Статус</th>
                     <th>Приоритет</th>
+                    <th className="text-end">Документ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -331,11 +373,28 @@ export default function FullStatisticsPage() {
                       <td>{row.performer_name || "—"}</td>
                       <td>{statusLabel(row)}</td>
                       <td>{row.triage?.priority_name || "—"}</td>
+                      <td className="text-end">
+                        {row.triage?.actions_completed_at ? (
+                          <Link to={`/patients/${row.id}/triage/actions/report`} className="btn btn-sm triag-btn-primary">
+                            Итоговый документ
+                          </Link>
+                        ) : row.triage?.completed_at ? (
+                          <Link to={`/patients/${row.id}/triage/actions`} className="btn btn-sm triag-btn-secondary">
+                            Действия
+                          </Link>
+                        ) : row.triage ? (
+                          <Link to={`/patients/${row.id}/triage`} className="btn btn-sm triag-btn-secondary">
+                            Триаж
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {data.rows.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="text-muted text-center py-4">
+                      <td colSpan={6} className="text-muted text-center py-4">
                         Нет записей по выбранным условиям
                       </td>
                     </tr>

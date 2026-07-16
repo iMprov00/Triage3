@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
 import TriageStepEditConfirmDialog from "../components/TriageStepEditConfirmDialog";
+import FormErrorToast from "../components/FormErrorToast";
+import { focusTriageStep2FormError } from "../utils/triageStep2FormErrors";
 import {
   triageActiveStepPath,
   triageHasSavedStepData,
@@ -30,6 +32,11 @@ export default function TriageStep2Page() {
   const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
+    if (!err) return;
+    focusTriageStep2FormError(err);
+  }, [err]);
+
+  useEffect(() => {
     void (async () => {
       try {
         const [o, t] = await Promise.all([
@@ -52,6 +59,18 @@ export default function TriageStep2Page() {
     const id = window.setInterval(() => setTick((x) => x + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (!triage || isEditMode || !patientId) return;
+    if (triage.completed_at) {
+      nav(`/patients/${patientId}/triage/actions`, { replace: true });
+      return;
+    }
+    const step = Number(triage.step) || 1;
+    if (step !== 2) {
+      nav(triageActiveStepPath(patientId, step), { replace: true });
+    }
+  }, [triage, isEditMode, patientId, nav]);
 
   const rem =
     triage?.timer_active && triage.timer_ends_at
@@ -195,19 +214,18 @@ export default function TriageStep2Page() {
   if (!isEditMode && (triage.step as number) !== 2) {
     return (
       <div className="container-fluid triag-page-wide">
-        <div className="triage-page-shell py-2 py-sm-3">
-        <Link to="/patients" className="triage-back-link">← Назад</Link>
-        </div>
+        <div className="triage-page-shell py-2 py-sm-3">Переход к текущему шагу…</div>
       </div>
     );
   }
 
   return (
     <div className="container-fluid triag-page-wide">
+      <FormErrorToast message={err} onDismiss={() => setErr("")} />
       <div className="triage-page-shell py-2 py-sm-3">
-      <div className="triage-page-head">
+      <div className="triage-page-head mb-3">
         <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-        <h1 className="h4 triage-page-title">{isEditMode ? "Редактирование шага 2" : "Шаг 2"}</h1>
+        <h1 className="triag-page-heading mb-0">{isEditMode ? "Редактирование шага 2" : "Шаг 2"}</h1>
       </div>
       {!isEditMode && (
       <div className={`triage-timer-card triage-timer-card--${timerTone} ${rem <= 0 ? "triage-timer-card--expired" : ""}`}>
@@ -220,9 +238,9 @@ export default function TriageStep2Page() {
         </div>
       </div>
       )}
-      {err && <div className="alert alert-danger py-2">{err}</div>}
       <form onSubmit={(e) => void handleSubmit(e)} className="card triage-form-card">
         <div className="card-body">
+          <div id="triage-step2-position">
           <label className="form-label">Положение</label>
           <select
             className={`form-select mb-3 ${
@@ -239,29 +257,30 @@ export default function TriageStep2Page() {
               </option>
             ))}
           </select>
-          <div className="mb-2 fw-semibold">Критерии неотложности</div>
+          </div>
+          <div id="triage-step2-urgency" className="mb-2 fw-semibold">Критерии неотложности</div>
           <div className="row row-cols-1 g-2 mb-3">
             {opts.urgency_criteria.map((c) => (
               <div key={c} className="col">
-                <label className={`triage-check-item ${urgency.includes(c) ? "triage-check-item--yellow" : ""}`}>
+                <label className={`triage-check-item triag-btn-selector ${urgency.includes(c) ? "triage-check-item--yellow triag-btn-selector--active" : ""}`}>
                   <input type="checkbox" className="triage-check-input" checked={urgency.includes(c)} onChange={() => toggle(urgency, c, setUrgency)} />
                   <span className="form-check-label triage-check-label">{c}</span>
                 </label>
               </div>
             ))}
           </div>
-          <div className="mb-2 fw-semibold">Инфекция</div>
+          <div id="triage-step2-infection" className="mb-2 fw-semibold">Инфекция</div>
           <div className="row row-cols-1 g-2">
             {opts.infection_signs.map((c) => (
               <div key={c} className="col">
-                <label className={`triage-check-item ${infection.includes(c) ? "triage-check-item--purple" : ""}`}>
+                <label className={`triage-check-item triag-btn-selector ${infection.includes(c) ? "triage-check-item--purple triag-btn-selector--active" : ""}`}>
                   <input type="checkbox" className="triage-check-input" checked={infection.includes(c)} onChange={() => toggle(infection, c, setInfection)} />
                   <span className="form-check-label triage-check-label">{c}</span>
                 </label>
               </div>
             ))}
           </div>
-          <button type="submit" className="btn btn-primary mt-3">
+          <button type="submit" className="btn btn-primary triag-btn-primary mt-3">
             {isEditMode ? "Сохранить изменения" : "Сохранить"}
           </button>
         </div>

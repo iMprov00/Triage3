@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiJson } from "../api";
+import Stage1SummaryBlock from "./Stage1SummaryBlock";
 
 type InvestigationRow = { key: string; label: string; done: boolean };
 
@@ -8,6 +9,8 @@ type DecisionSummary = {
   stage1: {
     priority_name: string;
     actions_completed_at?: string | null;
+    stopped_at_step?: number | null;
+    stopped_at_step_note?: string | null;
     step1: Record<string, string | undefined>;
     step2: { position?: string; urgency_criteria?: string[]; infection_signs?: string[] };
     step3: Record<string, string | number | undefined>;
@@ -19,10 +22,25 @@ type DecisionSummary = {
     contraction_duration_sec?: number;
     contraction_interval_min?: number;
     pain_vas?: number;
-    skin_finding?: string;
+    skin_color?: string;
+    has_rash?: boolean;
+    rash_description?: string;
+    has_edema?: boolean;
     edema_location?: string;
+    ctg_ordered?: boolean;
+    ultrasound_ordered?: boolean;
     vitals?: Record<string, number>;
+    doctor_called?: boolean;
+    accepted_at?: string;
+    completed_at?: string;
+    duration_seconds?: number;
+  };
+  doctor_examination?: {
     investigations?: InvestigationRow[];
+    lab_investigations?: InvestigationRow[];
+    ctg?: { label: string; detail?: string };
+    ultrasound?: { label: string; detail?: string };
+    medical_conclusion?: string;
     completed_at?: string;
   };
   suggested_priority?: string;
@@ -61,46 +79,35 @@ export default function Stage2DecisionSummary({ patientId, compact }: Props) {
   if (!data) return null;
 
   const pd = data.pre_doctor || {};
+  const doc = data.doctor_examination || {};
   const vitals = pd.vitals || {};
+
+  function formatDuration(sec?: number): string {
+    if (sec == null) return "—";
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m} мин ${s} сек`;
+  }
 
   return (
     <div className={`d-grid gap-3 ${compact ? "small" : ""}`}>
       <section>
         <h3 className="h6 mb-2">Этап 1</h3>
-        <div className="text-muted small mb-2">
-          Приоритет: <strong>{data.stage1.priority_name}</strong>
-          {data.stage1.actions_completed_at ? ` · Завершено ${data.stage1.actions_completed_at}` : ""}
-        </div>
-        <ul className="small mb-0">
-          <li>Открывание глаз: {data.stage1.step1.eye_opening || "—"}</li>
-          <li>Речевая реакция: {data.stage1.step1.verbal_response || "—"}</li>
-          <li>Двигательная реакция: {data.stage1.step1.motor_response || "—"}</li>
-          <li>Дыхание: {data.stage1.step1.breathing || "—"}</li>
-          <li>Сердцебиение: {data.stage1.step1.heartbeat || "—"}</li>
-          <li>Судороги: {data.stage1.step1.seizures || "—"}</li>
-          <li>Кровотечение: {data.stage1.step1.active_bleeding || "—"}</li>
-          <li>Положение: {data.stage1.step2.position || "—"}</li>
-          <li>
-            Критерии неотложности:{" "}
-            {data.stage1.step2.urgency_criteria?.length ? data.stage1.step2.urgency_criteria.join("; ") : "—"}
-          </li>
-          <li>
-            Инфекционные признаки:{" "}
-            {data.stage1.step2.infection_signs?.length ? data.stage1.step2.infection_signs.join("; ") : "—"}
-          </li>
-          <li>
-            Витальные: ЧДД {data.stage1.step3.respiratory_rate ?? "—"}, SpO₂ {data.stage1.step3.saturation ?? "—"}, АД{" "}
-            {data.stage1.step3.systolic_bp ?? "—"}/{data.stage1.step3.diastolic_bp ?? "—"}, ЧСС{" "}
-            {data.stage1.step3.heart_rate ?? "—"}, t° {data.stage1.step3.temperature ?? "—"}
-          </li>
-        </ul>
+        <Stage1SummaryBlock stage1={data.stage1} compact />
       </section>
 
       <section>
-        <h3 className="h6 mb-2">Доврачебный этап (шаг 1 этапа 2)</h3>
+        <h3 className="h6 mb-2">Доврачебный осмотр (шаг 1)</h3>
         <ul className="small mb-0">
-          <li>Выделения: {pd.discharge || "—"}</li>
-          <li>Сердцебиение плода: {pd.fetal_heart_rate || "—"}</li>
+          <li>
+            Кожные покровы: {pd.skin_color || "—"}
+          </li>
+          <li>
+            Сыпь: {pd.has_rash ? pd.rash_description || "да" : "нет"}
+          </li>
+          <li>
+            Отёки: {pd.has_edema ? pd.edema_location || "да" : "нет"}
+          </li>
           <li>Маточный тонус: {pd.uterine_tone || "—"}</li>
           {pd.contraction_duration_sec != null && (
             <li>
@@ -109,25 +116,49 @@ export default function Stage2DecisionSummary({ patientId, compact }: Props) {
             </li>
           )}
           <li>Боль по ВАШ: {pd.pain_vas ?? "—"}</li>
+          <li>Сердцебиение плода: {pd.fetal_heart_rate || "—"}</li>
+          <li>Выделения: {pd.discharge || "—"}</li>
           <li>
-            Кожные покровы: {pd.skin_finding || "—"}
-            {pd.edema_location ? ` (${pd.edema_location})` : ""}
-          </li>
-          <li>
-            Витальные: АД {vitals.systolic_bp ?? "—"}/{vitals.diastolic_bp ?? "—"}, ЧСС {vitals.heart_rate ?? "—"}, ЧД{" "}
+            Витальные функции: АД {vitals.systolic_bp ?? "—"}/{vitals.diastolic_bp ?? "—"}, ЧСС {vitals.heart_rate ?? "—"}, ЧД{" "}
             {vitals.respiratory_rate ?? "—"}, SpO₂ {vitals.saturation ?? "—"}
           </li>
-          {pd.investigations && pd.investigations.length > 0 && (
+          <li>Вызван врач: {pd.doctor_called ? "да" : "нет"}</li>
+          {(pd.ctg_ordered || pd.ultrasound_ordered) && (
             <li>
-              Исследования:{" "}
-              {pd.investigations
-                .filter((i) => i.done)
-                .map((i) => i.label)
-                .join(", ") || "не отмечены"}
+              Назначено: {[pd.ctg_ordered ? "КТГ" : null, pd.ultrasound_ordered ? "УЗИ" : null].filter(Boolean).join(", ")}
             </li>
           )}
+          {pd.duration_seconds != null && <li>Длительность доврачебного осмотра: {formatDuration(pd.duration_seconds)}</li>}
         </ul>
       </section>
+
+      {doc.investigations && (
+        <section>
+          <h3 className="h6 mb-2">Врачебный осмотр (шаг 2)</h3>
+          <ul className="small mb-0">
+            <li>
+              Исследования:{" "}
+              {[
+                ...(doc.investigations?.filter((i) => i.done).map((i) => i.label) || []),
+                ...(doc.lab_investigations?.filter((i) => i.done).map((i) => i.label) || []),
+              ].join(", ") || "не отмечены"}
+            </li>
+            {doc.ctg && (
+              <li>
+                КТГ: {doc.ctg.label}
+                {doc.ctg.detail ? ` — ${doc.ctg.detail}` : ""}
+              </li>
+            )}
+            {doc.ultrasound && (
+              <li>
+                УЗИ: {doc.ultrasound.label}
+                {doc.ultrasound.detail ? ` — ${doc.ultrasound.detail}` : ""}
+              </li>
+            )}
+            {doc.medical_conclusion && <li>Заключение: {doc.medical_conclusion}</li>}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

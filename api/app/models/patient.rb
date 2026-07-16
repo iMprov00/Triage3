@@ -11,11 +11,12 @@ class Patient < ApplicationRecord
   has_many :stage2_audit_events, dependent: :delete_all
 
   before_validation :sync_performer_name_from_user
+  before_validation :apply_full_name_unknown
 
-  validates :full_name, presence: true
+  validates :full_name, presence: true, unless: :full_name_unknown
   validates :admission_date, presence: true
   validates :admission_time, presence: true
-  validates :birth_date, presence: true
+  validates :birth_date, presence: true, unless: :birth_date_unknown
   validates :performer_name, presence: true
   validates :appeal_type, presence: true
   
@@ -28,6 +29,7 @@ class Patient < ApplicationRecord
   ].freeze
   
   after_create :log_patient_registration_audit
+  before_destroy :destroy_stage2_case_before_triage, prepend: true
 
   # Метод для поиска по всем полям
   def self.search(query)
@@ -122,6 +124,11 @@ class Patient < ApplicationRecord
     self.performer_name = u.full_name if u
   end
 
+  def apply_full_name_unknown
+    self.full_name_unknown = ActiveModel::Type::Boolean.new.cast(full_name_unknown)
+    self.full_name = "Неизвестно" if full_name_unknown?
+  end
+
   def log_patient_registration_audit
     TriageAuditEvent.log!(
       patient: self,
@@ -129,5 +136,10 @@ class Patient < ApplicationRecord
       type: 'patient_registered',
       payload: { full_name: full_name, performer_name: performer_name }
     )
+  end
+
+  # stage2_cases.stage1_triage_id ссылается на triages — case нужно удалить до triage.
+  def destroy_stage2_case_before_triage
+    stage2_case&.destroy!
   end
 end

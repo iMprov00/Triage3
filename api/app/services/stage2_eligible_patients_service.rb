@@ -12,8 +12,11 @@ class Stage2EligiblePatientsService
   def call
     rel = Patient.joins(:triage)
       .left_joins(:stage2_case)
-      .where.not(triages: { actions_completed_at: nil })
       .where(stage2_cases: { id: nil })
+      .where(
+        "triages.actions_completed_at IS NOT NULL OR triages.stage2_handoff_at IS NOT NULL"
+      )
+      .where(triages: { priority: Triage::STAGE2_ELIGIBLE_PRIORITIES })
 
     if @params[:search].present?
       rel = rel.merge(Patient.search(@params[:search]))

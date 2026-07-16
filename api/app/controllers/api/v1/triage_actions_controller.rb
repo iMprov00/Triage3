@@ -81,14 +81,22 @@ module Api
         if @triage.complete_actions!
           @triage.reload
           pname = acting_performer_name_for_user_id(action_uid) || @patient.performer_name
-          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "actions_completed",
-            payload: { performer_name: pname, priority: @triage.priority })
-          begin
-            Stage2TransferService.transfer!(patient: @patient, source: :auto, user: current_user)
-          rescue Stage2TransferService::TransferError => e
-            Rails.logger.warn("[Stage2Transfer] patient=#{@patient.id}: #{e.message}")
+          transferred = false
+          if !Triage::STAGE1_COMPLETE_WITHOUT_HANDOFF && @triage.stage2_eligible?
+            begin
+              Stage2TransferService.transfer!(patient: @patient, source: :auto, user: current_user)
+              transferred = true
+            rescue Stage2TransferService::TransferError => e
+              Rails.logger.warn("[Stage2Transfer] patient=#{@patient.id}: #{e.message}")
+            end
           end
-          render json: { success: true, triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user) }
+          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "actions_completed",
+            payload: { performer_name: pname, priority: @triage.priority, transferred: transferred })
+          render json: {
+            success: true,
+            handoff: transferred,
+            triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user)
+          }
         else
           render json: { error: "Не все действия выполнены" }, status: :unprocessable_entity
         end
@@ -127,17 +135,34 @@ module Api
 
         action_uid = resolve_step_performer_user_id(@patient)
         @triage.set_step_performer_user!("actions", action_uid)
+        prefix = @triage.actions_flow_kind
+        bucket = @triage.actions_flow_data
+        other_audit_key = nil
+        if group == "manip" && checked && %w[resusc_outcome_recovery resusc_outcome_death].include?(key)
+          other = key == "resusc_outcome_recovery" ? "resusc_outcome_death" : "resusc_outcome_recovery"
+          if bucket.dig("manip", other).present?
+            other_audit_key = "#{prefix}_manip_#{other}"
+          end
+        end
+
         unless @triage.toggle_red_arrest_item!(group, key, checked)
           return render json: { error: "не удалось сохранить" }, status: :unprocessable_entity
         end
         @triage.reload
         pname = acting_performer_name_for_user_id(action_uid) || @patient.performer_name
 
-        prefix = @triage.actions_flow_kind
         audit_key = group == "team" ? "#{prefix}_team_#{key}" : "#{prefix}_manip_#{key}"
-        ev = checked ? "priority_action_marked" : "priority_action_unmarked"
-        TriageAuditEvent.log!(patient: @patient, triage: @triage, type: ev,
-          payload: { action: audit_key, performer_name: pname })
+        if other_audit_key
+          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_unmarked",
+            payload: { action: other_audit_key, performer_name: pname })
+        end
+        if checked
+          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_marked",
+            payload: { action: audit_key, performer_name: pname })
+        else
+          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_unmarked",
+            payload: { action: audit_key, performer_name: pname })
+        end
 
         render json: { success: true, can_complete: @triage.can_complete_actions_flow?, triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user) }
       end
@@ -163,16 +188,36 @@ module Api
         pname = acting_performer_name_for_user_id(action_uid) || @patient.performer_name
 
         prefix = @triage.actions_flow_kind
+        opposite_audit_action = nil
         audit_action = if vk == "fetal_heartbeat"
-                         val.strip == "no" ? "#{prefix}_vital_fetal_heartbeat_no" : "#{prefix}_vital_fetal_heartbeat_yes"
+                         if val.strip == "no"
+                           opposite_audit_action = "#{prefix}_vital_fetal_heartbeat_yes"
+                           "#{prefix}_vital_fetal_heartbeat_no"
+                         else
+                           opposite_audit_action = "#{prefix}_vital_fetal_heartbeat_no"
+                           "#{prefix}_vital_fetal_heartbeat_yes"
+                         end
                        elsif vk == "active_bleeding"
-                         val.strip == "yes" ? "#{prefix}_vital_active_bleeding_yes" : "#{prefix}_vital_active_bleeding_no"
+                         if val.strip == "yes"
+                           opposite_audit_action = "#{prefix}_vital_active_bleeding_no"
+                           "#{prefix}_vital_active_bleeding_yes"
+                         else
+                           opposite_audit_action = "#{prefix}_vital_active_bleeding_yes"
+                           "#{prefix}_vital_active_bleeding_no"
+                         end
                        else
                          "#{prefix}_vital_#{vk}"
                        end
         if val.strip.present?
+          if opposite_audit_action
+            TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_unmarked",
+              payload: { action: opposite_audit_action, performer_name: pname })
+          end
           TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_marked",
             payload: { action: audit_action, value: val.strip, performer_name: pname })
+        else
+          TriageAuditEvent.log!(patient: @patient, triage: @triage, type: "priority_action_unmarked",
+            payload: { action: audit_action, performer_name: pname })
         end
 
         render json: { success: true, can_complete: @triage.can_complete_actions_flow?, triage: TriageStatePresenter.call(@patient, @triage, viewer: current_user) }

@@ -8,6 +8,7 @@ export type Stage2TriageRow = {
   display_priority?: string | null;
   display_priority_name?: string | null;
   pre_doctor_completed?: boolean;
+  doctor_examination_completed?: boolean;
   decision_completed?: boolean;
   workflow_route?: string;
   completed_at?: string | null;
@@ -27,10 +28,13 @@ export type Stage2PatientListRow = {
   transfer_source?: string;
   can_delete: boolean;
   can_edit: boolean;
+  can_edit_saved_phases?: boolean;
   card_state_class: string;
   stage1_priority?: string | null;
   stage1_priority_name?: string | null;
   stage2_triage?: Stage2TriageRow | null;
+  pending_acceptance?: boolean;
+  accepted_at?: string | null;
   stage2_case_id?: number;
 };
 

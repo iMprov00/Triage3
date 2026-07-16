@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiJson } from "../api";
+import { openStage1ActionsReportPdf } from "../utils/stage1ActionsReportPdf";
+import { formatActionDisplay } from "../utils/actionDisplayText";
+import { filterActionTimeline } from "../utils/auditTimelineFilter";
 
 type AuditEvent = {
   id: number;
@@ -26,7 +29,17 @@ type TriageOptions = {
 };
 
 type StatisticsResponse = {
-  patients?: Array<{ id: number; full_name?: string }>;
+  patients?: Array<{
+    id: number;
+    full_name?: string;
+    admission_date?: string;
+    admission_time?: string;
+    birth_date?: string | null;
+    appeal_type?: string;
+    pregnancy_display?: string;
+    performer_name?: string;
+    created_at?: string;
+  }>;
   selected_patient_id?: number | null;
   triage?: {
     priority?: string;
@@ -172,6 +185,7 @@ export default function TriageActionsReportPage() {
   const [data, setData] = useState<StatisticsResponse | null>(null);
   const [triageOpts, setTriageOpts] = useState<TriageOptions | null>(null);
   const [err, setErr] = useState("");
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -201,12 +215,7 @@ export default function TriageActionsReportPage() {
 
   const actionTimeline = useMemo(() => {
     const events = data?.audit_events || [];
-    return events.filter(
-      (e) =>
-        e.event_type === "priority_action_marked" ||
-        e.event_type === "priority_action_unmarked" ||
-        e.event_type === "actions_completed",
-    );
+    return filterActionTimeline(events);
   }, [data?.audit_events]);
 
   const stepsTimeline = useMemo(() => {
@@ -225,12 +234,36 @@ export default function TriageActionsReportPage() {
     return "—";
   }, [data?.patients, data?.selected_patient_id]);
 
+  async function handlePrint() {
+    if (!data) return;
+    setPrinting(true);
+    try {
+      await openStage1ActionsReportPdf(data, triageOpts);
+    } catch {
+      setErr("Не удалось сформировать PDF-документ");
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   return (
     <div className="container-fluid triag-page-wide triage-report-page">
       <div className="triage-page-shell py-2 py-sm-3">
         <div className="triage-page-head">
           <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-          <h1 className="h4 triage-page-title">Итоговый документ действий</h1>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h1 className="triag-page-heading mb-0">Итоговый документ действий</h1>
+            {data && (
+              <button
+                type="button"
+                className="btn triag-btn-primary triage-report-print-btn"
+                disabled={printing}
+                onClick={() => void handlePrint()}
+              >
+                {printing ? "Формирование…" : "Напечатать"}
+              </button>
+            )}
+          </div>
         </div>
 
         {err && <div className="alert alert-danger py-2">{err}</div>}
@@ -405,7 +438,7 @@ export default function TriageActionsReportPage() {
                                   ? "✓"
                                   : "•"}
                             </span>{" "}
-                            {ev.action_text || String(ev.payload?.action || "—")}
+                            {formatActionDisplay(ev)}
                           </td>
                           <td>{String(ev.payload?.performer_name || "—")}</td>
                         </tr>

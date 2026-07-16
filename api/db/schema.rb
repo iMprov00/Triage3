@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2025_07_06_120000) do
   create_table "job_positions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "kind", null: false
@@ -24,6 +24,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_06_120000) do
     t.time "admission_time"
     t.string "appeal_type"
     t.date "birth_date"
+    t.boolean "birth_date_unknown", default: false, null: false
     t.datetime "created_at", null: false
     t.integer "created_by_user_id"
     t.string "full_name"
@@ -63,6 +64,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_06_120000) do
   end
 
   create_table "stage2_cases", force: :cascade do |t|
+    t.datetime "accepted_at"
     t.date "admission_date"
     t.time "admission_time"
     t.datetime "created_at", null: false
@@ -128,6 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_06_120000) do
     t.string "position"
     t.string "priority", default: "pending"
     t.boolean "seizures"
+    t.datetime "stage2_handoff_at"
     t.datetime "start_time", precision: nil
     t.integer "step", default: 1
     t.datetime "step1_completed_at", precision: nil

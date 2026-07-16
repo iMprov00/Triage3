@@ -139,9 +139,9 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
   const deathChecked = Boolean(manip.resusc_outcome_death);
 
   const fetalRaw = vitals.fetal_heartbeat?.value;
-  const fetalVal = fetalRaw == null || String(fetalRaw).trim() === "" ? "yes" : String(fetalRaw).trim();
+  const fetalVal = fetalRaw == null || String(fetalRaw).trim() === "" ? "" : String(fetalRaw).trim();
   const bleedRaw = vitals.active_bleeding?.value;
-  const bleedVal = bleedRaw == null || String(bleedRaw).trim() === "" ? "no" : String(bleedRaw).trim();
+  const bleedVal = bleedRaw == null || String(bleedRaw).trim() === "" ? "" : String(bleedRaw).trim();
 
   const canComplete = Boolean(
     flowKind === "red_arrest" ? triage.can_complete_red_arrest : triage.can_complete_actions_flow,
@@ -224,7 +224,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
               {!brigadeOk ? (
                 <button
                   type="button"
-                  className="btn btn-danger btn-lg w-100 mb-4"
+                  className="btn btn-danger btn-lg w-100 mb-4 triag-btn-danger"
                   disabled={done}
                   onClick={() => void brigadeClick()}
                 >
@@ -247,7 +247,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                   return (
                     <div
                       key={item.key}
-                      className={`form-check mb-2 ${checked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                      className={`triage-check-item triag-btn-selector mb-2 ${checked ? "triag-btn-selector--active" : ""}`}
                     >
                       <input
                         className="form-check-input"
@@ -258,7 +258,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                         onChange={(e) => void toggle("team", item.key, e.target.checked)}
                       />
                       <label className="form-check-label" htmlFor={`ra_team_${item.key}`}>
-                        {item.label}
+                        <span>{item.label}</span>
                       </label>
                       {checked && <div className="small text-muted ms-4">{fmtAt(ts)}</div>}
                     </div>
@@ -282,7 +282,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                 return (
                   <div key={k}>
                     <div
-                      className={`form-check mb-2 ${checked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                      className={`triage-check-item triag-btn-selector mb-2 ${checked ? "triag-btn-selector--active" : ""}`}
                     >
                       <input
                         className="form-check-input"
@@ -293,7 +293,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                         onChange={(e) => void toggle("manip", k, e.target.checked)}
                       />
                       <label className="form-check-label" htmlFor={`ra_manip_${k}`}>
-                        {item.label}
+                        <span>{item.label}</span>
                       </label>
                       {checked && <div className="small text-muted ms-4">{fmtAt(ts)}</div>}
                     </div>
@@ -357,7 +357,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                                   disabled={done}
                                   onChange={() => void vital("fetal_heartbeat", "yes")}
                                 />
-                                <label className="btn btn-outline-secondary" htmlFor="ra_fetal_yes">
+                                <label className={`btn triag-btn-selector ${fetalVal === "yes" ? "triag-btn-selector--active" : ""}`} htmlFor="ra_fetal_yes">
                                   Да
                                 </label>
                                 <input
@@ -369,7 +369,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                                   disabled={done}
                                   onChange={() => void vital("fetal_heartbeat", "no")}
                                 />
-                                <label className="btn btn-outline-secondary" htmlFor="ra_fetal_no">
+                                <label className={`btn triag-btn-selector ${fetalVal === "no" ? "triag-btn-selector--active" : ""}`} htmlFor="ra_fetal_no">
                                   Нет
                                 </label>
                               </div>
@@ -386,7 +386,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                                   disabled={done}
                                   onChange={() => void vital("active_bleeding", "yes")}
                                 />
-                                <label className="btn btn-outline-secondary" htmlFor="ra_bleed_yes">
+                                <label className={`btn triag-btn-selector ${bleedVal === "yes" ? "triag-btn-selector--active" : ""}`} htmlFor="ra_bleed_yes">
                                   Да
                                 </label>
                                 <input
@@ -398,7 +398,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                                   disabled={done}
                                   onChange={() => void vital("active_bleeding", "no")}
                                 />
-                                <label className="btn btn-outline-secondary" htmlFor="ra_bleed_no">
+                                <label className={`btn triag-btn-selector ${bleedVal === "no" ? "triag-btn-selector--active" : ""}`} htmlFor="ra_bleed_no">
                                   Нет
                                 </label>
                               </div>
@@ -419,7 +419,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                             return (
                               <div
                                 key={aKey}
-                                className={`form-check ${aDone ? "bg-success-subtle border border-success rounded px-2 py-1" : ""}`}
+                                className={`triage-check-item triag-btn-selector ${aDone ? "triag-btn-selector--active" : ""}`}
                               >
                                 <input
                                   className="form-check-input"
@@ -430,7 +430,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                                   onChange={(e) => void toggle("manip", aKey, e.target.checked)}
                                 />
                                 <label className="form-check-label small" htmlFor={`ra_${aKey}`}>
-                                  {i}
+                                  <span>{i}</span>
                                 </label>
                               </div>
                             );
@@ -446,7 +446,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                 <>
                   <hr className="my-3" />
                   <div
-                    className={`form-check mb-3 ${csectionChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                    className={`triage-check-item triag-btn-selector mb-3 ${csectionChecked ? "triag-btn-selector--active" : ""}`}
                   >
                     <input
                       className="form-check-input"
@@ -457,7 +457,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                       onChange={(e) => void toggle("manip", "csection_done", e.target.checked)}
                     />
                     <label className="form-check-label fw-semibold" htmlFor="ra_csection">
-                      Выполнено кесарево сечение
+                      <span>Выполнено кесарево сечение</span>
                     </label>
                     {csectionChecked && (
                       <div className="small text-muted ms-4">
@@ -470,7 +470,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                     <div className="small fw-semibold mb-1">Исход СЛР (выбрать один)</div>
                     <div className="d-grid gap-2">
                       <div
-                        className={`form-check ${recoveryChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                        className={`triage-check-item triag-btn-selector ${recoveryChecked ? "triag-btn-selector--active" : ""}`}
                       >
                         <input
                           className="form-check-input"
@@ -482,11 +482,16 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                           onChange={() => void toggle("manip", "resusc_outcome_recovery", true)}
                         />
                         <label className="form-check-label" htmlFor="ra_out_recovery">
-                          Восстановление сердечной деятельности. Завершение СЛР
+                          <span>Восстановление сердечной деятельности. Завершение СЛР</span>
                         </label>
+                        {recoveryChecked && (
+                          <div className="small text-muted ms-4">
+                            Завершение СЛР: {fmtAt(manip.resusc_outcome_recovery || manip.slr_complete)}
+                          </div>
+                        )}
                       </div>
                       <div
-                        className={`form-check ${deathChecked ? "bg-success-subtle border border-success rounded px-2 py-2" : ""}`}
+                        className={`triage-check-item triag-btn-selector ${deathChecked ? "triag-btn-selector--active" : ""}`}
                       >
                         <input
                           className="form-check-input"
@@ -498,7 +503,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                           onChange={() => void toggle("manip", "resusc_outcome_death", true)}
                         />
                         <label className="form-check-label" htmlFor="ra_out_death">
-                          Смерть
+                          <span>Смерть</span>
                         </label>
                       </div>
                     </div>
@@ -514,7 +519,7 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
         <div className="col-12 text-center">
           <button
             type="button"
-            className="btn btn-success btn-lg me-2"
+            className="btn btn-success btn-lg me-2 triag-btn-primary"
             disabled={done || !canComplete}
             onClick={() => {
               if (requiresConfirm) {
@@ -552,12 +557,12 @@ export default function RedArrestActionsPanel({ patientId, triage, onRefresh, on
                   </p>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => setConfirmOpen(false)}>
+                  <button type="button" className="btn triag-btn-secondary" onClick={() => setConfirmOpen(false)}>
                     Отмена
                   </button>
                   <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-success triag-btn-primary"
                     onClick={() => {
                       setConfirmOpen(false);
                       void onComplete();

@@ -46,12 +46,14 @@ export default function PatientFormPage() {
   const { patientId } = useParams();
   const nav = useNavigate();
   const [fullName, setFullName] = useState("");
+  const [fullNameUnknown, setFullNameUnknown] = useState(false);
   const [admissionDate, setAdmissionDate] = useState("");
   const [admissionTime, setAdmissionTime] = useState("08:00");
   const [birthDay, setBirthDay] = useState(0);
   const [birthMonth, setBirthMonth] = useState(0);
   const [birthYear, setBirthYear] = useState(0);
   const [appealType, setAppealType] = useState(APPEAL_TYPES[0]);
+  const [birthDateUnknown, setBirthDateUnknown] = useState(false);
   const [pregnancyUnknown, setPregnancyUnknown] = useState(false);
   const [pregnancyWeeks, setPregnancyWeeks] = useState("");
   const [performerUserId, setPerformerUserId] = useState<number | "">("");
@@ -76,12 +78,14 @@ export default function PatientFormPage() {
         const r = await apiJson<{ patient: Record<string, unknown> }>(`/api/v1/stage2/patients/${patientId}`);
         const p = r.patient;
         setFullName(String(p.full_name || ""));
+        setFullNameUnknown(Boolean(p.full_name_unknown));
         setAdmissionDate(String(p.admission_date || ""));
         setAdmissionTime(String(p.admission_time || "08:00"));
         const bd = parseIsoDate(String(p.birth_date || ""));
         setBirthYear(bd.y);
         setBirthMonth(bd.m);
         setBirthDay(bd.d);
+        setBirthDateUnknown(Boolean(p.birth_date_unknown));
         setAppealType(String(p.appeal_type || APPEAL_TYPES[0]));
         setPregnancyUnknown(Boolean(p.pregnancy_unknown));
         setPregnancyWeeks(p.pregnancy_weeks != null ? String(p.pregnancy_weeks) : "");
@@ -110,15 +114,21 @@ export default function PatientFormPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
-    const birthDate = toBirthIso(birthYear, birthMonth, birthDay);
-    if (!birthDate) {
-      setErr("Укажите корректную дату рождения (день, месяц и год).");
+    if (!fullNameUnknown && !fullName.trim()) {
+      setErr("Укажите ФИО или отметьте «Неизвестно».");
+      return;
+    }
+    const birthDate = birthDateUnknown ? null : toBirthIso(birthYear, birthMonth, birthDay);
+    if (!birthDateUnknown && !birthDate) {
+      setErr("Укажите корректную дату рождения или отметьте «Неизвестно».");
       return;
     }
     const body: Record<string, unknown> = {
       patient: {
-        full_name: fullName,
+        full_name: fullNameUnknown ? "Неизвестно" : fullName.trim(),
+        full_name_unknown: fullNameUnknown,
         birth_date: birthDate,
+        birth_date_unknown: birthDateUnknown,
         appeal_type: appealType,
         pregnancy_unknown: pregnancyUnknown,
         pregnancy_weeks: pregnancyUnknown ? null : pregnancyWeeks || null,
@@ -146,13 +156,30 @@ export default function PatientFormPage() {
           К списку
         </Link>
       </div>
-      <h1 className="h4 mb-3">Карта пациента · Этап 2</h1>
+      <h1 className="triag-page-heading mb-3">Карта пациента · Этап 2</h1>
       <form onSubmit={(e) => void submit(e)} className="card shadow-sm">
         <div className="card-body">
           {err && <div className="alert alert-danger py-2">{err}</div>}
           <div className="mb-2">
             <label className="form-label">ФИО</label>
-            <input className="form-control" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <div className="form-check mb-2">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="name_unknown"
+                checked={fullNameUnknown}
+                onChange={(e) => {
+                  setFullNameUnknown(e.target.checked);
+                  if (e.target.checked) setFullName("");
+                }}
+              />
+              <label className="form-check-label" htmlFor="name_unknown">
+                Неизвестно
+              </label>
+            </div>
+            {!fullNameUnknown && (
+              <input className="form-control" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            )}
           </div>
           <div className="row g-2">
             <div className="col-md-6">
@@ -166,11 +193,31 @@ export default function PatientFormPage() {
           </div>
           <div className="mt-2">
             <span className="form-label d-block">Дата рождения</span>
+            <div className="form-check mb-2">
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="birth_unknown_s2"
+                checked={birthDateUnknown}
+                onChange={(e) => {
+                  setBirthDateUnknown(e.target.checked);
+                  if (e.target.checked) {
+                    setBirthDay(0);
+                    setBirthMonth(0);
+                    setBirthYear(0);
+                  }
+                }}
+              />
+              <label className="form-check-label" htmlFor="birth_unknown_s2">
+                Неизвестно
+              </label>
+            </div>
+            {!birthDateUnknown && (
             <div className="row g-2">
               <div className="col-4">
                 <select
                   className="form-select"
-                  required
+                  required={!birthDateUnknown}
                   value={birthDay || ""}
                   onChange={(e) => setBirthDay(e.target.value ? parseInt(e.target.value, 10) : 0)}
                 >
@@ -185,7 +232,7 @@ export default function PatientFormPage() {
               <div className="col-4">
                 <select
                   className="form-select"
-                  required
+                  required={!birthDateUnknown}
                   value={birthMonth || ""}
                   onChange={(e) => setBirthMonth(e.target.value ? parseInt(e.target.value, 10) : 0)}
                 >
@@ -200,7 +247,7 @@ export default function PatientFormPage() {
               <div className="col-4">
                 <select
                   className="form-select"
-                  required
+                  required={!birthDateUnknown}
                   value={birthYear || ""}
                   onChange={(e) => setBirthYear(e.target.value ? parseInt(e.target.value, 10) : 0)}
                 >
@@ -213,6 +260,7 @@ export default function PatientFormPage() {
                 </select>
               </div>
             </div>
+            )}
           </div>
           <div className="mt-2">
             <label className="form-label">Вид обращения</label>
@@ -259,7 +307,7 @@ export default function PatientFormPage() {
               <input type="number" step="0.1" className="form-control" value={pregnancyWeeks} onChange={(e) => setPregnancyWeeks(e.target.value)} />
             </div>
           )}
-          <button type="submit" className="btn btn-primary mt-3">
+          <button type="submit" className="btn btn-primary mt-3 triag-btn-primary">
             Сохранить
           </button>
         </div>

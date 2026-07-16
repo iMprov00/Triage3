@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiJson, formatTimer } from "../api";
 import RedArrestActionsPanel, { type RedArrestTriageView } from "../components/RedArrestActionsPanel";
+import FormErrorToast from "../components/FormErrorToast";
+import { focusTriageActionsFormError } from "../utils/triageActionsFormErrors";
 
 type ActionDef = { key: string; text?: string; label?: string; starts_timer?: boolean; final?: boolean };
 
@@ -17,6 +19,9 @@ export default function TriageActionsPage() {
       const r = await apiJson<{ triage: Record<string, unknown> }>(`/api/v1/patients/${patientId}/triage/actions`);
       setTriage(r.triage);
       setErr("");
+      if (r.triage.actions_completed_at) {
+        nav(`/patients/${patientId}/triage/actions/report`, { replace: true });
+      }
     } catch {
       setErr("Недоступно");
     }
@@ -36,7 +41,12 @@ export default function TriageActionsPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  const actions = (triage?.priority_actions as ActionDef[]) || [];
+  useEffect(() => {
+    if (!err) return;
+    focusTriageActionsFormError(err);
+  }, [err]);
+
+  const actions = ((triage?.priority_actions as ActionDef[]) || []).filter((a) => !a.final);
   const actionsFlowKind = (triage?.actions_flow_kind as string | null | undefined) || null;
   const red = Boolean(actionsFlowKind);
   const actionsData = (triage?.actions_data as Record<string, unknown>) || {};
@@ -83,7 +93,14 @@ export default function TriageActionsPage() {
   async function complete() {
     setErr("");
     try {
-      await apiJson(`/api/v1/patients/${patientId}/triage/actions/complete`, { method: "POST", json: {} });
+      const r = await apiJson<{ success: boolean; handoff?: boolean }>(
+        `/api/v1/patients/${patientId}/triage/actions/complete`,
+        { method: "POST", json: {} },
+      );
+      if (r.handoff) {
+        nav("/patients");
+        return;
+      }
       nav(`/patients/${patientId}/triage/actions/report`);
     } catch {
       setErr("Не все действия выполнены");
@@ -94,10 +111,11 @@ export default function TriageActionsPage() {
 
   return (
     <div className="container-fluid triag-page-wide">
+      <FormErrorToast message={err} onDismiss={() => setErr("")} />
       <div className="triage-page-shell py-2 py-sm-3">
-      <div className="triage-page-head">
+      <div className="triage-page-head mb-3">
         <Link to="/patients" className="triage-back-link">← Пациенты</Link>
-        <h1 className="h4 triage-page-title">Действия по приоритету</h1>
+        <h1 className="triag-page-heading mb-0">Действия по приоритету</h1>
       </div>
       {!red && (triage.actions_started_at != null || triage.brigade_timer_ends_at != null) && (
         <div className="triage-actions-top-grid">
@@ -125,8 +143,6 @@ export default function TriageActionsPage() {
           )}
         </div>
       )}
-      {err && <div className="alert alert-danger py-2">{err}</div>}
-
       {red ? (
         <RedArrestActionsPanel
           patientId={patientId!}
@@ -136,7 +152,7 @@ export default function TriageActionsPage() {
           setErr={setErr}
         />
       ) : (
-        <div className="triage-simple-actions">
+        <div id="triage-actions-list" className="triage-simple-actions">
           {actions.map((a) => {
             const done = Boolean((actionsData as Record<string, unknown>)[a.key]);
             const completedAt = (actionsData as Record<string, unknown>)[a.key];
@@ -148,12 +164,8 @@ export default function TriageActionsPage() {
                 <div className="triage-simple-action-main">
                   <div className="triage-simple-action-badges">
                     {a.starts_timer ? <span className="triage-simple-action-badge">Таймер</span> : null}
-                    {a.final ? <span className="triage-simple-action-badge triage-simple-action-badge--final">Финал</span> : null}
                   </div>
                   <div className="triage-simple-action-title">{a.text || a.key}</div>
-                  {a.final ? (
-                    <div className="triage-simple-action-hint">Завершающее действие фазы — отметьте после выполнения остальных пунктов.</div>
-                  ) : null}
                   {done && completedAt != null && (
                     <div className="triage-simple-action-time text-muted">
                       Выполнено: {new Date(Number(completedAt) * 1000).toLocaleString("ru-RU")}
@@ -163,7 +175,7 @@ export default function TriageActionsPage() {
                 {!triage.actions_completed_at && (
                   <button
                     type="button"
-                    className={`btn ${done ? "btn-success" : "btn-outline-primary"} triage-simple-action-btn`}
+                    className={`btn ${done ? "btn-success triag-btn-secondary" : "btn-outline-primary triag-btn-primary"} triage-simple-action-btn`}
                     onClick={() => void mark(a.key)}
                   >
                     {done ? "Готово" : "Выполнено"}
@@ -176,7 +188,7 @@ export default function TriageActionsPage() {
       )}
 
       {!red && !triage.actions_completed_at && (
-        <button type="button" className="btn btn-primary mt-3 triage-simple-actions-complete" onClick={() => void complete()}>
+        <button type="button" className="btn btn-primary mt-3 triag-btn-primary triage-simple-actions-complete" onClick={() => void complete()}>
           Завершить действия
         </button>
       )}

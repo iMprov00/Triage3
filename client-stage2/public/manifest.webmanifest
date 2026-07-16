@@ -1,9 +1,9 @@
 {
-  "name": "TriagV3",
-  "short_name": "Triag",
+  "name": "Триаж · Этап 2",
+  "short_name": "Триаж 2",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f3f4f6",
+  "background_color": "#faf7f2",
   "theme_color": "#54c654",
   "lang": "ru",
   "icons": [

@@ -39,6 +39,14 @@ export default function Stage2WorkflowRouter() {
     return <div className="alert alert-warning">{err}</div>;
   }
 
+  if (route === "awaiting_acceptance") {
+    return <Navigate to="/patients" replace />;
+  }
+
+  if (route === "doctor_examination") {
+    return <Navigate to={`/patients/${patientId}/doctor-examination`} replace />;
+  }
+
   if (route === "decision") {
     return <Navigate to={`/patients/${patientId}/decision`} replace />;
   }

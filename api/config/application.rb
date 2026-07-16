@@ -34,7 +34,7 @@ module Api
     config.session_store :cookie_store,
       key: "_triag_api_session",
       same_site: :lax,
-      secure: Rails.env.production?
+      secure: ActiveModel::Type::Boolean.new.cast(ENV.fetch("SESSION_COOKIE_SECURE", "false"))
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, config.session_options
 

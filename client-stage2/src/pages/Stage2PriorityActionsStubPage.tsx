@@ -19,7 +19,7 @@ const STUB_ACTIONS: Record<string, string[]> = {
   yellow: [
     "Расширенное обследование (КТГ, УЗИ, анализы)",
     "Консультация акушера-гинеколога",
-    "Подготовка к переводу в ПИТ / родовое отделение",
+    "Подготовка к госпитализации в ПИТ / родовое отделение",
     "Контроль витальных функций",
   ],
   green: [
@@ -75,7 +75,7 @@ export default function Stage2PriorityActionsStubPage() {
           <Link to="/patients" className="triage-back-link">
             <i className="bi bi-arrow-left" aria-hidden /> К списку
           </Link>
-          <h1 className="h4 mb-1">Действия по приоритету · Этап 2</h1>
+          <h1 className="triag-page-heading mb-1">Действия по приоритету · Этап 2</h1>
           <p className="text-muted small mb-0">{patientName}</p>
         </div>
 
